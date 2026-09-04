@@ -1,0 +1,11 @@
+node_modules/
+dist/
+
+# SQLite database files (generated at runtime)
+server/stemulate.db
+server/stemulate.db-shm
+server/stemulate.db-wal
+
+# Local env
+.env
+.env.local
