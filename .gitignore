@@ -9,3 +9,6 @@ server/stemulate.db-wal
 # Local env
 .env
 .env.local
+
+# Local editor/tooling config
+.claude/
