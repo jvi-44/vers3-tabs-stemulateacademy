@@ -5,10 +5,10 @@ import type {
   LeaderboardEntry,
   STEMbot,
   TopicTag,
-  Card,
   CardPack,
 } from "../types";
 
+import phenVolcano from "../assets/cards/phenomena/phen_9_front.jpg";
 import avatarBoyTeal from "../assets/avatar_boy_teal.png";
 import avatarBoyBlue from "../assets/avatar_boy_blue.png";
 import avatarGirlPurpleBob from "../assets/avatar_girl_purple_bob.png";
@@ -347,10 +347,8 @@ export const MOCK_GALLERY: GalleryPost[] = [
   {
     id: "g1",
     username: "AlexScience",
-    avatar:
-      "https://api.dicebear.com/7.x/avataaars/svg?seed=Alex",
-    imageUrl:
-      "https://images.unsplash.com/photo-1564325724739-bae0bd08bc62?w=500&q=80",
+    avatar: AVATAR_OPTIONS[5],
+    imageUrl: phenVolcano,
     caption: "My volcano project erupted! 🌋",
     likes: 24,
     tags: ["Science", "Volcano"],
@@ -362,20 +360,11 @@ export const MOCK_LEADERBOARD: LeaderboardEntry[] = Array.from(
   (_, i) => ({
     id: `l${i}`,
     username: i === 2 ? "StemExplorer" : `Explorer_${i + 1}`,
-    avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${i === 2 ? "StemExplorer" : "User" + i}`,
+    avatar: AVATAR_OPTIONS[i % AVATAR_OPTIONS.length],
     xp: 5000 - i * 300,
     rank: i + 1,
   }),
 );
-
-export const MOCK_CARDS: Card[] = [
-  { id: "c1", name: "Marie Curie", rarity: "legendary", category: "scientist", imageUrl: "https://images.unsplash.com/photo-1532094349884-543bc11b234d?w=400&q=80", description: "Pioneer in radioactivity research", fact: "First woman to win a Nobel Prize and the only person to win in two different sciences!" },
-  { id: "c2", name: "Albert Einstein", rarity: "legendary", category: "scientist", imageUrl: "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=400&q=80", description: "Father of modern physics", fact: "His brain was preserved for science after his death!" },
-  { id: "c3", name: "Gravity", rarity: "epic", category: "phenomenon", imageUrl: "https://images.unsplash.com/photo-1462331940025-496dfbfc7564?w=400&q=80", description: "The force that keeps us grounded", fact: "Without gravity, you'd weigh nothing!" },
-  { id: "c4", name: "Lightning", rarity: "rare", category: "phenomenon", imageUrl: "https://images.unsplash.com/photo-1431440869543-efaf3388c585?w=400&q=80", description: "Nature's electric spectacular", fact: "Lightning is 5 times hotter than the sun!" },
-  { id: "c5", name: "DNA Double Helix", rarity: "epic", category: "funfact", imageUrl: "https://images.unsplash.com/photo-1576086213369-97a306d36557?w=400&q=80", description: "The blueprint of life", fact: "If uncoiled, DNA from one cell would be 6 feet long!" },
-  { id: "c6", name: "Nikola Tesla", rarity: "legendary", category: "scientist", imageUrl: "https://images.unsplash.com/photo-1509869175650-a1d97972541a?w=400&q=80", description: "Master of electricity", fact: "Tesla could speak 8 languages!" },
-];
 
 export const MOCK_CARD_PACKS: CardPack[] = [
   { id: "p1", name: "Starter Pack", cost: 50, cardsCount: 3, description: "Perfect for beginners!" },

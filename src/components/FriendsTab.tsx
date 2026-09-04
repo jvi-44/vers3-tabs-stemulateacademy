@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Users, MessageSquare, UserPlus, Repeat, Gamepad2, Send, Hash } from "lucide-react";
-import { MOCK_LEADERBOARD, MOCK_CARDS } from "../data/mock";
+import { MOCK_LEADERBOARD } from "../data/mock";
+import { FIGURE_CARDS } from "../data/cardData";
 import { cn } from "./ui/utils";
 
 type ChatMsg = { from: "me" | "them"; text: string };
@@ -176,9 +177,9 @@ export function FriendsTab({ myAtoms }: { myAtoms: number }) {
             <h3 className="font-black text-foreground mb-1">Trade cards with {active.name}</h3>
             <p className="text-xs text-muted-foreground mb-4">Pick a card to offer — they'll get a matching trade request.</p>
             <div className="grid grid-cols-3 gap-2 max-h-56 overflow-y-auto mb-4">
-              {MOCK_CARDS.map((c) => (
+              {FIGURE_CARDS.map((c) => (
                 <div key={c.id} className="aspect-[3/4] rounded-xl overflow-hidden border border-border">
-                  <img src={c.imageUrl} className="w-full h-full object-cover" />
+                  <img src={c.front} alt={c.name} className="w-full h-full object-cover" />
                 </div>
               ))}
             </div>
