@@ -9,6 +9,18 @@ real accounts and progress tracking (replacing the old mock login).
 npm install
 ```
 
+## Configuration
+
+Copy `.env.example` to `.env` and fill in what you need:
+
+```bash
+cp .env.example .env
+```
+
+The server loads it automatically. Everything in it is optional — the app
+runs without a `.env`, except the in-lesson STEMbot chat panel, which
+needs `GEMINI_API_KEY` and returns 503 without one.
+
 ## Running it
 
 You need **both** the frontend and the backend running.

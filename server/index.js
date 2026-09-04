@@ -1,8 +1,12 @@
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import db from "./db.js";
+
+// Overridable so the model can be changed without a code edit.
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
 const app = express();
 app.use(cors());
@@ -314,7 +318,7 @@ app.post("/api/chat", async (req, res) => {
     };
 
     const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
       { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) },
     );
 
