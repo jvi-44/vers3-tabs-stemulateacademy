@@ -24,18 +24,40 @@ import stembotBlue from "../assets/stembot_blue.png";
 import stembotCream from "../assets/stembot_cream.png";
 import stembotRed from "../assets/stembot_red.png";
 
-export const AVATAR_OPTIONS: string[] = [
-  avatarBoyTeal,
-  avatarBoyBlue,
-  avatarGirlPurpleBob,
-  avatarGirlTealBuns,
-  avatarBoyPurpleSpiky,
-  avatarGirlPinkPonytail,
-  avatarBoyTealCap,
-  avatarGirlTealPigtails,
-  avatarBoyYellowCurly,
-  avatarGirlYellowFlower,
-];
+// Avatars are keyed by a stable name, NOT by their imported URL. Vite
+// content-hashes these files at build time, so a URL like
+// "/assets/avatar_boy_teal-A1b2C3.png" changes on any rebuild that touches
+// the image -- persisting one to the database would silently 404 every
+// saved avatar after the next deploy. The key is what goes in users.avatar;
+// avatarToUrl() resolves it for rendering.
+export const AVATARS: Record<string, string> = {
+  boy_teal: avatarBoyTeal,
+  boy_blue: avatarBoyBlue,
+  girl_purple_bob: avatarGirlPurpleBob,
+  girl_teal_buns: avatarGirlTealBuns,
+  boy_purple_spiky: avatarBoyPurpleSpiky,
+  girl_pink_ponytail: avatarGirlPinkPonytail,
+  boy_teal_cap: avatarBoyTealCap,
+  girl_teal_pigtails: avatarGirlTealPigtails,
+  boy_yellow_curly: avatarBoyYellowCurly,
+  girl_yellow_flower: avatarGirlYellowFlower,
+};
+
+export const AVATAR_KEYS: string[] = Object.keys(AVATARS);
+export const DEFAULT_AVATAR_KEY = "boy_teal";
+
+/** Display URL for a stored avatar key. Falls back to the default for an
+ *  unknown key -- including legacy rows that stored a hashed URL. */
+export function avatarToUrl(key: string | null | undefined): string {
+  return (key && AVATARS[key]) || AVATARS[DEFAULT_AVATAR_KEY];
+}
+
+/** Stable key for a display URL, used by the avatar picker. */
+export function urlToAvatarKey(url: string): string {
+  return AVATAR_KEYS.find((k) => AVATARS[k] === url) || DEFAULT_AVATAR_KEY;
+}
+
+export const AVATAR_OPTIONS: string[] = AVATAR_KEYS.map((k) => AVATARS[k]);
 
 export const STEMBOTS: Record<string, STEMbot> = {
   sophia: {

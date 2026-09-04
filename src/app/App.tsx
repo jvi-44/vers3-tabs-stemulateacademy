@@ -20,6 +20,8 @@ import { twMerge } from "tailwind-merge";
 
 import {
   MOCK_USER,
+  avatarToUrl,
+  urlToAvatarKey,
   MOCK_COURSES,
   MOCK_GALLERY,
   MOCK_LEADERBOARD,
@@ -113,7 +115,7 @@ export default function App() {
       xp: u.xp,
       level: u.level,
       atoms: u.atoms,
-      avatar: u.avatar || prev.avatar,
+      avatar: u.avatar ? avatarToUrl(u.avatar) : prev.avatar,
     }));
     setIsLoggedIn(true);
     localStorage.setItem("stemulate_user_id", String(u.userId));
@@ -175,7 +177,7 @@ export default function App() {
   const handleUpdateAvatar = (avatar: string) => {
     setUser((prev) => ({ ...prev, avatar }));
     if (authUser) {
-      postAvatar(authUser.userId, avatar).catch(() =>
+      postAvatar(authUser.userId, urlToAvatarKey(avatar)).catch(() =>
         toast.error("Avatar changed here, but couldn't save it to your account."),
       );
     }
