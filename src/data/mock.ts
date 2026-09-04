@@ -1,4 +1,4 @@
-import {
+import type {
   Course,
   User,
   GalleryPost,
@@ -7,7 +7,7 @@ import {
   TopicTag,
   Card,
   CardPack,
-} from "./types";
+} from "../types";
 
 import avatarBoyTeal from "../assets/avatar_boy_teal.png";
 import avatarBoyBlue from "../assets/avatar_boy_blue.png";

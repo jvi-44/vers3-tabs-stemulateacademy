@@ -27,7 +27,7 @@ import {
   STEMBOTS,
 } from "../data/mock";
 import { GAME_LESSONS, pointsFor, POINTS_LEGEND, type LessonBeat } from "../data/lessonContent";
-import { Course, Module, User as UserType } from "../types";
+import type { Course, Module, User as UserType } from "../types";
 import { LoginScreen } from "../components/LoginScreen";
 import { Sidebar, MobileTabBar, type Page } from "../components/Sidebar";
 import { TagFilterBar, EMPTY_SELECTION, hasAnySelection, type TagSelection } from "../components/TagFilterBar";

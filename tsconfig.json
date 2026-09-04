@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "types": ["vite/client"],
+
+    /* Vite handles emit; tsc is only used for type checking. */
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+
+    /* Deliberately lenient for now. The app was written without any
+       typechecking, so strict mode would bury real bugs under noise.
+       Tighten these one at a time once the baseline is clean. */
+    "strict": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+
+    "paths": { "@/*": ["./src/*"] }
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist", "server"]
+}

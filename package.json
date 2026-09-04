@@ -8,13 +8,10 @@
     "dev": "vite",
     "server": "node server/index.js",
     "server:dev": "node --watch server/index.js",
-    "dev:all": "concurrently -n web,api -c blue,green \"npm run dev\" \"npm run server:dev\""
+    "dev:all": "concurrently -n web,api -c blue,green \"npm run dev\" \"npm run server:dev\"",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "express": "^4.21.2",
-    "better-sqlite3": "^11.8.1",
-    "bcryptjs": "^2.4.3",
-    "cors": "^2.8.5",
     "@emotion/react": "11.14.0",
     "@emotion/styled": "11.14.1",
     "@mui/icons-material": "7.3.5",
@@ -46,12 +43,16 @@
     "@radix-ui/react-toggle": "1.1.2",
     "@radix-ui/react-toggle-group": "1.1.2",
     "@radix-ui/react-tooltip": "1.1.8",
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^11.8.1",
     "canvas-confetti": "^1.9.4",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "cmdk": "1.1.1",
+    "cors": "^2.8.5",
     "date-fns": "3.6.0",
     "embla-carousel-react": "8.6.0",
+    "express": "^4.21.2",
     "framer-motion": "^12.31.0",
     "input-otp": "1.4.2",
     "lucide-react": "0.487.0",
@@ -72,10 +73,14 @@
     "vaul": "1.1.2"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2",
     "@tailwindcss/vite": "4.1.12",
+    "@types/node": "^26.4.1",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "4.7.0",
+    "concurrently": "^9.1.2",
     "tailwindcss": "4.1.12",
+    "typescript": "^7.0.2",
     "vite": "6.3.5"
   },
   "peerDependencies": {
