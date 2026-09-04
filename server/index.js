@@ -291,6 +291,48 @@ app.post("/api/user/avatar", (req, res) => {
   res.json({ success: true });
 });
 
+// ---------------------------------------------------------
+// Gemini AI chat endpoint for the in-lesson STEMbot assistant
+// ---------------------------------------------------------
+app.post("/api/chat", async (req, res) => {
+  const { systemContext, beatContext, botName, messages } = req.body || {};
+  const apiKey = process.env.GEMINI_API_KEY;
+
+  if (!apiKey) {
+    return res.status(503).json({ error: "GEMINI_API_KEY not configured", reply: null });
+  }
+  if (!messages || !Array.isArray(messages)) {
+    return res.status(400).json({ error: "messages array required" });
+  }
+
+  try {
+    const systemInstruction = `${systemContext || ""}\n\nCurrent beat context: ${beatContext || ""}\nRespond as ${botName || "a STEMbot"}.`;
+    const body = {
+      system_instruction: { parts: [{ text: systemInstruction }] },
+      contents: messages,
+      generationConfig: { maxOutputTokens: 200, temperature: 0.7 },
+    };
+
+    const geminiRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) },
+    );
+
+    if (!geminiRes.ok) {
+      const err = await geminiRes.text();
+      console.error("Gemini API error:", err);
+      return res.status(502).json({ error: "Gemini API error", reply: null });
+    }
+
+    const data = await geminiRes.json();
+    const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
+    res.json({ reply });
+  } catch (err) {
+    console.error("Chat endpoint error:", err);
+    res.status(500).json({ error: "Internal error", reply: null });
+  }
+});
+
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`STEMulate Academy API running on http://localhost:${PORT}`);

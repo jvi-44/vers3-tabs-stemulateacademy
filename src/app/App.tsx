@@ -31,7 +31,7 @@ import { Course, Module, User as UserType } from "../types";
 import { LoginScreen } from "../components/LoginScreen";
 import { Sidebar, MobileTabBar, type Page } from "../components/Sidebar";
 import { TagFilterBar, EMPTY_SELECTION, hasAnySelection, type TagSelection } from "../components/TagFilterBar";
-import { GameLessonExplorer, BeatPlayer, LESSON_ICON_LEGEND, firstIncompleteBeat } from "../components/GameLessonExplorer";
+import { GameLessonExplorer, BeatPlayer, firstIncompleteBeat } from "../components/GameLessonExplorer";
 import { StembotShowcase } from "../components/StembotShowcase";
 import { Certificate } from "../components/Certificate";
 import { GamesTab } from "../components/GamesTab";
@@ -499,28 +499,6 @@ function Dashboard({
         </div>
         <div className="bg-card rounded-3xl border border-border p-4 shadow-sm">
           <TagFilterBar selection={tagSelection} onChange={setTagSelection} />
-        </div>
-        {/* Icon + points legend — explains what each numbered icon on a lesson item means */}
-        <div className="bg-card border border-border rounded-3xl p-4 shadow-sm">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
-            What each icon means
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            {LESSON_ICON_LEGEND.map((item) => (
-              <div key={item.num} className="flex items-center gap-2">
-                <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center text-white shrink-0", item.color)}>
-                  {item.icon}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-foreground leading-tight truncate">{item.label}</p>
-                  <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-                    <Star size={9} className="fill-amber-500 text-amber-500 shrink-0" /> {item.xp}
-                    <AtomIcon size={9} className="shrink-0" /> {item.atoms}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       </div>
 

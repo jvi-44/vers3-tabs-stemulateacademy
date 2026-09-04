@@ -17,7 +17,7 @@ import {
 import { cn } from "./ui/utils";
 import type { GameLesson, LessonBeat } from "../data/lessonContent";
 import { pointsFor } from "../data/lessonContent";
-import { StembotDialogue, botFor } from "./StembotDialogue";
+import { SpeechBubbles } from "./SpeechBubble";
 import { AskStembots } from "./AskStembots";
 
 function AtomIcon({ size = 14, className = "" }: { size?: number; className?: string }) {
@@ -42,50 +42,23 @@ function iconFor(beat: LessonBeat) {
   return { icon: <PenLine size={16} />, num: 6, color: "bg-slate-500" };
 }
 
-// Icon legend shown just below the tag filter bar on the dashboard — explains
-// what each numbered icon means and how many points it's worth, using the
-// actual XP/Atom marks so lesson item titles don't need to repeat labels
-// like "Math Topic 1".
-export const LESSON_ICON_LEGEND: {
-  num: number;
-  icon: React.ReactNode;
-  color: string;
-  label: string;
-  xp: string;
-  atoms: string;
-}[] = [
-  { num: 1, icon: <BookOpen size={15} />, color: "bg-rose-500", label: "Intro Story", xp: "—", atoms: "50" },
-  { num: 2, icon: <Play size={15} />, color: "bg-emerald-500", label: "Science Video + Quiz", xp: "200", atoms: "100" },
-  { num: 3, icon: <HelpCircle size={15} />, color: "bg-amber-500", label: "Quiz", xp: "50-100", atoms: "25" },
-  { num: 4, icon: <Play size={15} />, color: "bg-sky-500", label: "Math Video + Quiz", xp: "200", atoms: "100" },
-  { num: 5, icon: <Gamepad2 size={15} />, color: "bg-purple-500", label: "Game", xp: "500", atoms: "300" },
-  { num: 6, icon: <PenLine size={15} />, color: "bg-slate-500", label: "Exit Card", xp: "100", atoms: "50" },
-];
-
-function pointsLabel(beat: LessonBeat) {
+function PointsBadges({ beat }: { beat: LessonBeat }) {
   const p = pointsFor(beat);
-  const parts: string[] = [];
-  if (beat.type === "quiz") parts.push(`50-100 XP`);
-  else if (p.xp) parts.push(`${p.xp} XP`);
-  if (p.atoms) parts.push(`${p.atoms} Atoms`);
-  return parts.join(" + ");
-}
-
-function introLineFor(beat: LessonBeat) {
-  switch (beat.type) {
-    case "intro":
-      return "Let's kick things off! Read the story below to see what today's adventure is all about.";
-    case "video":
-      return `Time to watch and learn about "${beat.title}" — then a quick quiz to check what stuck!`;
-    case "quiz":
-      return "Quiz time! Do your best — the more you get right, the more points you earn.";
-    case "simulation":
-      return "This is the fun part — jump into the game and put what you've learned to use!";
-    case "exit":
-      return "Nice work getting this far! Wrap up with a quick reflection before you go.";
-    default:
-      return "Let's get started!";
-  }
+  const xpLabel = beat.type === "quiz" ? "50–100" : p.xp ? String(p.xp) : null;
+  return (
+    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+      {xpLabel && (
+        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-300 bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0.5 rounded-full">
+          <Star size={9} className="fill-amber-500 text-amber-500" /> {xpLabel} XP
+        </span>
+      )}
+      {!!p.atoms && (
+        <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-sky-600 dark:text-sky-300 bg-sky-50 dark:bg-sky-500/10 px-1.5 py-0.5 rounded-full">
+          <AtomIcon size={9} className="text-sky-500" /> {p.atoms}
+        </span>
+      )}
+    </div>
+  );
 }
 
 /** First not-yet-completed beat in a lesson, or the first beat if the whole
@@ -189,13 +162,13 @@ export function GameLessonExplorer({
                           key={beat.id}
                           onClick={() => onOpenBeat(lesson.id, beat.id)}
                           className={cn(
-                            "flex items-center gap-3 p-3 mt-2 rounded-2xl transition-all text-left",
+                            "flex items-start gap-3 p-3 mt-2 rounded-2xl transition-all text-left",
                             highlighted ? "ring-2 ring-primary bg-accent/50" : "hover:bg-accent/40",
                           )}
                         >
                           <div
                             className={cn(
-                              "w-8 h-8 rounded-xl flex items-center justify-center text-white shrink-0",
+                              "w-8 h-8 rounded-xl flex items-center justify-center text-white shrink-0 mt-0.5",
                               done ? "bg-emerald-500" : meta.color,
                             )}
                           >
@@ -203,9 +176,8 @@ export function GameLessonExplorer({
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-bold text-foreground truncate">{beat.title}</p>
-                            <p className="text-[11px] text-muted-foreground">{pointsLabel(beat)}</p>
+                            <PointsBadges beat={beat} />
                           </div>
-                          <span className="text-[10px] font-black text-muted-foreground/60 shrink-0">#{meta.num}</span>
                         </button>
                       );
                     })}
@@ -239,6 +211,7 @@ export function BeatPlayer({
   onComplete: (beat: LessonBeat, scoreRatio?: number, reflection?: string) => void;
   onBack: () => void;
 }) {
+  const [chatOpen, setChatOpen] = useState(false);
   const activeBeat = lesson.beats.find((b) => b.id === activeBeatId) ?? lesson.beats[0];
   const idx = lesson.beats.findIndex((b) => b.id === activeBeat.id);
   const doneCount = lesson.beats.filter((b) => completedBeats[b.id]).length;
@@ -251,7 +224,8 @@ export function BeatPlayer({
 
   return (
     <div className="min-h-screen bg-background flex flex-col md:flex-row">
-      <aside className="w-full md:w-80 shrink-0 bg-card border-r border-border md:h-screen md:sticky md:top-0 overflow-y-auto">
+      {/* Left: lesson nav sidebar */}
+      <aside className="w-full md:w-72 shrink-0 bg-card border-r border-border md:h-screen md:sticky md:top-0 overflow-y-auto">
         <div className="p-6 border-b border-border">
           <button
             onClick={onBack}
@@ -277,13 +251,13 @@ export function BeatPlayer({
                 key={beat.id}
                 onClick={() => onSelectBeat(beat.id)}
                 className={cn(
-                  "w-full flex items-center gap-3 p-3 rounded-2xl text-left transition-all",
+                  "w-full flex items-start gap-3 p-3 rounded-2xl text-left transition-all",
                   active ? "bg-accent shadow-sm" : "hover:bg-accent/50",
                 )}
               >
                 <div
                   className={cn(
-                    "w-8 h-8 rounded-xl flex items-center justify-center text-white shrink-0",
+                    "w-8 h-8 rounded-xl flex items-center justify-center text-white shrink-0 mt-0.5",
                     done ? "bg-emerald-500" : meta.color,
                   )}
                 >
@@ -293,7 +267,7 @@ export function BeatPlayer({
                   <p className={cn("text-sm font-bold truncate", active ? "text-primary" : "text-foreground")}>
                     {beat.title}
                   </p>
-                  <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wide">{pointsLabel(beat)}</p>
+                  <PointsBadges beat={beat} />
                 </div>
               </button>
             );
@@ -301,19 +275,19 @@ export function BeatPlayer({
         </nav>
       </aside>
 
-      <main className="flex-1 p-6 md:p-12 pb-24 md:pb-12">
-        <div className="max-w-3xl mx-auto space-y-4">
-          <AskStembots beat={activeBeat} />
-          <StembotDialogue
-            bot={botFor(activeBeat.subject, activeBeat.type)}
-            xp={pointsFor(activeBeat).xp}
-            atoms={pointsFor(activeBeat).atoms}
-          >
-            {introLineFor(activeBeat)}
-          </StembotDialogue>
+      {/* Centre: main content */}
+      <main className="flex-1 min-w-0 p-6 md:p-10 pb-24 md:pb-10 overflow-x-hidden">
+        <div className="max-w-2xl mx-auto space-y-5">
+          {/* Dialogue / speech bubbles */}
+          {activeBeat.dialogue && activeBeat.dialogue.length > 0 && (
+            <SpeechBubbles lines={activeBeat.dialogue} />
+          )}
           <BeatContent beat={activeBeat} done={!!completedBeats[activeBeat.id]} onComplete={onComplete} onNext={goNext} />
         </div>
       </main>
+
+      {/* Right: expandable Gemini chatbot panel */}
+      <AskStembots beat={activeBeat} open={chatOpen} onToggle={() => setChatOpen((v) => !v)} />
     </div>
   );
 }
@@ -353,6 +327,7 @@ function BeatContent({
   }
 
   if (beat.type === "video") {
+    const p = pointsFor(beat);
     return (
       <div className="space-y-6">
         <div className="aspect-video w-full bg-slate-900 rounded-3xl overflow-hidden shadow-lg relative flex items-center justify-center">
@@ -370,9 +345,17 @@ function BeatContent({
           <p className="text-sm text-muted-foreground mb-4">{beat.description}</p>
           <button
             onClick={() => markAndNext()}
-            className="w-full py-3.5 bg-primary text-primary-foreground rounded-2xl font-bold hover:opacity-90 transition-all shadow-md"
+            className="w-full py-3.5 bg-primary text-primary-foreground rounded-2xl font-bold hover:opacity-90 transition-all shadow-md flex items-center justify-center gap-2"
           >
-            {done ? "Continue" : "Mark Watched · +200 XP +100 Atoms"}
+            {done ? "Continue" : (
+              <>
+                Mark Watched
+                <span className="flex items-center gap-1 text-sm opacity-90">
+                  <Star size={13} className="fill-white" /> +{p.xp} XP
+                  <AtomIcon size={13} className="text-white" /> +{p.atoms}
+                </span>
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -384,11 +367,28 @@ function BeatContent({
   }
 
   if (beat.type === "simulation") {
-    return <SimulationBeat beat={beat} done={done} onComplete={() => markAndNext()} />;
+    if (beat.id === "mm-sci-sim") {
+      return <WaterCycleLab beat={beat} done={done} onComplete={() => markAndNext()} />;
+    }
+    if (beat.id === "mm-math-sim") {
+      return <RoomDesigner beat={beat} done={done} onComplete={() => markAndNext()} />;
+    }
+    return <GenericSimulation beat={beat} done={done} onComplete={() => markAndNext()} />;
   }
 
   // exit card
   return <ExitCardBeat beat={beat} done={done} onSubmit={(text) => markAndNext(undefined, text)} />;
+}
+
+function AtomIcon2({ size = 13, className = "" }: { size?: number; className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+      <circle cx="12" cy="12" r="1" fill="currentColor" />
+      <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(60 12 12)" />
+      <ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(-60 12 12)" />
+      <ellipse cx="12" cy="12" rx="10" ry="4" />
+    </svg>
+  );
 }
 
 function QuizBeat({
@@ -403,6 +403,7 @@ function QuizBeat({
   const questions = beat.quizQuestions ?? [];
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [submitted, setSubmitted] = useState(done);
+  const p = pointsFor(beat);
 
   const correctCount = questions.reduce(
     (acc, q, i) => acc + (answers[i] === q.correctAnswer ? 1 : 0),
@@ -447,6 +448,16 @@ function QuizBeat({
                 );
               })}
             </div>
+            {submitted && q.explanation && (
+              <motion.div
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-700 rounded-2xl px-4 py-3"
+              >
+                <p className="text-xs font-bold text-blue-700 dark:text-blue-400 mb-0.5">Explanation</p>
+                <p className="text-sm text-blue-900 dark:text-blue-300 leading-snug">{q.explanation}</p>
+              </motion.div>
+            )}
           </div>
         ))}
       </div>
@@ -462,16 +473,260 @@ function QuizBeat({
       ) : (
         <button
           onClick={() => onSubmit(questions.length ? correctCount / questions.length : 1)}
-          className="w-full py-4 bg-primary text-primary-foreground rounded-2xl font-bold text-lg shadow-md transition-all"
+          className="w-full py-4 bg-primary text-primary-foreground rounded-2xl font-bold text-lg shadow-md transition-all flex items-center justify-center gap-2"
         >
-          {done ? "Continue" : `Got ${correctCount}/${questions.length} right — Continue`}
+          {done ? "Continue" : (
+            <>
+              Got {correctCount}/{questions.length} right — Continue
+              <span className="flex items-center gap-1 text-sm opacity-90">
+                <Star size={13} className="fill-white" /> +{p.xp}
+                <AtomIcon2 size={13} className="text-white" /> +{p.atoms}
+              </span>
+            </>
+          )}
         </button>
       )}
     </div>
   );
 }
 
-function SimulationBeat({
+// ---------------------------------------------------------------------------
+// Water Cycle Biome Lab — Science simulation
+// ---------------------------------------------------------------------------
+
+const BIOMES = [
+  { name: "Tundra", temp: 0, rain: 0, color: "from-slate-300 to-slate-500", emoji: "🏔️", desc: "Permafrost and barely any rain — only the toughest plants survive. Water is mostly frozen solid.", phase: "Mostly freezing. Very little evaporation." },
+  { name: "Desert", temp: 2, rain: 0, color: "from-yellow-300 to-orange-400", emoji: "🏜️", desc: "Scorching heat and almost no rainfall. What little water there is evaporates almost instantly!", phase: "Rapid evaporation, almost no condensation or precipitation." },
+  { name: "Snowy Taiga", temp: 0, rain: 1, color: "from-sky-200 to-blue-300", emoji: "🌨️", desc: "Cold forests with snowfall. Water cycles slowly — snow melts into rivers in spring.", phase: "Snow (precipitation), slow melt and collection." },
+  { name: "Savanna", temp: 2, rain: 1, color: "from-lime-300 to-yellow-400", emoji: "🌾", desc: "Warm grasslands with seasonal rain. The water cycle here is very seasonal — wet season and dry season.", phase: "Evaporation in dry season, heavy precipitation in wet season." },
+  { name: "Forest / Taiga", temp: 1, rain: 1, color: "from-green-300 to-emerald-500", emoji: "🌲", desc: "Moderate temperature and rainfall create lush forests. A balanced, active water cycle!", phase: "Balanced evaporation, condensation, and rainfall." },
+  { name: "Jungle", temp: 2, rain: 2, color: "from-emerald-400 to-green-700", emoji: "🌴", desc: "Hot and extremely wet. Trees release so much water vapour the jungle makes its own clouds and rain!", phase: "Massive evapotranspiration → heavy condensation → heavy precipitation." },
+  { name: "Swamp", temp: 1, rain: 2, color: "from-teal-400 to-cyan-700", emoji: "🐸", desc: "Waterlogged and humid. Water collects everywhere and evaporates slowly in the warm, moist air.", phase: "High collection, moderate evaporation, frequent light precipitation." },
+  { name: "Frozen Ocean", temp: 0, rain: 2, color: "from-blue-200 to-indigo-400", emoji: "🧊", desc: "Ice-covered ocean. Very little evaporation — most water is locked as ice.", phase: "Freezing dominates. Precipitation falls as snow." },
+];
+
+function getBiome(temp: number, rain: number) {
+  return BIOMES.find((b) => b.temp === temp && b.rain === rain) ?? BIOMES[4];
+}
+
+function WaterCycleLab({
+  beat,
+  done,
+  onComplete,
+}: {
+  beat: LessonBeat;
+  done: boolean;
+  onComplete: () => void;
+}) {
+  const [temp, setTemp] = useState(1);
+  const [rain, setRain] = useState(1);
+  const [explored, setExplored] = useState<Set<string>>(new Set());
+  const [completed, setCompleted] = useState(done);
+
+  const biome = getBiome(temp, rain);
+  const key = `${temp}-${rain}`;
+
+  const handleSlider = (newTemp: number, newRain: number) => {
+    setTemp(newTemp);
+    setRain(newRain);
+    setExplored((s) => new Set([...s, `${newTemp}-${newRain}`]));
+  };
+
+  const pct = Math.round((explored.size / BIOMES.length) * 100);
+
+  return (
+    <div className="space-y-6">
+      <div className="bg-slate-900 rounded-3xl overflow-hidden shadow-xl">
+        {/* Biome display */}
+        <div className={cn("bg-gradient-to-br p-8 text-white text-center min-h-48 flex flex-col items-center justify-center gap-3 transition-all duration-500", biome.color)}>
+          <span className="text-5xl">{biome.emoji}</span>
+          <h3 className="text-2xl font-black">{biome.name}</h3>
+          <p className="text-sm opacity-90 max-w-xs leading-relaxed">{biome.desc}</p>
+          <div className="mt-2 bg-black/20 rounded-2xl px-4 py-2 text-xs font-bold opacity-90">
+            💧 {biome.phase}
+          </div>
+        </div>
+
+        {/* Controls */}
+        <div className="p-6 space-y-5">
+          <div>
+            <div className="flex justify-between mb-2">
+              <span className="text-xs font-bold text-slate-300">🌡️ Temperature</span>
+              <span className="text-xs text-slate-400">{["Cold ❄️", "Warm 🌤️", "Hot ☀️"][temp]}</span>
+            </div>
+            <input
+              type="range" min={0} max={2} step={1} value={temp}
+              onChange={(e) => handleSlider(parseInt(e.target.value), rain)}
+              className="w-full h-3 bg-slate-700 rounded-full appearance-none cursor-pointer accent-orange-400"
+            />
+            <div className="flex justify-between text-[10px] text-slate-500 mt-1">
+              <span>Cold</span><span>Warm</span><span>Hot</span>
+            </div>
+          </div>
+
+          <div>
+            <div className="flex justify-between mb-2">
+              <span className="text-xs font-bold text-slate-300">🌧️ Rainfall</span>
+              <span className="text-xs text-slate-400">{["Dry 🏜️", "Moderate 🌦️", "Heavy 🌊"][rain]}</span>
+            </div>
+            <input
+              type="range" min={0} max={2} step={1} value={rain}
+              onChange={(e) => handleSlider(temp, parseInt(e.target.value))}
+              className="w-full h-3 bg-slate-700 rounded-full appearance-none cursor-pointer accent-sky-400"
+            />
+            <div className="flex justify-between text-[10px] text-slate-500 mt-1">
+              <span>Dry</span><span>Moderate</span><span>Heavy</span>
+            </div>
+          </div>
+
+          {/* Progress */}
+          <div>
+            <div className="flex justify-between mb-1">
+              <span className="text-xs font-bold text-slate-300">Biomes Explored</span>
+              <span className="text-xs text-slate-400">{explored.size}/{BIOMES.length}</span>
+            </div>
+            <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
+              <motion.div className="h-full bg-emerald-500 rounded-full" animate={{ width: `${pct}%` }} />
+            </div>
+            <div className="flex flex-wrap gap-1.5 mt-3">
+              {BIOMES.map((b) => (
+                <span key={`${b.temp}-${b.rain}`} className={cn("text-sm px-2 py-1 rounded-xl transition-all", explored.has(`${b.temp}-${b.rain}`) ? "opacity-100" : "opacity-30")}>{b.emoji}</span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {explored.size >= BIOMES.length && !completed ? (
+        <motion.button
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          onClick={() => { setCompleted(true); onComplete(); }}
+          className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold text-lg shadow-md flex items-center justify-center gap-2 hover:bg-emerald-700"
+        >
+          🎉 All biomes explored! Claim 500 XP + 300 Atoms
+        </motion.button>
+      ) : completed ? (
+        <button onClick={onComplete} className="w-full py-4 bg-primary text-primary-foreground rounded-2xl font-bold text-lg shadow-md">
+          Continue
+        </button>
+      ) : (
+        <p className="text-center text-sm text-muted-foreground">
+          Explore all {BIOMES.length} biomes to complete the lab! ({BIOMES.length - explored.size} left)
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Minecraft Room Designer — Math simulation
+// ---------------------------------------------------------------------------
+
+const ROOMS = [
+  { name: "Living Room", emoji: "🛋️", minArea: 24, minVol: 72 },
+  { name: "Bedroom", emoji: "🛏️", minArea: 16, minVol: 48 },
+  { name: "Kitchen", emoji: "🍳", minArea: 12, minVol: 36 },
+];
+
+function RoomDesigner({
+  done,
+  onComplete,
+}: {
+  beat: LessonBeat;
+  done: boolean;
+  onComplete: () => void;
+}) {
+  const [dims, setDims] = useState<{ l: number; w: number; h: number }[]>(
+    ROOMS.map(() => ({ l: 4, w: 4, h: 3 })),
+  );
+  const [completed, setCompleted] = useState(done);
+
+  const update = (ri: number, key: "l" | "w" | "h", val: number) =>
+    setDims((d) => d.map((r, i) => (i === ri ? { ...r, [key]: val } : r)));
+
+  const results = dims.map((d, i) => ({
+    area: d.l * d.w,
+    vol: d.l * d.w * d.h,
+    ok: d.l * d.w >= ROOMS[i].minArea && d.l * d.w * d.h >= ROOMS[i].minVol,
+  }));
+  const allOk = results.every((r) => r.ok);
+
+  return (
+    <div className="space-y-5">
+      <div className="bg-gradient-to-br from-sky-500 to-indigo-600 rounded-3xl p-6 text-white">
+        <h3 className="text-xl font-black mb-1">🏗️ Minecraft Room Designer</h3>
+        <p className="text-sm opacity-90">Drag the sliders to design each room. Make sure each one meets the minimum area and volume requirements!</p>
+      </div>
+
+      {ROOMS.map((room, ri) => {
+        const d = dims[ri];
+        const res = results[ri];
+        return (
+          <div key={ri} className={cn("bg-card rounded-3xl border p-5 shadow-sm transition-colors", res.ok ? "border-emerald-400" : "border-border")}>
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-2xl">{room.emoji}</span>
+              <div>
+                <h4 className="font-black text-foreground">{room.name}</h4>
+                <p className="text-xs text-muted-foreground">Min area: {room.minArea} blocks² · Min volume: {room.minVol} blocks³</p>
+              </div>
+              {res.ok && <CheckCircle2 size={22} className="text-emerald-500 ml-auto shrink-0" />}
+            </div>
+
+            {(["l", "w", "h"] as const).map((axis) => (
+              <div key={axis} className="mb-3">
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="font-bold text-muted-foreground">{axis === "l" ? "Length" : axis === "w" ? "Width" : "Height"}</span>
+                  <span className="font-black text-foreground">{d[axis]} blocks</span>
+                </div>
+                <input
+                  type="range" min={1} max={20} value={d[axis]}
+                  onChange={(e) => update(ri, axis, parseInt(e.target.value))}
+                  className="w-full h-2 rounded-full appearance-none cursor-pointer accent-indigo-500"
+                />
+              </div>
+            ))}
+
+            <div className="flex gap-3 mt-4">
+              <div className={cn("flex-1 rounded-2xl px-4 py-3 text-center", res.area >= room.minArea ? "bg-emerald-100 dark:bg-emerald-900/30" : "bg-rose-50 dark:bg-rose-900/20")}>
+                <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Floor Area</p>
+                <p className="text-lg font-black text-foreground">{res.area}</p>
+                <p className="text-[10px] text-muted-foreground">blocks²</p>
+              </div>
+              <div className={cn("flex-1 rounded-2xl px-4 py-3 text-center", res.vol >= room.minVol ? "bg-emerald-100 dark:bg-emerald-900/30" : "bg-rose-50 dark:bg-rose-900/20")}>
+                <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Volume</p>
+                <p className="text-lg font-black text-foreground">{res.vol}</p>
+                <p className="text-[10px] text-muted-foreground">blocks³</p>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+
+      {allOk && !completed ? (
+        <motion.button
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          onClick={() => { setCompleted(true); onComplete(); }}
+          className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold text-lg shadow-md hover:bg-emerald-700 flex items-center justify-center gap-2"
+        >
+          🎉 House complete! Claim 500 XP + 300 Atoms
+        </motion.button>
+      ) : completed ? (
+        <button onClick={onComplete} className="w-full py-4 bg-primary text-primary-foreground rounded-2xl font-bold text-lg shadow-md">
+          Continue
+        </button>
+      ) : (
+        <p className="text-center text-sm text-muted-foreground">
+          {results.filter((r) => r.ok).length}/{ROOMS.length} rooms approved — keep designing!
+        </p>
+      )}
+    </div>
+  );
+}
+
+// Fallback for any other simulation beat
+function GenericSimulation({
   beat,
   done,
   onComplete,
@@ -500,10 +755,7 @@ function SimulationBeat({
             />
           </div>
           <input
-            type="range"
-            min={0}
-            max={100}
-            value={sliderVal}
+            type="range" min={0} max={100} value={sliderVal}
             onChange={(e) => setSliderVal(parseInt(e.target.value))}
             className="w-full h-3 bg-slate-800 rounded-full appearance-none cursor-pointer accent-amber-500"
           />
@@ -521,10 +773,7 @@ function SimulationBeat({
                 </div>
                 <h4 className="text-xl font-black text-foreground mb-1">Nice work!</h4>
                 <p className="text-muted-foreground mb-5 text-sm">Simulation complete.</p>
-                <button
-                  onClick={onComplete}
-                  className="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-emerald-700"
-                >
+                <button onClick={onComplete} className="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-emerald-700">
                   {done ? "Continue" : "Claim 500 XP + 300 Atoms"}
                 </button>
               </div>
@@ -549,6 +798,7 @@ function ExitCardBeat({
   const [facts, setFacts] = useState("");
   const [question, setQuestion] = useState("");
   const canSubmit = done || (learnt.trim() && facts.trim() && question.trim());
+  const p = pointsFor(beat);
 
   return (
     <div className="space-y-6">
@@ -561,48 +811,39 @@ function ExitCardBeat({
       </div>
 
       <div className="bg-card rounded-3xl p-6 border border-border shadow-sm space-y-5">
-        <div>
-          <label className="text-sm font-bold text-foreground mb-1.5 block">3 things I learnt</label>
-          <textarea
-            value={learnt}
-            onChange={(e) => setLearnt(e.target.value)}
-            disabled={done}
-            className="w-full p-3 rounded-2xl border border-border bg-input-background focus:ring-2 focus:ring-primary/40 outline-none text-sm min-h-20"
-            placeholder="1. ... 2. ... 3. ..."
-          />
-        </div>
-        <div>
-          <label className="text-sm font-bold text-foreground mb-1.5 block">2 interesting facts or connections</label>
-          <textarea
-            value={facts}
-            onChange={(e) => setFacts(e.target.value)}
-            disabled={done}
-            className="w-full p-3 rounded-2xl border border-border bg-input-background focus:ring-2 focus:ring-primary/40 outline-none text-sm min-h-16"
-            placeholder="1. ... 2. ..."
-          />
-        </div>
-        <div>
-          <label className="text-sm font-bold text-foreground mb-1.5 block">1 question I still have</label>
-          <textarea
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            disabled={done}
-            className="w-full p-3 rounded-2xl border border-border bg-input-background focus:ring-2 focus:ring-primary/40 outline-none text-sm min-h-12"
-            placeholder="?"
-          />
-        </div>
+        {[
+          { label: "3 things I learnt", value: learnt, set: setLearnt, placeholder: "1. ... 2. ... 3. ...", rows: 3 },
+          { label: "2 interesting facts or connections", value: facts, set: setFacts, placeholder: "1. ... 2. ...", rows: 2 },
+          { label: "1 question I still have", value: question, set: setQuestion, placeholder: "?", rows: 2 },
+        ].map(({ label, value, set, placeholder, rows }) => (
+          <div key={label}>
+            <label className="text-sm font-bold text-foreground mb-1.5 block">{label}</label>
+            <textarea
+              value={value}
+              onChange={(e) => set(e.target.value)}
+              disabled={done}
+              rows={rows}
+              className="w-full p-3 rounded-2xl border border-border bg-input-background focus:ring-2 focus:ring-primary/40 outline-none text-sm"
+              placeholder={placeholder}
+            />
+          </div>
+        ))}
       </div>
 
       <button
-        onClick={() =>
-          onSubmit(
-            `3 things I learnt: ${learnt}\n2 interesting facts: ${facts}\n1 question I still have: ${question}`,
-          )
-        }
+        onClick={() => onSubmit(`3 things I learnt: ${learnt}\n2 interesting facts: ${facts}\n1 question I still have: ${question}`)}
         disabled={!canSubmit}
-        className="w-full py-4 bg-primary text-primary-foreground rounded-2xl font-bold text-lg shadow-md disabled:opacity-40 transition-all"
+        className="w-full py-4 bg-primary text-primary-foreground rounded-2xl font-bold text-lg shadow-md disabled:opacity-40 transition-all flex items-center justify-center gap-2"
       >
-        {done ? "Continue" : "Submit Reflection · +100 XP +50 Atoms"}
+        {done ? "Continue" : (
+          <>
+            Submit Reflection
+            <span className="flex items-center gap-1 text-sm opacity-90">
+              <Star size={13} className="fill-white" /> +{p.xp}
+              <AtomIcon2 size={13} className="text-white" /> +{p.atoms}
+            </span>
+          </>
+        )}
       </button>
     </div>
   );
