@@ -84,12 +84,15 @@
     "concurrently": "^9.1.2",
     "tailwindcss": "4.1.12",
     "typescript": "^7.0.2",
-    "vite": "6.3.5"
+    "vite": "6.4.3"
   },
   "pnpm": {
     "overrides": {
-      "vite": "6.3.5"
+      "vite": "6.4.3"
     }
   },
-  "description": "STEM learning platform for primary students, with a Node/Express + SQLite backend."
+  "description": "STEM learning platform for primary students, with a Node/Express + SQLite backend.",
+  "overrides": {
+    "qs": "6.16.0"
+  }
 }
