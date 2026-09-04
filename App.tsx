@@ -91,6 +91,8 @@ export default function App() {
   >([]);
   const [darkMode, setDarkMode] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showCertificate, setShowCertificate] = useState(false);
+  const allGameBeatIds = useMemo(() => GAME_LESSONS.flatMap((l) => l.beats.map((b) => b.id)), []);
 
   // ---- Dark mode ----
   useEffect(() => {
@@ -282,9 +284,7 @@ export default function App() {
   const xpIntoLevel = user.xp % 1000;
   const xpToGo = 1000 - xpIntoLevel;
 
-  const allGameBeatIds = useMemo(() => GAME_LESSONS.flatMap((l) => l.beats.map((b) => b.id)), []);
   const gamesModuleComplete = allGameBeatIds.length > 0 && allGameBeatIds.every((id) => completedBeats[id]);
-  const [showCertificate, setShowCertificate] = useState(false);
 
   return (
     <div className="h-screen w-screen flex overflow-hidden bg-background text-foreground">
