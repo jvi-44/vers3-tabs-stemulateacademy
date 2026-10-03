@@ -17,9 +17,31 @@ Copy `.env.example` to `.env` and fill in what you need:
 cp .env.example .env
 ```
 
-The server loads it automatically. Everything in it is optional — the app
-runs without a `.env`, except the in-lesson STEMbot chat panel, which
-needs `GEMINI_API_KEY` and returns 503 without one.
+The server loads `.env` automatically (via `dotenv`, imported at the top of
+`server/app.js`). `.env` is gitignored, and none of these values ever go into
+the frontend.
+
+| Variable | Needed for | Default |
+|---|---|---|
+| `GEMINI_API_KEY` | The in-lesson "Ask STEMbots" chat | none (chat replies "STEMbots are resting right now") |
+| `GEMINI_MODEL` | Chat model | `gemini-2.5-flash` |
+| `SESSION_SECRET` | Signing the login cookie (32+ random bytes) | random per start (everyone is signed out on restart) |
+| `APP_ORIGIN` | CORS: the only origin allowed to call the API with the login cookie | `http://localhost:5173` |
+| `DB_PATH` | Where the SQLite file lives | `server/stemulate.db` |
+| `PORT` | API port | `4000` |
+
+### Gemini (STEMbot chat)
+
+1. Create a key at https://aistudio.google.com/apikey, restrict it to the
+   Generative Language API and give it a low daily quota.
+2. Put it in `.env` as `GEMINI_API_KEY=...` and restart the server.
+
+The key is only ever used by the server (`POST /api/chat`, sent in the
+`x-goog-api-key` header). The system prompt and child-safety rules live in
+`server/app.js`; the browser only sends which lesson beat the student is on
+and the last few messages. Chat requires a signed-in student and is limited
+to 30 questions per student per hour. If the key is missing or Gemini fails,
+the student sees "STEMbots are resting right now — try again soon!".
 
 ## Running it
 

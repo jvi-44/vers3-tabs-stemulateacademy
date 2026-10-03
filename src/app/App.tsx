@@ -39,7 +39,7 @@ import { Certificate } from "../components/Certificate";
 import { GamesTab } from "../components/GamesTab";
 import { FriendsTab } from "../components/FriendsTab";
 import { CardsHub } from "../components/CardsHub";
-import { PHENOMENA_CARDS, FIGURE_CARDS, ALBUM_PACKS, type CollectibleCard, type Rarity } from "../data/cardData";
+import { PHENOMENA_CARDS, FIGURE_CARDS, ALBUM_PACKS, type CollectibleCard } from "../data/cardData";
 import stemulateLogo from "../assets/stemulate_logo.png";
 import stembotBlue from "../assets/stembot_blue.png";
 import stembotRed from "../assets/stembot_red.png";
@@ -47,7 +47,7 @@ import stembotGreen from "../assets/stembot_green.png";
 import stembotCream from "../assets/stembot_cream.png";
 import type { AuthUser } from "../types-auth";
 import { getUser, logout as apiLogout } from "../api/auth";
-import { getProgress, postProgress, postXP, postAvatar } from "../api/progress";
+import { getProgress, postProgress, postXP, postAvatar, getCards, openPack } from "../api/progress";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -133,6 +133,11 @@ export default function App() {
         const cached = localStorage.getItem(BEATS_KEY_PREFIX + u.userId);
         if (cached) setCompletedBeats(JSON.parse(cached));
       });
+
+    // Owned cards live in SQLite too (see POST /api/packs/open).
+    getCards()
+      .then(({ owned }) => setUserCards(owned))
+      .catch(() => {});
   };
 
   const handleLogin = (u: AuthUser) => applyAuthUser(u);
@@ -228,10 +233,12 @@ export default function App() {
     setCurrentPage("lesson");
   };
 
-  const RARITY_WEIGHTS: Record<Rarity, number> = { common: 55, rare: 28, epic: 13, legendary: 4 };
-
-  const handleOpenPack = (albumKey: "phenomena" | "figures", packId: string): CollectibleCard[] | null => {
-    const pool = albumKey === "phenomena" ? PHENOMENA_CARDS : FIGURE_CARDS;
+  // Packs are paid for and rolled on the server so atoms and cards survive a
+  // refresh and can't be granted by the browser.
+  const handleOpenPack = async (
+    albumKey: "phenomena" | "figures",
+    packId: string,
+  ): Promise<CollectibleCard[] | null> => {
     const pack = ALBUM_PACKS[albumKey].find((p) => p.id === packId);
     if (!pack) return null;
     if (user.atoms < pack.cost) {
@@ -239,27 +246,26 @@ export default function App() {
       return null;
     }
 
-    const drawOne = (): CollectibleCard => {
-      const total = pool.reduce((sum, c) => sum + RARITY_WEIGHTS[c.rarity], 0);
-      let roll = Math.random() * total;
-      for (const card of pool) {
-        roll -= RARITY_WEIGHTS[card.rarity];
-        if (roll <= 0) return card;
-      }
-      return pool[0];
-    };
-
-    const drawn = Array.from({ length: pack.cardsCount }, drawOne);
-    setUser((prev) => ({ ...prev, atoms: prev.atoms - pack.cost }));
-    setUserCards((prev) => {
-      const next = { ...prev };
-      drawn.forEach((c) => {
-        next[c.id] = (next[c.id] ?? 0) + 1;
+    try {
+      const { cards, atoms } = await openPack(albumKey, packId);
+      const pool = albumKey === "phenomena" ? PHENOMENA_CARDS : FIGURE_CARDS;
+      const drawn = cards
+        .map((id) => pool.find((c) => c.id === id))
+        .filter((c): c is CollectibleCard => !!c);
+      setUser((prev) => ({ ...prev, atoms }));
+      setUserCards((prev) => {
+        const next = { ...prev };
+        cards.forEach((id) => {
+          next[id] = (next[id] ?? 0) + 1;
+        });
+        return next;
       });
-      return next;
-    });
-    toast.success(`Opened ${pack.name}!`);
-    return drawn;
+      toast.success(`Opened ${pack.name}!`);
+      return drawn;
+    } catch (err) {
+      toast.error((err as Error).message);
+      return null;
+    }
   };
 
   if (!isLoggedIn) return <LoginScreen onLogin={handleLogin} />;

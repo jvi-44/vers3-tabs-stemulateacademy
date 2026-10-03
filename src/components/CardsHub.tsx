@@ -71,7 +71,7 @@ export function CardsHub({
 }: {
   ownedCounts: Record<string, number>;
   userAtoms: number;
-  onOpenPack: (albumKey: AlbumKey, packId: string) => CollectibleCard[] | null;
+  onOpenPack: (albumKey: AlbumKey, packId: string) => Promise<CollectibleCard[] | null>;
 }) {
   const [view, setView] = useState<"covers" | AlbumKey>("covers");
   const [unlockingPack, setUnlockingPack] = useState<{ albumKey: AlbumKey; packId: string } | null>(null);
@@ -81,16 +81,22 @@ export function CardsHub({
   const [cardFlipped, setCardFlipped] = useState(false);
 
   const startUnlock = (albumKey: AlbumKey, packId: string, cost: number) => {
-    if (userAtoms < cost) return;
+    if (userAtoms < cost || unlockingPack) return;
     setUnlockingPack({ albumKey, packId });
     setUnlockProgress(0);
     const interval = setInterval(() => {
       setUnlockProgress((p) => (p >= 100 ? p : p + 4));
     }, 40);
-    setTimeout(() => {
+    // The server rolls the cards while the unlock animation plays.
+    const drawnPromise = onOpenPack(albumKey, packId).catch(() => null);
+    setTimeout(async () => {
       clearInterval(interval);
       setUnlockProgress(100);
-      const drawn = onOpenPack(albumKey, packId);
+      const drawn = await drawnPromise;
+      if (!drawn || drawn.length === 0) {
+        setUnlockingPack(null);
+        return;
+      }
       confetti({ particleCount: 120, spread: 80, origin: { y: 0.5 } });
       setTimeout(() => {
         setUnlockingPack(null);

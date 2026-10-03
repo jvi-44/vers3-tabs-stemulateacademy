@@ -19,6 +19,9 @@ test("protected routes return 401 without a session and ignore body userId", asy
       ["get", "/api/progress"],
       ["post", "/api/progress"],
       ["post", "/api/user/avatar"],
+      ["post", "/api/chat"],
+      ["get", "/api/cards"],
+      ["post", "/api/packs/open"],
     ]) {
       const res = await anon[method](path);
       assert.equal(res.status, 401, `${method.toUpperCase()} ${path}`);

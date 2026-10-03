@@ -52,3 +52,19 @@ export function postAvatar(avatar: string): Promise<{ success: true }> {
     body: JSON.stringify({ avatar }),
   });
 }
+
+// ---- Collectible cards (rolled and paid for on the server) ----
+
+export function getCards(): Promise<{ owned: Record<string, number> }> {
+  return request("/cards");
+}
+
+export function openPack(
+  albumKey: "phenomena" | "figures",
+  packId: string,
+): Promise<{ cards: string[]; atoms: number }> {
+  return request("/packs/open", {
+    method: "POST",
+    body: JSON.stringify({ albumKey, packId }),
+  });
+}

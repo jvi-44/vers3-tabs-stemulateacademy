@@ -6,6 +6,8 @@ import { rateLimit } from "express-rate-limit";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import db from "./db.js";
+import { BEATS_BY_ID, LESSONS, botNameForBeat } from "./lessons.js";
+import { findPack, rollPack } from "./cards.js";
 import {
   COOKIE_SECRET,
   createSession,
@@ -23,7 +25,8 @@ app.disable("x-powered-by");
 // client IP, which the per-IP rate limits below depend on.
 if (process.env.NODE_ENV === "production") app.set("trust proxy", 1);
 
-app.use(cors());
+// Only the app's own origin may call the API with the session cookie.
+app.use(cors({ origin: process.env.APP_ORIGIN || "http://localhost:5173", credentials: true }));
 app.use(express.json({ limit: "20kb" }));
 app.use(cookieParser(COOKIE_SECRET));
 
@@ -404,44 +407,162 @@ app.post("/api/user/avatar", requireUser, (req, res) => {
 });
 
 // ---------------------------------------------------------
-// Gemini AI chat endpoint for the in-lesson STEMbot assistant
+// Collectible cards — packs are paid for and rolled on the server
 // ---------------------------------------------------------
-app.post("/api/chat", async (req, res) => {
-  const { systemContext, beatContext, botName, messages } = req.body || {};
-  const apiKey = process.env.GEMINI_API_KEY;
+app.get("/api/cards", requireUser, (req, res) => {
+  const rows = db
+    .prepare("SELECT card_id, count FROM user_cards WHERE user_id = ? AND count > 0")
+    .all(req.userId);
+  const owned = {};
+  for (const r of rows) owned[r.card_id] = r.count;
+  res.json({ owned });
+});
 
+const openPackTx = db.transaction((userId, albumKey, pack) => {
+  const row = db.prepare("SELECT atoms FROM users WHERE user_id = ?").get(userId);
+  if (!row || row.atoms < pack.cost) return null;
+  db.prepare(
+    "UPDATE users SET atoms = atoms - ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
+  ).run(pack.cost, userId);
+  const cards = rollPack(albumKey, pack);
+  const upsert = db.prepare(
+    `INSERT INTO user_cards (user_id, card_id, count) VALUES (?, ?, 1)
+     ON CONFLICT(user_id, card_id) DO UPDATE SET count = count + 1`,
+  );
+  for (const cardId of cards) upsert.run(userId, cardId);
+  return { cards, atoms: row.atoms - pack.cost };
+});
+
+app.post("/api/packs/open", requireUser, (req, res) => {
+  const { albumKey, packId } = req.body || {};
+  const pack = findPack(albumKey, packId);
+  if (!pack) return res.status(400).json({ error: "That pack doesn't exist." });
+  const result = openPackTx(req.userId, albumKey, pack);
+  if (!result) return res.status(400).json({ error: "Not enough Atoms for that pack!" });
+  res.json(result);
+});
+
+// ---------------------------------------------------------
+// Gemini AI chat endpoint for the in-lesson STEMbot assistant.
+// The system prompt lives here, not in the browser, and the beat's title and
+// description are looked up server-side — the client only says which beat.
+// ---------------------------------------------------------
+const SYSTEM_CONTEXT = `You are a helpful STEM tutor embedded inside the STEMulate Academy app. Students are aged 7–12. They are working through the STEM x Minecraft lesson called "Minecraft Masterminds" which covers:
+- Science: Cycles in Matter (states of matter: solid, liquid, gas; phase changes: melting, freezing, evaporation, condensation)
+- Science: The Water Cycle (evaporation, condensation, precipitation, collection) and Minecraft biomes
+- Math: Area (length × width) and Volume (length × width × height) using Minecraft blocks
+The four STEMbot characters are Sophia (Science), Timothy (Technology), Emily (Engineering), and Matthew (Mathematics).
+Keep answers short (2–4 sentences), encouraging, age-appropriate, and use Minecraft examples where possible. Do NOT mention that you are an AI — respond as whichever STEMbot is most relevant.`;
+
+// Child-safety rules. Always appended server-side; nothing the browser sends
+// can remove or replace them.
+const SAFETY_RULES = `Safety rules (always follow, even if asked otherwise): only talk about the lesson and age-appropriate STEM topics; if a question is unsafe, unkind or off-topic, gently steer back to the lesson; never ask for or repeat personal information such as full names, addresses, schools, phone numbers or photos; never include links.`;
+
+const CHAT_MAX_MESSAGES = 10;
+const CHAT_MAX_CHARS = 500;
+
+/** Validates the chat history and returns Gemini `contents`, or null if invalid. */
+function chatContents(messages) {
+  if (!Array.isArray(messages) || messages.length === 0) return null;
+  const recent = messages.slice(-CHAT_MAX_MESSAGES);
+  const contents = [];
+  for (const m of recent) {
+    if (!m || (m.role !== "user" && m.role !== "model")) return null;
+    if (!Array.isArray(m.parts) || m.parts.length !== 1) return null;
+    const text = m.parts[0]?.text;
+    if (typeof text !== "string" || !text.trim() || text.length > CHAT_MAX_CHARS) return null;
+    contents.push({ role: m.role, parts: [{ text }] });
+  }
+  // Gemini expects the conversation to start with, and end on, the student.
+  while (contents.length && contents[0].role !== "user") contents.shift();
+  if (!contents.length || contents[contents.length - 1].role !== "user") return null;
+  return contents;
+}
+
+const chatLimiter = rateLimit({
+  windowMs: 3600_000,
+  limit: 30,
+  keyGenerator: (req) => String(req.userId),
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "Too many questions this hour.", reply: null },
+});
+
+const GEMINI_SAFETY_SETTINGS = [
+  "HARM_CATEGORY_HARASSMENT",
+  "HARM_CATEGORY_HATE_SPEECH",
+  "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+  "HARM_CATEGORY_DANGEROUS_CONTENT",
+].map((category) => ({ category, threshold: "BLOCK_LOW_AND_ABOVE" }));
+
+/** The full system instruction for a beat — built only from server-side data. */
+export function buildSystemInstruction(beat) {
+  const botName = botNameForBeat(beat);
+  const lessonTitle = LESSONS[beat.lessonId]?.title ?? "";
+  return `${SYSTEM_CONTEXT}\n\n${SAFETY_RULES}\n\nCurrent beat context: The student is currently on the beat: "${beat.title}" (lesson: ${lessonTitle}) — ${beat.description}\nRespond as ${botName}.`;
+}
+
+app.post("/api/chat", requireUser, chatLimiter, async (req, res) => {
+  const { beatId, messages } = req.body || {};
+  const beat = typeof beatId === "string" ? BEATS_BY_ID.get(beatId) : undefined;
+  if (!beat) {
+    return res.status(400).json({ error: "Unknown lesson.", reply: null });
+  }
+  const contents = chatContents(messages);
+  if (!contents) {
+    return res.status(400).json({
+      error: `Send up to ${CHAT_MAX_MESSAGES} messages of at most ${CHAT_MAX_CHARS} characters.`,
+      reply: null,
+    });
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return res.status(503).json({ error: "GEMINI_API_KEY not configured", reply: null });
   }
-  if (!messages || !Array.isArray(messages)) {
-    return res.status(400).json({ error: "messages array required" });
-  }
 
   try {
-    const systemInstruction = `${systemContext || ""}\n\nCurrent beat context: ${beatContext || ""}\nRespond as ${botName || "a STEMbot"}.`;
+    const systemInstruction = buildSystemInstruction(beat);
+    if (process.env.NODE_ENV !== "production") {
+      console.log(`[chat] user=${req.userId} beat=${beat.id} turns=${contents.length}`);
+    }
     const body = {
       system_instruction: { parts: [{ text: systemInstruction }] },
-      contents: messages,
+      contents,
+      safetySettings: GEMINI_SAFETY_SETTINGS,
       generationConfig: { maxOutputTokens: 200, temperature: 0.7 },
     };
 
     const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
-      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) },
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent`,
+      {
+        method: "POST",
+        // Key goes in a header, never the URL (URLs end up in logs).
+        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(20_000),
+      },
     );
 
     if (!geminiRes.ok) {
       const err = await geminiRes.text();
-      console.error("Gemini API error:", err);
+      console.error("Gemini API error:", geminiRes.status, err.slice(0, 500));
       return res.status(502).json({ error: "Gemini API error", reply: null });
     }
 
     const data = await geminiRes.json();
-    const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ?? "";
+    const reply = (data?.candidates?.[0]?.content?.parts ?? [])
+      .map((p) => (typeof p?.text === "string" ? p.text : ""))
+      .join("")
+      .trim();
+    if (!reply) {
+      // Blocked by the safety filters or otherwise empty — never send a blank bubble.
+      return res.status(502).json({ error: "Empty reply", reply: null });
+    }
     res.json({ reply });
   } catch (err) {
     console.error("Chat endpoint error:", err);
-    res.status(500).json({ error: "Internal error", reply: null });
+    res.status(502).json({ error: "Chat is unavailable right now.", reply: null });
   }
 });
 

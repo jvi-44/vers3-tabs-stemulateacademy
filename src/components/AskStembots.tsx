@@ -9,43 +9,44 @@ type ChatMsg = { from: "me" | "bot"; botKey?: string; text: string };
 const BOT_FOR_BEAT = (beat: LessonBeat) =>
   beat.subject === "science" ? "sophia" : beat.subject === "math" ? "matthew" : "timothy";
 
-const SYSTEM_CONTEXT = `You are a helpful STEM tutor embedded inside the STEMulate Academy app. Students are aged 7–12. They are working through the STEM x Minecraft lesson called "Minecraft Masterminds" which covers:
-- Science: Cycles in Matter (states of matter: solid, liquid, gas; phase changes: melting, freezing, evaporation, condensation)
-- Science: The Water Cycle (evaporation, condensation, precipitation, collection) and Minecraft biomes
-- Math: Area (length × width) and Volume (length × width × height) using Minecraft blocks
-The four STEMbot characters are Sophia (Science), Timothy (Technology), Emily (Engineering), and Matthew (Mathematics).
-Keep answers short (2–4 sentences), encouraging, age-appropriate, and use Minecraft examples where possible. Do NOT mention that you are an AI — respond as whichever STEMbot is most relevant.`;
+// Shown whenever the chat can't get a real answer (no API key, rate limit,
+// network error, blocked reply...). Never fake an answer.
+const RESTING_MESSAGE = "STEMbots are resting right now — try again soon!";
 
+// Must match the server's limits in server/app.js (/api/chat).
+const MAX_MESSAGES = 10;
+const MAX_CHARS = 500;
+
+// The system prompt and the beat's details live on the server; the browser
+// only says which beat the student is on and what was said so far.
 async function callGemini(messages: ChatMsg[], beat: LessonBeat): Promise<{ botKey: string; text: string }> {
   const botKey = BOT_FOR_BEAT(beat);
   const bot = STEMBOTS[botKey];
 
-  const geminiMessages = messages.map((m) => ({
+  const geminiMessages = messages.slice(-MAX_MESSAGES).map((m) => ({
     role: m.from === "me" ? "user" : "model",
-    parts: [{ text: m.from === "bot" ? `${STEMBOTS[m.botKey ?? botKey]?.name ?? bot.name}: ${m.text}` : m.text }],
+    parts: [
+      {
+        text: (m.from === "bot" ? `${STEMBOTS[m.botKey ?? botKey]?.name ?? bot.name}: ${m.text}` : m.text).slice(
+          0,
+          MAX_CHARS,
+        ),
+      },
+    ],
   }));
-
-  const beatContext = `The student is currently on the beat: "${beat.title}" — ${beat.description}`;
 
   try {
     const res = await fetch("/api/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        systemContext: SYSTEM_CONTEXT,
-        beatContext,
-        botName: bot.name,
-        messages: geminiMessages,
-      }),
+      credentials: "include",
+      body: JSON.stringify({ beatId: beat.id, messages: geminiMessages }),
     });
     if (!res.ok) throw new Error("API error");
     const data = await res.json();
-    return { botKey, text: data.reply ?? "Great question! Keep exploring and things will click." };
+    return { botKey, text: data.reply || RESTING_MESSAGE };
   } catch {
-    return {
-      botKey,
-      text: `Great question about "${beat.title}"! ${beat.description.slice(0, 100)}... Keep exploring!`,
-    };
+    return { botKey, text: RESTING_MESSAGE };
   }
 }
 
@@ -72,8 +73,8 @@ export function AskStembots({
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const send = async () => {
-    const text = input.trim();
+  const send = async (preset?: string) => {
+    const text = (preset ?? input).trim();
     if (!text || loading) return;
     setInput("");
     const mine: ChatMsg = { from: "me", text };
@@ -148,7 +149,7 @@ export function AskStembots({
                     {["What is this lesson about?", "I'm stuck — can you help?", "Give me a Minecraft example!"].map((q) => (
                       <button
                         key={q}
-                        onClick={() => { setInput(q); setTimeout(send, 50); }}
+                        onClick={() => send(q)}
                         className="block w-full text-left text-xs bg-accent hover:bg-accent/70 px-3 py-2 rounded-xl font-medium transition-colors"
                       >
                         {q}
@@ -203,11 +204,12 @@ export function AskStembots({
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && send()}
+                  maxLength={MAX_CHARS}
                   placeholder="Ask a question..."
                   className="flex-1 px-3 py-2 rounded-xl border border-border bg-background text-xs outline-none focus:ring-2 focus:ring-primary/40"
                 />
                 <button
-                  onClick={send}
+                  onClick={() => send()}
                   disabled={!input.trim() || loading}
                   className="p-2 rounded-xl bg-primary text-primary-foreground shrink-0 disabled:opacity-40"
                 >
