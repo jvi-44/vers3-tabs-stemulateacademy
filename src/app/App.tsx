@@ -579,6 +579,7 @@ function Dashboard({
           <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
           <input
             type="text"
+            aria-label="Search lessons"
             placeholder="Search for topics or lessons..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -825,7 +826,7 @@ function Profile({
           >
             <p className="font-bold text-foreground mb-4">Choose your avatar</p>
             <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
-              {AVATAR_OPTIONS.map((src) => (
+              {AVATAR_OPTIONS.map((src, i) => (
                 <button
                   key={src}
                   onClick={() => {
@@ -837,7 +838,7 @@ function Profile({
                     user.avatar === src ? "ring-primary" : "ring-transparent",
                   )}
                 >
-                  <img src={src} className="w-full h-full object-cover" />
+                  <img src={src} alt={`Avatar option ${i + 1}`} className="w-full h-full object-cover" />
                 </button>
               ))}
             </div>
@@ -934,7 +935,7 @@ function Leaderboard({ entries, currentUsername }: { entries: LeaderboardEntry[]
                 <span className={cn("w-7 text-center font-black", i < 3 ? "text-amber-500" : "text-muted-foreground")}>
                   {i + 1}
                 </span>
-                <img src={entry.avatar} className="w-10 h-10 rounded-xl bg-muted" />
+                <img src={entry.avatar} alt="" className="w-10 h-10 rounded-xl bg-muted" />
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-foreground truncate">{entry.username}</p>
                   <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wide">
@@ -990,7 +991,7 @@ function Gallery({ posts, reflectionPosts }: { posts: any[]; reflectionPosts: an
             )}
             <div className="p-5 pt-4">
               <div className="flex items-center gap-3 mb-3">
-                <img src={post.avatar} className="w-9 h-9 rounded-xl bg-muted" />
+                <img src={post.avatar} alt="" className="w-9 h-9 rounded-xl bg-muted" />
                 <span className="text-sm font-bold text-foreground">{post.username}</span>
               </div>
               <div className="flex items-center justify-between">

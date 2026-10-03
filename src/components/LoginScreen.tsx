@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { toast } from "sonner";
 
@@ -40,12 +40,21 @@ export function LoginScreen({
 }) {
   const [view, setView] = useState<View>("signin");
   const [refData, setRefData] = useState<ReferenceData | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
-  useEffect(() => {
+  const loadRefData = useCallback(() => {
+    setLoadError(false);
     fetchReferenceData()
       .then(setRefData)
-      .catch(() => toast.error("Couldn't reach the server. Is the backend running?"));
+      .catch(() => {
+        setLoadError(true);
+        toast.error("Couldn't reach the server. Is the backend running?");
+      });
   }, []);
+
+  useEffect(() => {
+    loadRefData();
+  }, [loadRefData]);
 
   return (
     <div className="min-h-screen relative flex items-center justify-center p-4 bg-gradient-to-br from-lime-100 via-yellow-50 to-lime-200">
@@ -96,6 +105,8 @@ export function LoginScreen({
             >
               <SignUpForm
                 refData={refData}
+                loadError={loadError}
+                onRetry={loadRefData}
                 onLogin={onLogin}
                 onSwitch={() => setView("signin")}
               />
@@ -109,7 +120,12 @@ export function LoginScreen({
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -12 }}
             >
-              <ForgotPinForm refData={refData} onDone={() => setView("signin")} />
+              <ForgotPinForm
+                refData={refData}
+                loadError={loadError}
+                onRetry={loadRefData}
+                onDone={() => setView("signin")}
+              />
             </motion.div>
           )}
         </AnimatePresence>
@@ -154,10 +170,11 @@ function SignInForm({
   return (
     <div className="space-y-6">
       <div>
-        <Label className="text-sm font-bold text-slate-600 mb-2 block">
+        <Label htmlFor="signin-username" className="text-sm font-bold text-slate-600 mb-2 block">
           Username
         </Label>
         <Input
+          id="signin-username"
           value={username}
           onChange={(e) =>
             USERNAME_PATTERN.test(e.target.value) && setUsername(e.target.value)
@@ -169,10 +186,11 @@ function SignInForm({
       </div>
 
       <div>
-        <Label className="text-sm font-bold text-slate-600 mb-2 block">
+        <Label htmlFor="signin-pin" className="text-sm font-bold text-slate-600 mb-2 block">
           4-Digit PIN
         </Label>
         <Input
+          id="signin-pin"
           type="password"
           inputMode="numeric"
           value={pin}
@@ -219,10 +237,14 @@ function SignInForm({
 // ---------------------------------------------------------
 function SignUpForm({
   refData,
+  loadError,
+  onRetry,
   onLogin,
   onSwitch,
 }: {
   refData: ReferenceData | null;
+  loadError: boolean;
+  onRetry: () => void;
   onLogin: (user: AuthUser) => void;
   onSwitch: () => void;
 }) {
@@ -285,13 +307,18 @@ function SignUpForm({
   };
 
   if (!refData) {
-    return <p className="text-center text-slate-500 py-8">Loading form...</p>;
+    return loadError ? (
+      <FormLoadError onRetry={onRetry} />
+    ) : (
+      <p className="text-center text-slate-500 py-8">Loading form...</p>
+    );
   }
 
   return (
     <div className="space-y-4">
-      <Field label="First Name">
+      <Field label="First Name" id="signup-first-name">
         <Input
+          id="signup-first-name"
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
           maxLength={NAME_MAX}
@@ -300,9 +327,9 @@ function SignUpForm({
         />
       </Field>
 
-      <Field label="Primary School Level">
+      <Field label="Primary School Level" id="signup-level">
         <Select value={schoolLevelId} onValueChange={setSchoolLevelId}>
-          <SelectTrigger className="rounded-xl border-2 border-lime-200 bg-lime-50/50 h-11">
+          <SelectTrigger id="signup-level" className="rounded-xl border-2 border-lime-200 bg-lime-50/50 h-11">
             <SelectValue placeholder="Select your level" />
           </SelectTrigger>
           <SelectContent>
@@ -315,9 +342,9 @@ function SignUpForm({
         </Select>
       </Field>
 
-      <Field label="Organisation / Centre">
+      <Field label="Organisation / Centre" id="signup-org">
         <Select value={orgId} onValueChange={setOrgId}>
-          <SelectTrigger className="rounded-xl border-2 border-lime-200 bg-lime-50/50 h-11">
+          <SelectTrigger id="signup-org" className="rounded-xl border-2 border-lime-200 bg-lime-50/50 h-11">
             <SelectValue placeholder="Select your organisation" />
           </SelectTrigger>
           <SelectContent>
@@ -331,6 +358,7 @@ function SignUpForm({
         </Select>
         {isOtherOrg && (
           <Input
+            aria-label="Organisation name"
             value={customOrgName}
             onChange={(e) => setCustomOrgName(e.target.value)}
             maxLength={NAME_MAX}
@@ -340,8 +368,9 @@ function SignUpForm({
         )}
       </Field>
 
-      <Field label="Username">
+      <Field label="Username" id="signup-username">
         <Input
+          id="signup-username"
           value={username}
           onChange={(e) =>
             USERNAME_PATTERN.test(e.target.value) && setUsername(e.target.value)
@@ -352,8 +381,9 @@ function SignUpForm({
       </Field>
 
       <div className="grid grid-cols-2 gap-3">
-        <Field label="4-Digit PIN">
+        <Field label="4-Digit PIN" id="signup-pin">
           <Input
+            id="signup-pin"
             type="password"
             inputMode="numeric"
             value={pin}
@@ -363,8 +393,9 @@ function SignUpForm({
             className="rounded-xl border-2 border-lime-200 bg-lime-50/50 py-3 h-auto text-center tracking-[0.5em]"
           />
         </Field>
-        <Field label="Confirm PIN">
+        <Field label="Confirm PIN" id="signup-confirm-pin">
           <Input
+            id="signup-confirm-pin"
             type="password"
             inputMode="numeric"
             value={confirmPin}
@@ -443,9 +474,13 @@ function SignUpForm({
 // ---------------------------------------------------------
 function ForgotPinForm({
   refData,
+  loadError,
+  onRetry,
   onDone,
 }: {
   refData: ReferenceData | null;
+  loadError: boolean;
+  onRetry: () => void;
   onDone: () => void;
 }) {
   const [step, setStep] = useState<ForgotStep>("verify");
@@ -496,15 +531,20 @@ function ForgotPinForm({
   };
 
   if (!refData) {
-    return <p className="text-center text-slate-500 py-8">Loading...</p>;
+    return loadError ? (
+      <FormLoadError onRetry={onRetry} />
+    ) : (
+      <p className="text-center text-slate-500 py-8">Loading...</p>
+    );
   }
 
   return (
     <div className="space-y-5">
       {step === "verify" ? (
         <>
-          <Field label="Username">
+          <Field label="Username" id="forgot-username">
             <Input
+              id="forgot-username"
               value={username}
               onChange={(e) =>
                 USERNAME_PATTERN.test(e.target.value) && setUsername(e.target.value)
@@ -537,8 +577,9 @@ function ForgotPinForm({
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="New PIN">
+            <Field label="New PIN" id="forgot-new-pin">
               <Input
+                id="forgot-new-pin"
                 type="password"
                 inputMode="numeric"
                 value={newPin}
@@ -547,8 +588,9 @@ function ForgotPinForm({
                 className="rounded-xl border-2 border-lime-200 bg-lime-50/50 py-3 h-auto text-center tracking-[0.5em]"
               />
             </Field>
-            <Field label="Confirm PIN">
+            <Field label="Confirm PIN" id="forgot-confirm-pin">
               <Input
+                id="forgot-confirm-pin"
                 type="password"
                 inputMode="numeric"
                 value={confirmPin}
@@ -581,11 +623,29 @@ function ForgotPinForm({
   );
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+/** `id` ties the label to its input (pass the same id to the input). */
+function Field({ label, id, children }: { label: string; id?: string; children: ReactNode }) {
   return (
     <div>
-      <Label className="text-sm font-bold text-slate-600 mb-1.5 block">{label}</Label>
+      <Label htmlFor={id} className="text-sm font-bold text-slate-600 mb-1.5 block">
+        {label}
+      </Label>
       {children}
+    </div>
+  );
+}
+
+function FormLoadError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="text-center py-8 space-y-3">
+      <p className="text-slate-500">Couldn't load the form.</p>
+      <Button
+        type="button"
+        onClick={onRetry}
+        className="px-6 py-3 h-auto bg-gradient-to-r from-lime-500 to-yellow-500 text-white rounded-2xl font-bold shadow-lg hover:from-lime-600 hover:to-yellow-600"
+      >
+        Retry
+      </Button>
     </div>
   );
 }
