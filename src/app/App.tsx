@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Trophy,
   Search,
@@ -24,12 +24,11 @@ import {
   urlToAvatarKey,
   MOCK_COURSES,
   MOCK_GALLERY,
-  MOCK_LEADERBOARD,
   AVATAR_OPTIONS,
   STEMBOTS,
 } from "../data/mock";
-import { GAME_LESSONS, pointsFor, POINTS_LEGEND, type LessonBeat } from "../data/lessonContent";
-import type { Course, Module, User as UserType } from "../types";
+import { GAME_LESSONS, POINTS_LEGEND, type LessonBeat } from "../data/lessonContent";
+import type { Course, LeaderboardEntry, Module, User as UserType } from "../types";
 import { LoginScreen } from "../components/LoginScreen";
 import { Sidebar, MobileTabBar, type Page } from "../components/Sidebar";
 import { TagFilterBar, EMPTY_SELECTION, hasAnySelection, type TagSelection } from "../components/TagFilterBar";
@@ -47,7 +46,19 @@ import stembotGreen from "../assets/stembot_green.png";
 import stembotCream from "../assets/stembot_cream.png";
 import type { AuthUser } from "../types-auth";
 import { getUser, logout as apiLogout } from "../api/auth";
-import { getProgress, postProgress, postXP, postAvatar, getCards, openPack } from "../api/progress";
+import {
+  getProgress,
+  postProgress,
+  replayGame,
+  postAvatar,
+  getCards,
+  openPack,
+  getReflections,
+  postReflection,
+  getLeaderboard,
+  type Reflection,
+  type Reward,
+} from "../api/progress";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -79,22 +90,47 @@ function getSingaporeGreeting() {
 const DARK_MODE_KEY = "stemulate_dark_mode";
 const BEATS_KEY_PREFIX = "stemulate_beats_"; // fallback local cache per user
 
+type ReflectionPost = {
+  id: string;
+  username: string;
+  avatar: string;
+  caption: string;
+  likes: number;
+  tags: string[];
+};
+
+/** Gallery card for a reflection from the server (first name + avatar only). */
+function toReflectionPost(r: Reflection): ReflectionPost {
+  return {
+    id: `reflection-${r.id}`,
+    username: r.firstName,
+    avatar: avatarToUrl(r.avatar),
+    caption: r.caption,
+    likes: 0,
+    tags: r.beatTitle ? [r.beatTitle] : [],
+  };
+}
+
 export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>("home");
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [selectedBeatId, setSelectedBeatId] = useState<string | null>(null);
+  // Set when a finished game is opened from the Games tab via "Play Again".
+  const [replayBeatId, setReplayBeatId] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<UserType>(MOCK_USER);
   const [userCards, setUserCards] = useState<Record<string, number>>({});
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [completedBeats, setCompletedBeats] = useState<Record<string, boolean>>({});
-  const [submittedExitCards, setSubmittedExitCards] = useState<
-    { id: string; username: string; avatar: string; caption: string; likes: number; tags: string[] }[]
-  >([]);
+  const [submittedExitCards, setSubmittedExitCards] = useState<ReflectionPost[]>([]);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [darkMode, setDarkMode] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showCertificate, setShowCertificate] = useState(false);
   const allGameBeatIds = useMemo(() => GAME_LESSONS.flatMap((l) => l.beats.map((b) => b.id)), []);
+  // Bumped on every sign-in/sign-out so late responses for a previous user
+  // (on a shared centre device) are ignored instead of leaking into the next.
+  const authGen = useRef(0);
 
   // ---- Dark mode ----
   useEffect(() => {
@@ -108,6 +144,7 @@ export default function App() {
 
   // ---- Auth ----
   const applyAuthUser = (u: AuthUser) => {
+    const gen = ++authGen.current;
     setAuthUser(u);
     setUser((prev) => ({
       ...prev,
@@ -115,7 +152,7 @@ export default function App() {
       xp: u.xp,
       level: u.level,
       atoms: u.atoms,
-      avatar: u.avatar ? avatarToUrl(u.avatar) : prev.avatar,
+      avatar: u.avatar ? avatarToUrl(u.avatar) : MOCK_USER.avatar,
     }));
     setIsLoggedIn(true);
 
@@ -123,6 +160,7 @@ export default function App() {
     // devices / refreshes (see SQL_EXPLAINED.md for how this is stored).
     getProgress()
       .then(({ progress }) => {
+        if (gen !== authGen.current) return;
         const map: Record<string, boolean> = {};
         progress.forEach((p) => {
           if (p.status === "completed") map[p.lesson_id] = true;
@@ -130,13 +168,16 @@ export default function App() {
         setCompletedBeats(map);
       })
       .catch(() => {
+        if (gen !== authGen.current) return;
         const cached = localStorage.getItem(BEATS_KEY_PREFIX + u.userId);
         if (cached) setCompletedBeats(JSON.parse(cached));
       });
 
     // Owned cards live in SQLite too (see POST /api/packs/open).
     getCards()
-      .then(({ owned }) => setUserCards(owned))
+      .then(({ owned }) => {
+        if (gen === authGen.current) setUserCards(owned);
+      })
       .catch(() => {});
   };
 
@@ -151,32 +192,65 @@ export default function App() {
       .catch(() => {});
   }, []);
 
+  // Clear every piece of per-student state, so the next child on a shared
+  // device starts clean.
   const handleLogout = () => {
+    authGen.current += 1;
     apiLogout().catch(() => {});
     setAuthUser(null);
     setIsLoggedIn(false);
+    setUser(MOCK_USER);
+    setUserCards({});
+    setCompletedBeats({});
+    setSubmittedExitCards([]);
+    setLeaderboard([]);
+    setSelectedLessonId(null);
+    setSelectedBeatId(null);
+    setReplayBeatId(null);
+    setShowCertificate(false);
+    setMobileMenuOpen(false);
     setCurrentPage("home");
   };
 
-  // ---- Points ----
-  const handleEarnXP = (amount: number) => {
-    if (!amount) return 1;
-    const newXP = user.xp + amount;
-    const newLevel = Math.floor(newXP / 1000) + 1;
-    if (newLevel > user.level) {
-      confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
-      toast.success(`LEVEL UP! You are now Level ${newLevel}!`);
-    } else {
-      toast.success(`+${amount} XP Earned!`);
+  // ---- Gallery & leaderboard (loaded from the server when opened) ----
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const gen = authGen.current;
+    if (currentPage === "gallery") {
+      getReflections()
+        .then(({ reflections }) => {
+          if (gen === authGen.current) setSubmittedExitCards(reflections.map(toReflectionPost));
+        })
+        .catch(() => {});
     }
-    setUser((prev) => ({ ...prev, xp: newXP, level: newLevel }));
-    return newLevel;
-  };
+    if (currentPage === "leaderboard") {
+      getLeaderboard()
+        .then(({ entries }) => {
+          if (gen !== authGen.current) return;
+          setLeaderboard(
+            entries.map((e, i) => ({
+              id: e.username,
+              username: e.username,
+              avatar: avatarToUrl(e.avatar),
+              xp: e.xp,
+              rank: i + 1,
+            })),
+          );
+        })
+        .catch(() => {});
+    }
+  }, [currentPage, isLoggedIn]);
 
-  const handleEarnAtoms = (amount: number) => {
-    if (!amount) return;
-    setUser((prev) => ({ ...prev, atoms: prev.atoms + amount }));
-    toast.success(`+${amount} Atoms Earned! ⚛️`);
+  // ---- Points (computed and saved by the server) ----
+  const applyRewards = (u: AuthUser, awarded: Reward, prevLevel: number) => {
+    setUser((prev) => ({ ...prev, xp: u.xp, level: u.level, atoms: u.atoms }));
+    if (u.level > prevLevel) {
+      confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+      toast.success(`LEVEL UP! You are now Level ${u.level}!`);
+    } else if (awarded.xp) {
+      toast.success(`+${awarded.xp} XP Earned!`);
+    }
+    if (awarded.atoms) toast.success(`+${awarded.atoms} Atoms Earned! ⚛️`);
   };
 
   const handleUpdateAvatar = (avatar: string) => {
@@ -190,46 +264,55 @@ export default function App() {
   };
 
   const handleBeatComplete = (beat: LessonBeat, scoreRatio?: number, reflection?: string) => {
-    const p = pointsFor(beat);
-    let xp = p.xp;
-    if (beat.type === "quiz" && typeof scoreRatio === "number") {
-      const min = (p as any).xpMin ?? 50;
-      xp = Math.round(min + (100 - min) * scoreRatio);
-    }
-    const newLevel = handleEarnXP(xp);
-    handleEarnAtoms(p.atoms);
-
-    if (beat.type === "exit" && reflection) {
-      setSubmittedExitCards((prev) => [
-        {
-          id: `exit-${beat.id}-${Date.now()}`,
-          username: user.username,
-          avatar: user.avatar,
-          caption: reflection,
-          likes: 0,
-          tags: [beat.title],
-        },
-        ...prev,
-      ]);
-      toast.success("Your reflection was published to the Gallery! 🎉");
-    }
-
     setCompletedBeats((prev) => {
       const next = { ...prev, [beat.id]: true };
       if (authUser) localStorage.setItem(BEATS_KEY_PREFIX + authUser.userId, JSON.stringify(next));
       return next;
     });
 
-    if (authUser) {
-      const score = beat.type === "quiz" && typeof scoreRatio === "number" ? Math.round(scoreRatio * 100) : null;
-      postProgress(beat.id, "completed", score).catch(() => {});
-      postXP(user.xp + xp, newLevel, user.atoms + p.atoms).catch(() => {});
+    if (!authUser) return;
+    const gen = authGen.current;
+    const prevLevel = user.level;
+    const score = beat.type === "quiz" && typeof scoreRatio === "number" ? Math.round(scoreRatio * 100) : null;
+    // The server decides what this beat is worth and only pays out once.
+    postProgress(beat.id, "completed", score)
+      .then(({ user: u, awarded }) => {
+        if (gen === authGen.current) applyRewards(u, awarded, prevLevel);
+      })
+      .catch(() => toast.error("Couldn't save your progress. Please check your connection."));
+
+    if (beat.type === "exit" && reflection) {
+      postReflection(beat.id, reflection)
+        .then(({ reflection: r }) => {
+          if (gen !== authGen.current) return;
+          setSubmittedExitCards((prev) => [toReflectionPost(r), ...prev]);
+          toast.success("Your reflection was published to the Gallery! 🎉");
+        })
+        .catch((err) => toast.error((err as Error).message));
     }
   };
 
-  const openBeat = (lessonId: string, beatId: string) => {
+  // A finished game was played again from the Games tab: small, server-capped top-up.
+  const handleReplayComplete = (beat: LessonBeat) => {
+    setReplayBeatId(null);
+    const gen = authGen.current;
+    const prevLevel = user.level;
+    replayGame(beat.id)
+      .then(({ user: u, awarded }) => {
+        if (gen !== authGen.current) return;
+        if (!awarded.xp && !awarded.atoms) {
+          toast("You've already had today's replay bonus for this game — come back tomorrow!");
+          return;
+        }
+        applyRewards(u, awarded, prevLevel);
+      })
+      .catch((err) => toast.error((err as Error).message));
+  };
+
+  const openBeat = (lessonId: string, beatId: string, opts?: { replay?: boolean }) => {
     setSelectedLessonId(lessonId);
     setSelectedBeatId(beatId);
+    setReplayBeatId(opts?.replay ? beatId : null);
     setCurrentPage("lesson");
   };
 
@@ -246,8 +329,10 @@ export default function App() {
       return null;
     }
 
+    const gen = authGen.current;
     try {
       const { cards, atoms } = await openPack(albumKey, packId);
+      if (gen !== authGen.current) return null;
       const pool = albumKey === "phenomena" ? PHENOMENA_CARDS : FIGURE_CARDS;
       const drawn = cards
         .map((id) => pool.find((c) => c.id === id))
@@ -282,6 +367,8 @@ export default function App() {
           completedBeats={completedBeats}
           onSelectBeat={(id) => setSelectedBeatId(id)}
           onComplete={handleBeatComplete}
+          replayBeatId={replayBeatId}
+          onReplayComplete={handleReplayComplete}
           onBack={() => setCurrentPage("home")}
         />
       </>
@@ -366,18 +453,11 @@ export default function App() {
             />
           )}
           {currentPage === "leaderboard" && (
-            <Leaderboard entries={MOCK_LEADERBOARD} currentUser={user} />
+            <Leaderboard entries={leaderboard} currentUsername={authUser?.username ?? ""} />
           )}
           {currentPage === "gallery" && <Gallery posts={MOCK_GALLERY} reflectionPosts={submittedExitCards} />}
           {currentPage === "games" && (
-            <GamesTab
-              completedBeats={completedBeats}
-              onOpenBeat={openBeat}
-              onReplay={(xp, atoms) => {
-                handleEarnXP(xp);
-                handleEarnAtoms(atoms);
-              }}
-            />
+            <GamesTab completedBeats={completedBeats} onOpenBeat={openBeat} />
           )}
           {currentPage === "friends" && <FriendsTab myAtoms={user.atoms} />}
           {currentPage === "cards" && (
@@ -828,8 +908,7 @@ function Profile({
 // Leaderboard
 // ---------------------------------------------------------------------------
 
-function Leaderboard({ entries, currentUser }: { entries: any[]; currentUser: UserType }) {
-  const [requested, setRequested] = useState<Record<string, boolean>>({});
+function Leaderboard({ entries, currentUsername }: { entries: LeaderboardEntry[]; currentUsername: string }) {
   return (
     <div className="max-w-3xl mx-auto space-y-4">
       <div className="bg-gradient-to-r from-amber-500 to-yellow-500 rounded-3xl p-6 text-white shadow-md flex items-center gap-4">
@@ -840,10 +919,10 @@ function Leaderboard({ entries, currentUser }: { entries: any[]; currentUser: Us
         </div>
       </div>
       <div className="bg-card rounded-3xl border border-border shadow-sm divide-y divide-border overflow-hidden">
-        {entries
+        {[...entries]
           .sort((a, b) => b.xp - a.xp)
           .map((entry, i) => {
-            const isMe = entry.username === currentUser.username;
+            const isMe = entry.username === currentUsername;
             return (
               <div
                 key={entry.id}
@@ -863,18 +942,6 @@ function Leaderboard({ entries, currentUser }: { entries: any[]; currentUser: Us
                   </p>
                 </div>
                 <span className="font-black text-foreground">{entry.xp.toLocaleString()} XP</span>
-                {!isMe && (
-                  <button
-                    onClick={() => {
-                      setRequested((r) => ({ ...r, [entry.id]: true }));
-                      toast.success(`Friend request sent to ${entry.username}!`);
-                    }}
-                    disabled={!!requested[entry.id]}
-                    className="ml-1 shrink-0 text-[10px] font-bold px-2.5 py-1.5 rounded-xl bg-accent text-accent-foreground disabled:opacity-50"
-                  >
-                    {requested[entry.id] ? "Sent" : "+ Friend"}
-                  </button>
-                )}
               </div>
             );
           })}

@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { cn } from "./ui/utils";
 import type { GameLesson, LessonBeat } from "../data/lessonContent";
-import { pointsFor } from "../data/lessonContent";
+import { pointsFor, REPLAY_REWARD } from "../data/lessonContent";
 import { SpeechBubbles } from "./SpeechBubble";
 import { AskStembots } from "./AskStembots";
 
@@ -202,6 +202,8 @@ export function BeatPlayer({
   completedBeats,
   onSelectBeat,
   onComplete,
+  replayBeatId,
+  onReplayComplete,
   onBack,
 }: {
   lesson: GameLesson;
@@ -209,6 +211,9 @@ export function BeatPlayer({
   completedBeats: Record<string, boolean>;
   onSelectBeat: (beatId: string) => void;
   onComplete: (beat: LessonBeat, scoreRatio?: number, reflection?: string) => void;
+  /** A finished game opened via "Play Again" — it starts fresh and pays the replay top-up. */
+  replayBeatId?: string | null;
+  onReplayComplete?: (beat: LessonBeat) => void;
   onBack: () => void;
 }) {
   const [chatOpen, setChatOpen] = useState(false);
@@ -282,7 +287,15 @@ export function BeatPlayer({
           {activeBeat.dialogue && activeBeat.dialogue.length > 0 && (
             <SpeechBubbles lines={activeBeat.dialogue} />
           )}
-          <BeatContent beat={activeBeat} done={!!completedBeats[activeBeat.id]} onComplete={onComplete} onNext={goNext} />
+          <BeatContent
+            key={activeBeat.id + (replayBeatId === activeBeat.id ? ":replay" : "")}
+            beat={activeBeat}
+            done={!!completedBeats[activeBeat.id]}
+            replaying={replayBeatId === activeBeat.id && !!completedBeats[activeBeat.id] && activeBeat.type === "simulation"}
+            onComplete={onComplete}
+            onReplayComplete={onReplayComplete}
+            onNext={goNext}
+          />
         </div>
       </main>
 
@@ -295,12 +308,16 @@ export function BeatPlayer({
 function BeatContent({
   beat,
   done,
+  replaying = false,
   onComplete,
+  onReplayComplete,
   onNext,
 }: {
   beat: LessonBeat;
   done: boolean;
+  replaying?: boolean;
   onComplete: (beat: LessonBeat, scoreRatio?: number, reflection?: string) => void;
+  onReplayComplete?: (beat: LessonBeat) => void;
   onNext: () => void;
 }) {
   const markAndNext = (scoreRatio?: number, reflection?: string) => {
@@ -331,13 +348,26 @@ function BeatContent({
     return (
       <div className="space-y-6">
         <div className="aspect-video w-full bg-slate-900 rounded-3xl overflow-hidden shadow-lg relative flex items-center justify-center">
-          <button className="w-20 h-20 bg-white/90 text-primary rounded-full flex items-center justify-center shadow-xl hover:scale-105 transition-all">
-            <Play size={32} fill="currentColor" className="ml-1" />
-          </button>
-          {beat.duration && (
-            <span className="absolute bottom-4 right-4 text-white text-xs font-bold bg-black/50 px-2 py-1 rounded-lg">
-              {beat.duration}
-            </span>
+          {beat.videoUrl ? (
+            <iframe
+              src={beat.videoUrl}
+              title={beat.title}
+              allow="encrypted-media; picture-in-picture"
+              allowFullScreen
+              referrerPolicy="strict-origin-when-cross-origin"
+              className="w-full h-full"
+            />
+          ) : (
+            <>
+              <button className="w-20 h-20 bg-white/90 text-primary rounded-full flex items-center justify-center shadow-xl hover:scale-105 transition-all">
+                <Play size={32} fill="currentColor" className="ml-1" />
+              </button>
+              {beat.duration && (
+                <span className="absolute bottom-4 right-4 text-white text-xs font-bold bg-black/50 px-2 py-1 rounded-lg">
+                  {beat.duration}
+                </span>
+              )}
+            </>
           )}
         </div>
         <div className="bg-card rounded-3xl p-6 border border-border shadow-sm">
@@ -351,7 +381,11 @@ function BeatContent({
               <>
                 Mark Watched
                 <span className="flex items-center gap-1 text-sm opacity-90">
-                  <Star size={13} className="fill-white" /> +{p.xp} XP
+                  {p.xp > 0 && (
+                    <>
+                      <Star size={13} className="fill-white" /> +{p.xp} XP
+                    </>
+                  )}
                   <AtomIcon size={13} className="text-white" /> +{p.atoms}
                 </span>
               </>
@@ -367,13 +401,23 @@ function BeatContent({
   }
 
   if (beat.type === "simulation") {
+    const simDone = done && !replaying;
+    const reward = replaying ? REPLAY_REWARD : pointsFor(beat);
+    const finish = () => {
+      if (replaying) {
+        onReplayComplete?.(beat);
+        onNext();
+      } else {
+        markAndNext();
+      }
+    };
     if (beat.id === "mm-sci-sim") {
-      return <WaterCycleLab beat={beat} done={done} onComplete={() => markAndNext()} />;
+      return <WaterCycleLab beat={beat} done={simDone} reward={reward} onComplete={finish} />;
     }
     if (beat.id === "mm-math-sim") {
-      return <RoomDesigner beat={beat} done={done} onComplete={() => markAndNext()} />;
+      return <RoomDesigner beat={beat} done={simDone} reward={reward} onComplete={finish} />;
     }
-    return <GenericSimulation beat={beat} done={done} onComplete={() => markAndNext()} />;
+    return <GenericSimulation beat={beat} done={simDone} reward={reward} onComplete={finish} />;
   }
 
   // exit card
@@ -509,13 +553,17 @@ function getBiome(temp: number, rain: number) {
   return BIOMES.find((b) => b.temp === temp && b.rain === rain) ?? BIOMES[4];
 }
 
+type SimReward = { xp: number; atoms: number };
+
 function WaterCycleLab({
   beat,
   done,
+  reward,
   onComplete,
 }: {
   beat: LessonBeat;
   done: boolean;
+  reward: SimReward;
   onComplete: () => void;
 }) {
   const [temp, setTemp] = useState(1);
@@ -604,7 +652,7 @@ function WaterCycleLab({
           onClick={() => { setCompleted(true); onComplete(); }}
           className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold text-lg shadow-md flex items-center justify-center gap-2 hover:bg-emerald-700"
         >
-          🎉 All biomes explored! Claim 500 XP + 300 Atoms
+          🎉 All biomes explored! Claim {reward.xp} XP + {reward.atoms} Atoms
         </motion.button>
       ) : completed ? (
         <button onClick={onComplete} className="w-full py-4 bg-primary text-primary-foreground rounded-2xl font-bold text-lg shadow-md">
@@ -631,10 +679,12 @@ const ROOMS = [
 
 function RoomDesigner({
   done,
+  reward,
   onComplete,
 }: {
   beat: LessonBeat;
   done: boolean;
+  reward: SimReward;
   onComplete: () => void;
 }) {
   const [dims, setDims] = useState<{ l: number; w: number; h: number }[]>(
@@ -710,7 +760,7 @@ function RoomDesigner({
           onClick={() => { setCompleted(true); onComplete(); }}
           className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold text-lg shadow-md hover:bg-emerald-700 flex items-center justify-center gap-2"
         >
-          🎉 House complete! Claim 500 XP + 300 Atoms
+          🎉 House complete! Claim {reward.xp} XP + {reward.atoms} Atoms
         </motion.button>
       ) : completed ? (
         <button onClick={onComplete} className="w-full py-4 bg-primary text-primary-foreground rounded-2xl font-bold text-lg shadow-md">
@@ -729,10 +779,12 @@ function RoomDesigner({
 function GenericSimulation({
   beat,
   done,
+  reward,
   onComplete,
 }: {
   beat: LessonBeat;
   done: boolean;
+  reward: SimReward;
   onComplete: () => void;
 }) {
   const [sliderVal, setSliderVal] = useState(50);
@@ -774,7 +826,7 @@ function GenericSimulation({
                 <h4 className="text-xl font-black text-foreground mb-1">Nice work!</h4>
                 <p className="text-muted-foreground mb-5 text-sm">Simulation complete.</p>
                 <button onClick={onComplete} className="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-emerald-700">
-                  {done ? "Continue" : "Claim 500 XP + 300 Atoms"}
+                  {done ? "Continue" : `Claim ${reward.xp} XP + ${reward.atoms} Atoms`}
                 </button>
               </div>
             </motion.div>
@@ -811,11 +863,13 @@ function ExitCardBeat({
       </div>
 
       <div className="bg-card rounded-3xl p-6 border border-border shadow-sm space-y-5">
+        {/* maxLengths keep the combined reflection (with its headings) within
+            the Gallery's 280-character limit (server/app.js REFLECTION_MAX). */}
         {[
-          { label: "3 things I learnt", value: learnt, set: setLearnt, placeholder: "1. ... 2. ... 3. ...", rows: 3 },
-          { label: "2 interesting facts or connections", value: facts, set: setFacts, placeholder: "1. ... 2. ...", rows: 2 },
-          { label: "1 question I still have", value: question, set: setQuestion, placeholder: "?", rows: 2 },
-        ].map(({ label, value, set, placeholder, rows }) => (
+          { label: "3 things I learnt", value: learnt, set: setLearnt, placeholder: "1. ... 2. ... 3. ...", rows: 3, max: 90 },
+          { label: "2 interesting facts or connections", value: facts, set: setFacts, placeholder: "1. ... 2. ...", rows: 2, max: 70 },
+          { label: "1 question I still have", value: question, set: setQuestion, placeholder: "?", rows: 2, max: 50 },
+        ].map(({ label, value, set, placeholder, rows, max }) => (
           <div key={label}>
             <label className="text-sm font-bold text-foreground mb-1.5 block">{label}</label>
             <textarea
@@ -823,6 +877,7 @@ function ExitCardBeat({
               onChange={(e) => set(e.target.value)}
               disabled={done}
               rows={rows}
+              maxLength={max}
               className="w-full p-3 rounded-2xl border border-border bg-input-background focus:ring-2 focus:ring-primary/40 outline-none text-sm"
               placeholder={placeholder}
             />

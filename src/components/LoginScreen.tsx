@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
+import { Checkbox } from "./ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -22,7 +23,6 @@ import {
   signup as apiSignup,
   verifyRecovery,
   resetPin,
-  createOrganisation,
 } from "../api/auth";
 import type { AuthUser, ReferenceData } from "../types-auth";
 
@@ -30,6 +30,7 @@ type View = "signin" | "signup" | "forgot";
 type ForgotStep = "verify" | "reset";
 
 const PIN_PATTERN = /^\d{0,4}$/;
+const NAME_MAX = 80; // matches the server limit
 const USERNAME_PATTERN = /^[A-Za-z0-9_]*$/;
 
 export function LoginScreen({
@@ -234,6 +235,7 @@ function SignUpForm({
   const [confirmPin, setConfirmPin] = useState("");
   const [recoveryColourId, setRecoveryColourId] = useState<string>("");
   const [recoverySubjectId, setRecoverySubjectId] = useState<string>("");
+  const [consent, setConsent] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const isOtherOrg = orgId === "OTHER";
@@ -247,7 +249,8 @@ function SignUpForm({
     pin.length === 4 &&
     pin === confirmPin &&
     recoveryColourId &&
-    recoverySubjectId;
+    recoverySubjectId &&
+    consent;
 
   const handleSubmit = async () => {
     if (!canSubmit) {
@@ -260,19 +263,17 @@ function SignUpForm({
     }
     setLoading(true);
     try {
-      let resolvedOrgId = Number(orgId);
-      if (isOtherOrg) {
-        const { organisation } = await createOrganisation(customOrgName.trim());
-        resolvedOrgId = organisation.id;
-      }
+      // "Others": the typed centre name is saved on the account as text;
+      // it no longer creates a new entry in everyone's dropdown.
       const { user } = await apiSignup({
         fullName: fullName.trim(),
         schoolLevelId: Number(schoolLevelId),
-        orgId: resolvedOrgId,
+        ...(isOtherOrg ? { orgOther: customOrgName.trim() } : { orgId: Number(orgId) }),
         username: username.trim(),
         pin,
         recoveryColourId: Number(recoveryColourId),
         recoverySubjectId: Number(recoverySubjectId),
+        consent,
       });
       toast.success(`Welcome to STEMulate Academy, ${user.fullName.split(" ")[0]}!`);
       onLogin(user);
@@ -289,11 +290,12 @@ function SignUpForm({
 
   return (
     <div className="space-y-4">
-      <Field label="Full Name">
+      <Field label="First Name">
         <Input
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
-          placeholder="Your full name"
+          maxLength={NAME_MAX}
+          placeholder="Your first name"
           className="rounded-xl border-2 border-lime-200 bg-lime-50/50 py-3 h-auto"
         />
       </Field>
@@ -331,6 +333,7 @@ function SignUpForm({
           <Input
             value={customOrgName}
             onChange={(e) => setCustomOrgName(e.target.value)}
+            maxLength={NAME_MAX}
             placeholder="Type your organisation's name"
             className="rounded-xl border-2 border-lime-200 bg-lime-50/50 py-3 h-auto mt-2"
           />
@@ -397,6 +400,21 @@ function SignUpForm({
           onChange={setRecoverySubjectId}
         />
       </Field>
+
+      <p className="text-xs text-slate-500 pt-2">
+        We save your first name, school level and centre so your teacher can see your progress.
+      </p>
+      <div className="flex items-start gap-2.5">
+        <Checkbox
+          id="signup-consent"
+          checked={consent}
+          onCheckedChange={(v) => setConsent(v === true)}
+          className="mt-0.5 border-lime-300"
+        />
+        <Label htmlFor="signup-consent" className="text-sm font-bold text-slate-600 leading-snug">
+          My parent or teacher said I can join
+        </Label>
+      </div>
 
       <Button
         disabled={!canSubmit || loading}

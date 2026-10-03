@@ -1,6 +1,5 @@
-import { useState } from "react";
 import { Lock, Gamepad2, Star, RotateCcw } from "lucide-react";
-import { GAME_LESSONS, type LessonBeat } from "../data/lessonContent";
+import { GAME_LESSONS, REPLAY_REWARD, type LessonBeat } from "../data/lessonContent";
 import { cn } from "./ui/utils";
 
 function AtomIcon({ size = 12 }: { size?: number }) {
@@ -14,20 +13,16 @@ function AtomIcon({ size = 12 }: { size?: number }) {
   );
 }
 
-const REPLAY_XP = 10;
-const REPLAY_ATOMS = 5;
+const REPLAY_XP = REPLAY_REWARD.xp;
+const REPLAY_ATOMS = REPLAY_REWARD.atoms;
 
 export function GamesTab({
   completedBeats,
   onOpenBeat,
-  onReplay,
 }: {
   completedBeats: Record<string, boolean>;
-  onOpenBeat: (lessonId: string, beatId: string) => void;
-  onReplay: (amountXp: number, amountAtoms: number) => void;
+  onOpenBeat: (lessonId: string, beatId: string, opts?: { replay?: boolean }) => void;
 }) {
-  const [justPlayed, setJustPlayed] = useState<string | null>(null);
-
   const games: { lesson: (typeof GAME_LESSONS)[number]; beat: LessonBeat }[] = [];
   GAME_LESSONS.forEach((lesson) => {
     lesson.beats
@@ -79,19 +74,19 @@ export function GamesTab({
                 </span>
                 <button
                   onClick={() => {
+                    // "Play Again" opens the game; the replay top-up is only
+                    // paid (by the server, max 3 a day) when it's finished.
                     if (!completedBeats[beat.id]) {
                       onOpenBeat(lesson.id, beat.id);
                     } else {
-                      onReplay(REPLAY_XP, REPLAY_ATOMS);
-                      setJustPlayed(beat.id);
-                      setTimeout(() => setJustPlayed(null), 1200);
+                      onOpenBeat(lesson.id, beat.id, { replay: true });
                     }
                   }}
                   disabled={!unlocked}
                   className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl bg-primary text-primary-foreground disabled:opacity-40"
                 >
                   <RotateCcw size={13} />
-                  {completedBeats[beat.id] ? (justPlayed === beat.id ? "Nice!" : "Play Again") : "Play"}
+                  {completedBeats[beat.id] ? "Play Again" : "Play"}
                 </button>
               </div>
             </div>

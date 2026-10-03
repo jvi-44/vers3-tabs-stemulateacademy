@@ -18,6 +18,8 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return data as T;
 }
 
+import type { AuthUser } from "../types-auth";
+
 export interface ProgressRow {
   lesson_id: string;
   status: "not_started" | "in_progress" | "completed";
@@ -28,21 +30,36 @@ export function getProgress(): Promise<{ progress: ProgressRow[] }> {
   return request("/progress");
 }
 
+/** XP and atoms the server granted for a request. */
+export interface Reward {
+  xp: number;
+  atoms: number;
+}
+
+export interface ProgressResult {
+  success: true;
+  awarded: Reward;
+  /** The student's totals after the server applied the reward. */
+  user: AuthUser;
+}
+
+/** Saves progress. The server works out (and caps) the XP/atoms itself. */
 export function postProgress(
   lessonId: string,
   status: "in_progress" | "completed",
   score?: number | null,
-): Promise<{ success: true }> {
+): Promise<ProgressResult> {
   return request("/progress", {
     method: "POST",
     body: JSON.stringify({ lessonId, status, score: score ?? null }),
   });
 }
 
-export function postXP(xp: number, level: number, atoms: number): Promise<{ success: true }> {
-  return request("/user/xp", {
+/** Finished a game again from the Games tab (server caps this at 3 per game per day). */
+export function replayGame(lessonId: string): Promise<ProgressResult> {
+  return request("/progress", {
     method: "POST",
-    body: JSON.stringify({ xp, level, atoms }),
+    body: JSON.stringify({ lessonId, replay: true }),
   });
 }
 
@@ -67,4 +84,32 @@ export function openPack(
     method: "POST",
     body: JSON.stringify({ albumKey, packId }),
   });
+}
+
+// ---- Gallery reflections & leaderboard ----
+
+export interface Reflection {
+  id: number;
+  firstName: string;
+  avatar: string | null;
+  caption: string;
+  beatTitle: string;
+  createdAt: string;
+}
+
+export function getReflections(): Promise<{ reflections: Reflection[] }> {
+  return request("/reflections");
+}
+
+export function postReflection(beatId: string, caption: string): Promise<{ reflection: Reflection }> {
+  return request("/reflections", {
+    method: "POST",
+    body: JSON.stringify({ beatId, caption }),
+  });
+}
+
+export function getLeaderboard(): Promise<{
+  entries: { username: string; avatar: string | null; xp: number }[];
+}> {
+  return request("/leaderboard");
 }

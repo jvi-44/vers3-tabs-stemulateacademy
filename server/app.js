@@ -5,9 +5,21 @@ import cookieParser from "cookie-parser";
 import { rateLimit } from "express-rate-limit";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import db from "./db.js";
-import { BEATS_BY_ID, LESSONS, botNameForBeat } from "./lessons.js";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+import db, { ORGANISATIONS, OTHER_ORG_NAME } from "./db.js";
+import {
+  BEATS_BY_ID,
+  LESSONS,
+  REPLAY_REWARD,
+  REPLAYS_PER_DAY,
+  botNameForBeat,
+  levelForXp,
+  pointsFor,
+} from "./lessons.js";
 import { findPack, rollPack } from "./cards.js";
+import { AVATAR_KEYS } from "./avatars.js";
 import {
   COOKIE_SECRET,
   createSession,
@@ -32,6 +44,8 @@ app.use(cookieParser(COOKIE_SECRET));
 
 const PIN_REGEX = /^\d{4}$/;
 const USERNAME_REGEX = /^[A-Za-z0-9_]+$/;
+const NAME_MAX = 80;
+const REFLECTION_MAX = 280;
 
 const LOCKOUT_FAILURES = 5;
 const LOCKOUT_MESSAGE = "Too many tries — ask your teacher or wait 15 minutes";
@@ -116,10 +130,17 @@ function getUserRow(userId) {
 // ---------------------------------------------------------
 // Reference data for the sign-up dropdowns
 // ---------------------------------------------------------
+const ORG_PLACEHOLDERS = ORGANISATIONS.map(() => "?").join(", ");
+
 app.get("/api/reference-data", (req, res) => {
+  // Only the fixed list of centres. "Others" is a separate option on the form,
+  // and anything added by the old public POST /api/organisations is hidden.
   const organisations = db
-    .prepare("SELECT org_id AS id, org_name AS name FROM organisations ORDER BY org_id")
-    .all();
+    .prepare(
+      `SELECT org_id AS id, org_name AS name FROM organisations
+       WHERE org_name IN (${ORG_PLACEHOLDERS}) ORDER BY org_id`,
+    )
+    .all(...ORGANISATIONS);
   const schoolLevels = db
     .prepare("SELECT level_id AS id, level_name AS name FROM school_levels ORDER BY level_id")
     .all();
@@ -131,26 +152,6 @@ app.get("/api/reference-data", (req, res) => {
     .all();
 
   res.json({ organisations, schoolLevels, recoveryColours, recoverySubjects });
-});
-
-// ---------------------------------------------------------
-// Create a custom organisation (used by the "Others (please specify)"
-// option on the sign-up form). Returns the id whether it's newly created
-// or already existed, so this is safe to call more than once.
-// ---------------------------------------------------------
-app.post("/api/organisations", (req, res) => {
-  const { name } = req.body || {};
-  const trimmed = (typeof name === "string" ? name : "").trim();
-  if (!trimmed) {
-    return res.status(400).json({ error: "Please enter your organisation's name." });
-  }
-
-  db.prepare("INSERT OR IGNORE INTO organisations (org_name) VALUES (?)").run(trimmed);
-  const row = db
-    .prepare("SELECT org_id AS id, org_name AS name FROM organisations WHERE org_name = ?")
-    .get(trimmed);
-
-  res.status(201).json({ organisation: row });
 });
 
 // ---------------------------------------------------------
@@ -166,13 +167,23 @@ app.post("/api/signup", async (req, res) => {
       pin,
       recoveryColourId,
       recoverySubjectId,
+      orgOther,
+      consent,
     } = req.body || {};
 
     if (typeof username !== "string" || typeof pin !== "string") {
       return res.status(400).json({ error: "Please complete all fields." });
     }
     if (typeof fullName !== "string" || !fullName.trim()) {
-      return res.status(400).json({ error: "Full name is required." });
+      return res.status(400).json({ error: "First name is required." });
+    }
+    if (fullName.trim().length > NAME_MAX) {
+      return res.status(400).json({ error: `Name must be ${NAME_MAX} characters or fewer.` });
+    }
+    if (consent !== true) {
+      return res.status(400).json({
+        error: "Please ask your parent or teacher, then tick the box to join.",
+      });
     }
     if (!username || !USERNAME_REGEX.test(username)) {
       return res.status(400).json({
@@ -183,8 +194,30 @@ app.post("/api/signup", async (req, res) => {
       return res.status(400).json({ error: "PIN must be exactly 4 digits." });
     }
 
+    // "Others (please specify)": keep the typed name as free text on the user
+    // and point org_id at the fixed "Other" row.
+    let organisationId;
+    let orgOtherText = null;
+    if (typeof orgOther === "string" && orgOther.trim()) {
+      orgOtherText = orgOther.trim();
+      if (orgOtherText.length > NAME_MAX) {
+        return res.status(400).json({
+          error: `Organisation name must be ${NAME_MAX} characters or fewer.`,
+        });
+      }
+      organisationId = db
+        .prepare("SELECT org_id FROM organisations WHERE org_name = ?")
+        .get(OTHER_ORG_NAME)?.org_id;
+    } else {
+      const id = toId(orgId);
+      organisationId =
+        id &&
+        db
+          .prepare(`SELECT org_id FROM organisations WHERE org_id = ? AND org_name IN (${ORG_PLACEHOLDERS})`)
+          .get(id, ...ORGANISATIONS)?.org_id;
+    }
+
     const levelId = toId(schoolLevelId);
-    const organisationId = toId(orgId);
     const colourId = toId(recoveryColourId);
     const subjectId = toId(recoverySubjectId);
     if (!levelId || !organisationId || !colourId || !subjectId) {
@@ -192,7 +225,6 @@ app.post("/api/signup", async (req, res) => {
     }
     const refsExist =
       db.prepare("SELECT 1 FROM school_levels WHERE level_id = ?").get(levelId) &&
-      db.prepare("SELECT 1 FROM organisations WHERE org_id = ?").get(organisationId) &&
       db.prepare("SELECT 1 FROM recovery_colours WHERE colour_id = ?").get(colourId) &&
       db.prepare("SELECT 1 FROM recovery_subjects WHERE subject_id = ?").get(subjectId);
     if (!refsExist) {
@@ -210,10 +242,19 @@ app.post("/api/signup", async (req, res) => {
     const info = db
       .prepare(
         `INSERT INTO users
-          (full_name, username, pin_hash, school_level_id, org_id, recovery_colour_id, recovery_subject_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          (full_name, username, pin_hash, school_level_id, org_id, org_other, recovery_colour_id, recovery_subject_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(fullName.trim(), username, pinHash, levelId, organisationId, colourId, subjectId);
+      .run(
+        fullName.trim(),
+        username,
+        pinHash,
+        levelId,
+        organisationId,
+        orgOtherText,
+        colourId,
+        subjectId,
+      );
 
     const user = getUserRow(info.lastInsertRowid);
     createSession(res, user.user_id);
@@ -342,6 +383,27 @@ app.get("/api/user/me", requireUser, (req, res) => {
 });
 
 // ---------------------------------------------------------
+// Delete my account and everything stored about me
+// ---------------------------------------------------------
+const deleteUserTx = db.transaction((userId) => {
+  const user = getUserRow(userId);
+  if (!user) return;
+  db.prepare("DELETE FROM lesson_progress WHERE user_id = ?").run(userId);
+  db.prepare("DELETE FROM user_cards WHERE user_id = ?").run(userId);
+  db.prepare("DELETE FROM reflections WHERE user_id = ?").run(userId);
+  db.prepare("DELETE FROM beat_replays WHERE user_id = ?").run(userId);
+  db.prepare("DELETE FROM login_attempts WHERE username = ?").run(user.username);
+  db.prepare("DELETE FROM sessions WHERE user_id = ?").run(userId);
+  db.prepare("DELETE FROM users WHERE user_id = ?").run(userId);
+});
+
+app.delete("/api/user/me", requireUser, (req, res) => {
+  deleteUserTx(req.userId);
+  destroySession(req, res);
+  res.json({ success: true });
+});
+
+// ---------------------------------------------------------
 // Lesson progress (always for the signed-in user)
 // ---------------------------------------------------------
 app.get("/api/progress", requireUser, (req, res) => {
@@ -351,52 +413,92 @@ app.get("/api/progress", requireUser, (req, res) => {
   res.json({ progress: rows });
 });
 
-const PROGRESS_STATUSES = new Set(["not_started", "in_progress", "completed"]);
+const PROGRESS_STATUSES = new Set(["in_progress", "completed"]);
 
-app.post("/api/progress", requireUser, (req, res) => {
-  const { lessonId, status, score } = req.body || {};
-  if (
-    typeof lessonId !== "string" ||
-    !lessonId ||
-    lessonId.length > 64 ||
-    !PROGRESS_STATUSES.has(status)
-  ) {
-    return res.status(400).json({ error: "Missing required fields." });
-  }
-  const safeScore =
-    typeof score === "number" && Number.isFinite(score)
-      ? Math.max(0, Math.min(100, Math.round(score)))
-      : null;
+/** Adds XP/atoms to a user and recomputes their level (call inside a transaction). */
+function addRewards(userId, { xp, atoms }) {
+  if (!xp && !atoms) return;
+  const row = db.prepare("SELECT xp, atoms FROM users WHERE user_id = ?").get(userId);
+  const newXp = row.xp + xp;
+  db.prepare(
+    "UPDATE users SET xp = ?, level = ?, atoms = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
+  ).run(newXp, levelForXp(newXp), row.atoms + atoms, userId);
+}
+
+// Records progress; rewards are granted only the first time a beat is completed.
+const saveProgressTx = db.transaction((userId, beat, status, score) => {
+  const existing = db
+    .prepare("SELECT status FROM lesson_progress WHERE user_id = ? AND lesson_id = ?")
+    .get(userId, beat.id);
+  const alreadyDone = existing?.status === "completed";
+  const newStatus = alreadyDone ? "completed" : status;
 
   db.prepare(
     `INSERT INTO lesson_progress (user_id, lesson_id, status, score, last_accessed, completed_at)
      VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CASE WHEN ? = 'completed' THEN CURRENT_TIMESTAMP ELSE NULL END)
      ON CONFLICT(user_id, lesson_id) DO UPDATE SET
        status = excluded.status,
-       score = excluded.score,
+       score = COALESCE(excluded.score, lesson_progress.score),
        last_accessed = CURRENT_TIMESTAMP,
-       completed_at = CASE WHEN excluded.status = 'completed' THEN CURRENT_TIMESTAMP ELSE lesson_progress.completed_at END`,
-  ).run(req.userId, lessonId, status, safeScore, status);
+       completed_at = COALESCE(lesson_progress.completed_at, excluded.completed_at)`,
+  ).run(userId, beat.id, newStatus, score, newStatus);
 
-  res.json({ success: true });
+  if (newStatus !== "completed" || alreadyDone) return { xp: 0, atoms: 0 };
+  const awarded = pointsFor(beat, score);
+  addRewards(userId, awarded);
+  return awarded;
 });
 
-app.post("/api/user/xp", requireUser, (req, res) => {
-  const { xp, level, atoms } = req.body || {};
-  const valid = [xp, level, atoms].every((n) => Number.isInteger(n) && n >= 0);
-  if (!valid) return res.status(400).json({ error: "Invalid values." });
+// Replaying a finished game: small top-up, at most REPLAYS_PER_DAY per game per 24 h.
+const replayTx = db.transaction((userId, beat) => {
+  const done = db
+    .prepare(
+      "SELECT 1 FROM lesson_progress WHERE user_id = ? AND lesson_id = ? AND status = 'completed'",
+    )
+    .get(userId, beat.id);
+  if (!done) return null;
+  const { n } = db
+    .prepare(
+      `SELECT COUNT(*) AS n FROM beat_replays
+       WHERE user_id = ? AND beat_id = ? AND replayed_at > datetime('now','-1 day')`,
+    )
+    .get(userId, beat.id);
+  if (n >= REPLAYS_PER_DAY) return { xp: 0, atoms: 0 };
+  db.prepare("INSERT INTO beat_replays (user_id, beat_id) VALUES (?, ?)").run(userId, beat.id);
+  addRewards(userId, REPLAY_REWARD);
+  return { ...REPLAY_REWARD };
+});
 
-  db.prepare(
-    "UPDATE users SET xp = ?, level = ?, atoms = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
-  ).run(xp, level, atoms, req.userId);
+app.post("/api/progress", requireUser, (req, res) => {
+  const { lessonId, status, score, replay } = req.body || {};
+  const beat = typeof lessonId === "string" ? BEATS_BY_ID.get(lessonId) : undefined;
+  if (!beat) return res.status(400).json({ error: "Unknown lesson." });
 
-  res.json({ success: true });
+  let awarded;
+  if (replay === true) {
+    if (beat.type !== "simulation") {
+      return res.status(400).json({ error: "Only games can be replayed for rewards." });
+    }
+    awarded = replayTx(req.userId, beat);
+    if (!awarded) return res.status(400).json({ error: "Finish this game once before replaying it." });
+  } else {
+    if (!PROGRESS_STATUSES.has(status)) {
+      return res.status(400).json({ error: "Missing required fields." });
+    }
+    const safeScore =
+      typeof score === "number" && Number.isFinite(score)
+        ? Math.max(0, Math.min(100, Math.round(score)))
+        : null;
+    awarded = saveProgressTx(req.userId, beat, status, safeScore);
+  }
+
+  res.json({ success: true, awarded, user: publicUser(getUserRow(req.userId)) });
 });
 
 app.post("/api/user/avatar", requireUser, (req, res) => {
   const { avatar } = req.body || {};
-  if (typeof avatar !== "string" || !avatar || avatar.length > 64) {
-    return res.status(400).json({ error: "Missing avatar." });
+  if (typeof avatar !== "string" || !AVATAR_KEYS.includes(avatar)) {
+    return res.status(400).json({ error: "Please pick one of the avatars." });
   }
 
   db.prepare(
@@ -404,6 +506,63 @@ app.post("/api/user/avatar", requireUser, (req, res) => {
   ).run(avatar, req.userId);
 
   res.json({ success: true });
+});
+
+// ---------------------------------------------------------
+// Exit-card reflections (shown in the Gallery to signed-in students).
+// Only the author's first name and avatar are shared.
+// ---------------------------------------------------------
+app.post("/api/reflections", requireUser, (req, res) => {
+  const { beatId, caption } = req.body || {};
+  const beat = typeof beatId === "string" ? BEATS_BY_ID.get(beatId) : undefined;
+  if (!beat || beat.type !== "exit") return res.status(400).json({ error: "Unknown lesson." });
+  const text = typeof caption === "string" ? caption.trim() : "";
+  if (!text || text.length > REFLECTION_MAX) {
+    return res.status(400).json({
+      error: `Reflections must be between 1 and ${REFLECTION_MAX} characters.`,
+    });
+  }
+  const info = db
+    .prepare("INSERT OR IGNORE INTO reflections (user_id, beat_id, caption) VALUES (?, ?, ?)")
+    .run(req.userId, beat.id, text);
+  if (info.changes === 0) {
+    return res.status(409).json({ error: "You already shared a reflection for this lesson." });
+  }
+  res.status(201).json({ reflection: reflectionById(info.lastInsertRowid) });
+});
+
+const REFLECTION_SELECT = `
+  SELECT r.id, r.beat_id, r.caption, r.created_at, u.full_name, u.avatar
+  FROM reflections r JOIN users u ON u.user_id = r.user_id`;
+
+function toPublicReflection(row) {
+  return {
+    id: row.id,
+    firstName: String(row.full_name).trim().split(/\s+/)[0],
+    avatar: row.avatar,
+    caption: row.caption,
+    beatTitle: BEATS_BY_ID.get(row.beat_id)?.title ?? "",
+    createdAt: row.created_at,
+  };
+}
+
+function reflectionById(id) {
+  return toPublicReflection(db.prepare(`${REFLECTION_SELECT} WHERE r.id = ?`).get(id));
+}
+
+app.get("/api/reflections", requireUser, (req, res) => {
+  const rows = db.prepare(`${REFLECTION_SELECT} ORDER BY r.id DESC LIMIT 50`).all();
+  res.json({ reflections: rows.map(toPublicReflection) });
+});
+
+// ---------------------------------------------------------
+// Leaderboard — top 20 by XP (username, avatar and XP only)
+// ---------------------------------------------------------
+app.get("/api/leaderboard", requireUser, (req, res) => {
+  const entries = db
+    .prepare("SELECT username, avatar, xp FROM users ORDER BY xp DESC LIMIT 20")
+    .all();
+  res.json({ entries });
 });
 
 // ---------------------------------------------------------
@@ -565,6 +724,17 @@ app.post("/api/chat", requireUser, chatLimiter, async (req, res) => {
     res.status(502).json({ error: "Chat is unavailable right now.", reply: null });
   }
 });
+
+// ---------------------------------------------------------
+// Production: serve the built frontend (npm run build -> dist/) from the same
+// origin as the API, with an SPA fallback for client-side routes.
+// ---------------------------------------------------------
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const DIST_DIR = path.join(__dirname, "../dist");
+if (fs.existsSync(path.join(DIST_DIR, "index.html"))) {
+  app.use(express.static(DIST_DIR));
+  app.get(/^(?!\/api).*/, (_req, res) => res.sendFile(path.join(DIST_DIR, "index.html")));
+}
 
 // Unknown API routes get a JSON 404 (not Express's HTML page).
 app.use("/api", (req, res) => {

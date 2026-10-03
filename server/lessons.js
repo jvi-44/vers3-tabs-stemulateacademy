@@ -1,6 +1,8 @@
 // Server-side copy of the lesson "beats" from src/data/lessonContent.ts.
 // The server uses it to look up what a beat is about (for the STEMbot chat)
-// instead of trusting text sent by the browser.
+// and how many XP/atoms it is worth, instead of trusting the browser.
+// A video beat may carry a `videoUrl` (same value as in lessonContent.ts);
+// video beats without one award no XP for "Mark Watched".
 // Keep in sync with src/data/lessonContent.ts — src/__tests__/server-mirror.test.ts
 // fails if the two drift apart.
 
@@ -46,6 +48,33 @@ export const BEATS = [
 ];
 
 export const BEATS_BY_ID = new Map(BEATS.map((b) => [b.id, b]));
+
+/** XP/atoms for finishing a beat the first time. Same table as pointsFor()
+ *  in src/data/lessonContent.ts; quiz XP scales 50–100 with the 0–100 score. */
+export function pointsFor(beat, score = null) {
+  switch (beat.type) {
+    case "intro":
+      return { xp: 0, atoms: 50 };
+    case "video":
+      return { xp: beat.videoUrl ? 200 : 0, atoms: 100 };
+    case "quiz": {
+      const ratio = typeof score === "number" ? Math.max(0, Math.min(100, score)) / 100 : 0;
+      return { xp: Math.round(50 + (100 - 50) * ratio), atoms: 25 };
+    }
+    case "simulation":
+      return { xp: 500, atoms: 300 };
+    case "exit":
+      return { xp: 100, atoms: 50 };
+    default:
+      return { xp: 0, atoms: 0 };
+  }
+}
+
+/** Replaying a finished game (GamesTab "Play Again"), capped per game per day. */
+export const REPLAY_REWARD = { xp: 10, atoms: 5 };
+export const REPLAYS_PER_DAY = 3;
+
+export const levelForXp = (xp) => Math.floor(xp / 1000) + 1;
 
 const BOT_NAMES = { sophia: "Sophia", timothy: "Timothy", emily: "Emily", matthew: "Matthew" };
 

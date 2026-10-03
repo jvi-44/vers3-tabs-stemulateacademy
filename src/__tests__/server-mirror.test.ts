@@ -2,10 +2,13 @@
 // never trusts the browser for rewards or prompts). This test fails if those
 // copies drift from the frontend data files.
 import { describe, expect, it } from "vitest";
-import { GAME_LESSONS } from "../data/lessonContent";
+import { GAME_LESSONS, pointsFor as clientPointsFor, REPLAY_REWARD } from "../data/lessonContent";
+import { AVATAR_KEYS } from "../data/mock";
 import { PHENOMENA_CARDS, FIGURE_CARDS, ALBUM_PACKS } from "../data/cardData";
 // @ts-ignore -- plain JS module shared with the Node server
-import { BEATS, LESSONS } from "../../server/lessons.js";
+import { BEATS, BEATS_BY_ID, LESSONS, pointsFor, REPLAY_REWARD as SERVER_REPLAY } from "../../server/lessons.js";
+// @ts-ignore -- plain JS module shared with the Node server
+import { AVATAR_KEYS as SERVER_AVATAR_KEYS } from "../../server/avatars.js";
 // @ts-ignore -- plain JS module shared with the Node server
 import { CARD_POOLS, ALBUM_PACKS as SERVER_PACKS } from "../../server/cards.js";
 
@@ -24,6 +27,7 @@ describe("server/lessons.js mirrors src/data/lessonContent.ts", () => {
         subject: b.subject,
         title: b.title,
         description: b.description,
+        videoUrl: b.videoUrl ?? null,
       })),
     );
     const server = (BEATS as any[]).map((b) => ({
@@ -33,8 +37,25 @@ describe("server/lessons.js mirrors src/data/lessonContent.ts", () => {
       subject: b.subject,
       title: b.title,
       description: b.description,
+      videoUrl: b.videoUrl ?? null,
     }));
     expect(server).toEqual(client);
+  });
+
+  it("awards the same points the lesson pages show", () => {
+    for (const beat of GAME_LESSONS.flatMap((l) => l.beats)) {
+      const shown = clientPointsFor(beat) as { xp: number; atoms: number; xpMin?: number };
+      const serverBeat = BEATS_BY_ID.get(beat.id);
+      expect(pointsFor(serverBeat, 100), beat.id).toEqual({ xp: shown.xp, atoms: shown.atoms });
+      if (beat.type === "quiz") expect(pointsFor(serverBeat, 0).xp).toBe(shown.xpMin);
+    }
+    expect(SERVER_REPLAY).toEqual(REPLAY_REWARD);
+  });
+});
+
+describe("server/avatars.js mirrors src/data/mock.ts", () => {
+  it("has the same avatar keys", () => {
+    expect(SERVER_AVATAR_KEYS).toEqual(AVATAR_KEYS);
   });
 });
 

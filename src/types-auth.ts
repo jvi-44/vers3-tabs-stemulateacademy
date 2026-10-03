@@ -27,9 +27,14 @@ export interface AuthUser {
 export interface SignupPayload {
   fullName: string;
   schoolLevelId: number;
-  orgId: number;
+  /** One of the listed centres. Omit when using `orgOther`. */
+  orgId?: number;
+  /** Centre name typed for "Others (please specify)" — max 80 characters. */
+  orgOther?: string;
   username: string;
   pin: string;
   recoveryColourId: number;
   recoverySubjectId: number;
+  /** "My parent or teacher said I can join" was ticked. */
+  consent: boolean;
 }

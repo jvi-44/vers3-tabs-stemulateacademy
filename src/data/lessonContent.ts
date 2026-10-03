@@ -25,6 +25,10 @@ export interface LessonBeat {
   topicLabel: string;
   description: string;
   duration?: string;
+  /** Embed URL for a video beat (e.g. https://www.youtube-nocookie.com/embed/<id>).
+   *  Without one the beat shows a placeholder card and awards no XP. Keep in
+   *  sync with server/lessons.js. */
+  videoUrl?: string;
   completed: boolean;
   dialogue?: DialogueLine[];
   quizQuestions?: QuizQuestion[];
@@ -40,10 +44,11 @@ export interface GameLesson {
   beats: LessonBeat[];
 }
 
-function pointsFor(beat: Pick<LessonBeat, "type">) {
+// Display only — the server (server/lessons.js) decides what is actually awarded.
+function pointsFor(beat: Pick<LessonBeat, "type" | "videoUrl">) {
   switch (beat.type) {
     case "intro":      return { xp: 0,   atoms: 50  };
-    case "video":      return { xp: 200, atoms: 100 };
+    case "video":      return { xp: beat.videoUrl ? 200 : 0, atoms: 100 };
     case "quiz":       return { xp: 100, atoms: 25, xpMin: 50 };
     case "simulation": return { xp: 500, atoms: 300 };
     case "exit":       return { xp: 100, atoms: 50  };
@@ -59,6 +64,10 @@ export const POINTS_LEGEND = [
 ];
 
 export { pointsFor };
+
+/** Top-up for finishing a game again from the Games tab. The server pays it
+ *  (server/lessons.js REPLAY_REWARD), at most 3 times per game per day. */
+export const REPLAY_REWARD = { xp: 10, atoms: 5 };
 
 // ── STEM x Minecraft — Lesson 1 ──────────────────────────────────────────────
 const MINECRAFT_INTRO_DIALOGUE: DialogueLine[] = [

@@ -21,15 +21,6 @@ export function fetchReferenceData(): Promise<ReferenceData> {
   return request<ReferenceData>("/reference-data");
 }
 
-export function createOrganisation(
-  name: string,
-): Promise<{ organisation: { id: number; name: string } }> {
-  return request("/organisations", {
-    method: "POST",
-    body: JSON.stringify({ name }),
-  });
-}
-
 export function signup(payload: SignupPayload): Promise<{ user: AuthUser }> {
   return request("/signup", {
     method: "POST",

@@ -24,7 +24,9 @@ db.exec(schema);
 // that way in SQLite, so those files are listed here with the column they
 // add and skipped once PRAGMA table_info shows the column already exists.
 // ---------------------------------------------------------------------------
-const COLUMN_GUARDS = {};
+const COLUMN_GUARDS = {
+  "004_users_org_other.sql": { table: "users", column: "org_other" },
+};
 
 function hasColumn(table, column) {
   return db
@@ -48,7 +50,7 @@ if (fs.existsSync(MIGRATIONS_DIR)) {
 
 // Fixed reference data — matches the dropdown options exactly.
 // Order here determines the ids returned to the frontend.
-const ORGANISATIONS = [
+export const ORGANISATIONS = [
   "Brighton Connection",
   "Caritas Singapore",
   "CDAC",
@@ -57,6 +59,10 @@ const ORGANISATIONS = [
   "Sheng Hong Student Care",
   "VIVA Foundation",
 ];
+
+// Row used for "Others (please specify)". The centre name the student types is
+// stored as free text in users.org_other — sign-up never creates new rows here.
+export const OTHER_ORG_NAME = "Other";
 
 const SCHOOL_LEVELS = [
   "Primary 1",
@@ -97,7 +103,7 @@ function seed(table, idCol, nameCol, values) {
   insertMany(values);
 }
 
-seed("organisations", "org_id", "org_name", ORGANISATIONS);
+seed("organisations", "org_id", "org_name", [...ORGANISATIONS, OTHER_ORG_NAME]);
 seed("school_levels", "level_id", "level_name", SCHOOL_LEVELS);
 seed("recovery_colours", "colour_id", "colour_name", RECOVERY_COLOURS);
 seed("recovery_subjects", "subject_id", "subject_name", RECOVERY_SUBJECTS);
