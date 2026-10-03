@@ -6,6 +6,8 @@ const BASE_URL = "/api";
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
     headers: { "Content-Type": "application/json" },
+    // Send/receive the httpOnly session cookie set by /login and /signup.
+    credentials: "include",
     ...options,
   });
   const data = await res.json().catch(() => ({}));
@@ -35,8 +37,13 @@ export function signup(payload: SignupPayload): Promise<{ user: AuthUser }> {
   });
 }
 
-export function getUser(userId: string | number): Promise<{ user: AuthUser }> {
-  return request(`/user/${userId}`);
+/** The signed-in user, from the session cookie. Rejects (401) when signed out. */
+export function getUser(): Promise<{ user: AuthUser }> {
+  return request("/user/me");
+}
+
+export function logout(): Promise<{ success: true }> {
+  return request("/logout", { method: "POST" });
 }
 
 export function login(username: string, pin: string): Promise<{ user: AuthUser }> {

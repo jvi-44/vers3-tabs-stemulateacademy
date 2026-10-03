@@ -4,7 +4,10 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DB_PATH = path.join(__dirname, "stemulate.db");
+
+// In production, point DB_PATH at a persistent disk/volume — most hosts wipe
+// the app folder on every redeploy, which would delete every account.
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, "stemulate.db");
 
 export const db = new Database(DB_PATH);
 db.pragma("journal_mode = WAL");
@@ -13,6 +16,35 @@ db.pragma("foreign_keys = ON");
 // Apply schema (idempotent — CREATE TABLE IF NOT EXISTS)
 const schema = fs.readFileSync(path.join(__dirname, "schema.sql"), "utf8");
 db.exec(schema);
+
+// ---------------------------------------------------------------------------
+// Migrations — every file in server/migrations/, applied in filename order
+// after schema.sql. They are written to be safe to re-run on every start
+// (CREATE ... IF NOT EXISTS). ALTER TABLE ... ADD COLUMN can't be written
+// that way in SQLite, so those files are listed here with the column they
+// add and skipped once PRAGMA table_info shows the column already exists.
+// ---------------------------------------------------------------------------
+const COLUMN_GUARDS = {};
+
+function hasColumn(table, column) {
+  return db
+    .prepare(`PRAGMA table_info(${table})`)
+    .all()
+    .some((c) => c.name === column);
+}
+
+const MIGRATIONS_DIR = path.join(__dirname, "migrations");
+if (fs.existsSync(MIGRATIONS_DIR)) {
+  const files = fs
+    .readdirSync(MIGRATIONS_DIR)
+    .filter((f) => f.endsWith(".sql"))
+    .sort();
+  for (const file of files) {
+    const guard = COLUMN_GUARDS[file];
+    if (guard && hasColumn(guard.table, guard.column)) continue;
+    db.exec(fs.readFileSync(path.join(MIGRATIONS_DIR, file), "utf8"));
+  }
+}
 
 // Fixed reference data — matches the dropdown options exactly.
 // Order here determines the ids returned to the frontend.

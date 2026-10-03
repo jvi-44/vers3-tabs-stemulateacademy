@@ -46,7 +46,7 @@ import stembotRed from "../assets/stembot_red.png";
 import stembotGreen from "../assets/stembot_green.png";
 import stembotCream from "../assets/stembot_cream.png";
 import type { AuthUser } from "../types-auth";
-import { getUser } from "../api/auth";
+import { getUser, logout as apiLogout } from "../api/auth";
 import { getProgress, postProgress, postXP, postAvatar } from "../api/progress";
 
 function cn(...inputs: ClassValue[]) {
@@ -118,11 +118,10 @@ export default function App() {
       avatar: u.avatar ? avatarToUrl(u.avatar) : prev.avatar,
     }));
     setIsLoggedIn(true);
-    localStorage.setItem("stemulate_user_id", String(u.userId));
 
     // Pull lesson progress from SQLite so completed beats persist across
     // devices / refreshes (see SQL_EXPLAINED.md for how this is stored).
-    getProgress(u.userId)
+    getProgress()
       .then(({ progress }) => {
         const map: Record<string, boolean> = {};
         progress.forEach((p) => {
@@ -138,16 +137,17 @@ export default function App() {
 
   const handleLogin = (u: AuthUser) => applyAuthUser(u);
 
+  // Rehydrate from the httpOnly session cookie. Who is signed in is decided
+  // by the server, never by anything stored in the browser.
   useEffect(() => {
-    const savedId = localStorage.getItem("stemulate_user_id");
-    if (!savedId) return;
-    getUser(savedId)
+    localStorage.removeItem("stemulate_user_id"); // legacy key, no longer used
+    getUser()
       .then(({ user: u }) => applyAuthUser(u))
-      .catch(() => localStorage.removeItem("stemulate_user_id"));
+      .catch(() => {});
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem("stemulate_user_id");
+    apiLogout().catch(() => {});
     setAuthUser(null);
     setIsLoggedIn(false);
     setCurrentPage("home");
@@ -177,7 +177,7 @@ export default function App() {
   const handleUpdateAvatar = (avatar: string) => {
     setUser((prev) => ({ ...prev, avatar }));
     if (authUser) {
-      postAvatar(authUser.userId, urlToAvatarKey(avatar)).catch(() =>
+      postAvatar(urlToAvatarKey(avatar)).catch(() =>
         toast.error("Avatar changed here, but couldn't save it to your account."),
       );
     }
@@ -217,8 +217,8 @@ export default function App() {
 
     if (authUser) {
       const score = beat.type === "quiz" && typeof scoreRatio === "number" ? Math.round(scoreRatio * 100) : null;
-      postProgress(authUser.userId, beat.id, "completed", score).catch(() => {});
-      postXP(authUser.userId, user.xp + xp, newLevel, user.atoms + p.atoms).catch(() => {});
+      postProgress(beat.id, "completed", score).catch(() => {});
+      postXP(user.xp + xp, newLevel, user.atoms + p.atoms).catch(() => {});
     }
   };
 

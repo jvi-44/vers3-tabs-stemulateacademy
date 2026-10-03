@@ -7,6 +7,8 @@ const BASE_URL = "/api";
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
     headers: { "Content-Type": "application/json" },
+    // The server identifies the user from the httpOnly session cookie.
+    credentials: "include",
     ...options,
   });
   const data = await res.json().catch(() => ({}));
@@ -22,40 +24,31 @@ export interface ProgressRow {
   score: number | null;
 }
 
-export function getProgress(userId: number | string): Promise<{ progress: ProgressRow[] }> {
-  return request(`/progress/${userId}`);
+export function getProgress(): Promise<{ progress: ProgressRow[] }> {
+  return request("/progress");
 }
 
 export function postProgress(
-  userId: number | string,
   lessonId: string,
   status: "in_progress" | "completed",
   score?: number | null,
 ): Promise<{ success: true }> {
   return request("/progress", {
     method: "POST",
-    body: JSON.stringify({ userId, lessonId, status, score: score ?? null }),
+    body: JSON.stringify({ lessonId, status, score: score ?? null }),
   });
 }
 
-export function postXP(
-  userId: number | string,
-  xp: number,
-  level: number,
-  atoms: number,
-): Promise<{ success: true }> {
+export function postXP(xp: number, level: number, atoms: number): Promise<{ success: true }> {
   return request("/user/xp", {
     method: "POST",
-    body: JSON.stringify({ userId, xp, level, atoms }),
+    body: JSON.stringify({ xp, level, atoms }),
   });
 }
 
-export function postAvatar(
-  userId: number | string,
-  avatar: string,
-): Promise<{ success: true }> {
+export function postAvatar(avatar: string): Promise<{ success: true }> {
   return request("/user/avatar", {
     method: "POST",
-    body: JSON.stringify({ userId, avatar }),
+    body: JSON.stringify({ avatar }),
   });
 }
