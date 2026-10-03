@@ -371,6 +371,7 @@ function SignUpForm({
       <Field label="Username" id="signup-username">
         <Input
           id="signup-username"
+          maxLength={32}
           value={username}
           onChange={(e) =>
             USERNAME_PATTERN.test(e.target.value) && setUsername(e.target.value)

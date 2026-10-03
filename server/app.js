@@ -44,6 +44,7 @@ app.use(cookieParser(COOKIE_SECRET));
 
 const PIN_REGEX = /^\d{4}$/;
 const USERNAME_REGEX = /^[A-Za-z0-9_]+$/;
+const USERNAME_MAX = 32;
 const NAME_MAX = 80;
 const REFLECTION_MAX = 280;
 
@@ -101,6 +102,12 @@ function isLockedOut(username) {
     )
     .get(username);
   return n >= LOCKOUT_FAILURES;
+}
+
+/** A username that could belong to an account. Others are rejected without
+ *  being written to login_attempts, so junk can't bloat the table. */
+function plausibleUsername(username) {
+  return username.length <= 64 && USERNAME_REGEX.test(username);
 }
 
 /** Positive integer from a number or numeric string, else null. */
@@ -190,6 +197,9 @@ app.post("/api/signup", async (req, res) => {
         error: "Username can only contain letters, numbers, and underscores.",
       });
     }
+    if (username.length > USERNAME_MAX) {
+      return res.status(400).json({ error: `Username must be ${USERNAME_MAX} characters or fewer.` });
+    }
     if (!PIN_REGEX.test(pin)) {
       return res.status(400).json({ error: "PIN must be exactly 4 digits." });
     }
@@ -275,8 +285,11 @@ app.post("/api/login", async (req, res) => {
       return res.status(400).json({ error: "Enter your username and PIN." });
     }
     if (!username || !pin) {
-      if (username) logAttempt(username, false);
+      if (username && plausibleUsername(username)) logAttempt(username, false);
       return res.status(400).json({ error: "Enter your username and PIN." });
+    }
+    if (!plausibleUsername(username)) {
+      return res.status(401).json({ error: "Incorrect username or PIN." });
     }
 
     if (isLockedOut(username)) {
@@ -319,6 +332,9 @@ app.post("/api/recover/verify", (req, res) => {
   const subjectId = toId(recoverySubjectId);
   if (!username || !colourId || !subjectId) {
     return res.status(400).json({ error: "Please complete all fields." });
+  }
+  if (!plausibleUsername(username)) {
+    return res.status(401).json({ error: "Those answers don't match our records." });
   }
 
   if (isLockedOut(username)) {

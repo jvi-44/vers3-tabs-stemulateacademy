@@ -43,6 +43,16 @@ test("non-string username/pin returns 400 and the server stays up (follow-up req
     assert.doesNotMatch(res.text, /at .*\.js/);
   });
 
+  await t.test("junk usernames are not written to login_attempts", async () => {
+    const before = srv.db.prepare("SELECT COUNT(*) AS n FROM login_attempts").get().n;
+    const res = await c.post("/api/login", { username: "x".repeat(5000), pin: "1234" });
+    assert.equal(res.status, 401);
+    const res2 = await c.post("/api/login", { username: "<script>", pin: "1234" });
+    assert.equal(res2.status, 401);
+    assert.equal(srv.db.prepare("SELECT COUNT(*) AS n FROM login_attempts").get().n, before);
+    assert.equal((await signUp(srv.client(), { username: "u".repeat(33) })).status, 400);
+  });
+
   await t.test("a real sign-in still works afterwards", async () => {
     const res = await c.post("/api/login", { username: body.username, pin: "2468" });
     assert.equal(res.status, 200);
