@@ -95,3 +95,16 @@ Singapore PDPA rules for children's data, and how account deletion works.
 npm run build
 npm start      # serves the built site and the API together on one port
 ```
+
+## Comic voices
+
+Every speech bubble in the lesson intro comics is pre-recorded in its
+STEMbot's voice (`public/comic-audio/`), using the same Kokoro voices as the
+lesson videos. After editing a line in `src/data/comicStrips.ts`, re-record:
+
+```bash
+npm run comic:lines --silent | python3 scripts/comic-voices/generate.py --models ~/kokoro
+```
+
+Setup steps are at the top of `scripts/comic-voices/generate.py`. Until a line
+is re-recorded, the comic reads it with the browser's built-in voice.
