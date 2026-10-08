@@ -1,6 +1,6 @@
 // Every lesson game, keyed by its lesson beat id.
 
-import { WaterCycleLab } from "./WaterCycleLab";
+import { TerrariumBuilder } from "./TerrariumBuilder";
 import { RoomDesigner } from "./RoomDesigner";
 import { SgMonopoly } from "./SgMonopoly";
 import { RocketLaunch } from "./RocketLaunch";
@@ -11,20 +11,20 @@ export const GAMES: GameDef[] = [
   {
     id: "mm-sci-sim",
     lessonTitle: "Minecraft Masterminds",
-    title: "Water Cycle Biome Lab",
-    tagline: "Control the weather, build biomes, save the forest.",
+    title: "Minecraft Terrarium Builder",
+    tagline: "Build a mini ecosystem in a jar and watch the water cycle.",
     bot: "sophia",
-    intro: "Welcome to my lab! You control the temperature, rain and sunshine over this island. Watch the water cycle change the whole biome!",
+    intro: "I love terrariums! Let's build three tiny worlds in jars: a forest, a desert and a swamp. Then we'll seal them and watch the water cycle keep them alive!",
     howTo: [
-      "Drag the sliders to change temperature, rainfall and sunlight.",
-      "Clear 6 missions: make biomes, survive wild weather and balance the lake.",
-      "Answer the bonus water-cycle questions fast for extra points.",
-      "Finish quickly for a higher score out of 100!",
+      "Fill each jar from the bottom up: rocks, then perlite, then the right soil.",
+      "Pick the 3 things that belong in that biome.",
+      "Put the lid on, then name each stage of the water cycle as it happens.",
+      "Right first time = more points. Build all 3 jars for a top score!",
     ],
     music: "minecraft",
     gradient: "bg-gradient-to-br from-emerald-500 via-lime-500 to-sky-500",
-    icon: "🌦️",
-    Component: WaterCycleLab,
+    icon: "🫙",
+    Component: TerrariumBuilder,
   },
   {
     id: "mm-math-sim",
@@ -68,14 +68,14 @@ export const GAMES: GameDef[] = [
     id: "sb-sci-sim",
     lessonTitle: "Space Busters",
     title: "Launching a Spaceship",
-    tagline: "Balance thrust, weight and fuel to reach orbit.",
+    tagline: "Build a rocket, beat gravity, and dodge asteroids to reach Mars.",
     bot: "emily",
-    intro: "Our ship needs to reach orbit! Pick the right fuel and cargo, then control the thrust to balance the forces and stop in the orbit zone.",
+    intro: "Our crew needs to get to space! Build a rocket strong enough to beat gravity, with enough fuel to get there. Then fly it past the asteroids!",
     howTo: [
-      "Choose fuel and cargo before launch. More mass needs more force!",
-      "Hold THRUST (or Space) to push up against gravity. Let go and gravity slows you down.",
-      "Stop inside the green orbit zone and hold steady there for 2 seconds, without running out of fuel.",
-      "Each planet has different gravity. Land all missions for top marks.",
+      "Add ENGINES until the green thrust bar is bigger than the red weight bar.",
+      "Add FUEL TANKS until there's enough fuel to reach the planet.",
+      "Press LAUNCH, then tap LEFT and RIGHT to dodge asteroids and grab ⭐ stars.",
+      "Answer the space question at the end. Three missions: Earth orbit, the Moon and Mars!",
     ],
     music: "space",
     gradient: "bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-500",

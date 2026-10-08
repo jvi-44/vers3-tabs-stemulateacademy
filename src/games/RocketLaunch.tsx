@@ -1,1200 +1,879 @@
-// Launching a Spaceship — Space Busters science game ("Operation Solar Escape").
-// Pick fuel and cargo, then hold THRUST to climb and balance the forces so the
-// ship stays steady inside the orbit zone. Big live force arrows (thrust,
-// weight, air resistance) and an energy panel (chemical → kinetic + height)
-// show the physics. Five missions: Earth, Moon, Mars, heavy cargo, windy day.
+// Launching a Spaceship — Space Busters science game.
+// Three missions (Earth orbit, the Moon, Mars). For each one the player:
+//   1. builds a rocket: enough ENGINES so thrust beats weight, enough FUEL to get there,
+//   2. launches it (too heavy = it can't lift off, too little fuel = it falls back),
+//   3. flies through space: switch lanes to dodge asteroids and grab energy stars,
+//   4. answers one question about forces or energy.
+// Two simple rules, shown as big arrows and a checklist the whole time.
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Fuel, Package, Timer, Wind } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { ArrowDown, ArrowUp, Check, ChevronLeft, ChevronRight, Minus, Plus, Rocket, Timer, X } from "lucide-react";
 import { cn } from "../components/ui/utils";
 import { STEMBOTS } from "../data/mock";
 import { sfx } from "./kit/audio";
 import { seededRandom } from "./kit/scores";
+import { BLOCKS, Voxel, VoxelWorld, type BlockColors } from "./kit/Voxel";
 import type { GameProps } from "./kit/types";
 
-// ── Missions ─────────────────────────────────────────────
-interface MissionDef {
+const ROUND_SECONDS = 300;
+const START_DELAY = 2600;
+
+// ── Rocket maths (kept to small whole numbers) ────────
+const THRUST_PER_ENGINE = 4;
+const CAPSULE_WEIGHT = 2;
+const ENGINE_WEIGHT = 1;
+const TANK_WEIGHT = 2;
+const MAX_ENGINES = 5;
+const MAX_TANKS = 5;
+
+const thrustOf = (e: number) => e * THRUST_PER_ENGINE;
+const weightOf = (e: number, t: number) => CAPSULE_WEIGHT + e * ENGINE_WEIGHT + t * TANK_WEIGHT;
+/** Fewest engines that lift `t` tanks. */
+const minEngines = (t: number) => {
+  for (let e = 1; e <= MAX_ENGINES; e++) if (thrustOf(e) > weightOf(e, t)) return e;
+  return MAX_ENGINES;
+};
+
+interface Mission {
   name: string;
-  place: string;
+  short: string;
   emoji: string;
-  /** Gravitational pull, N per kg. */
-  g: number;
-  /** Max engine thrust (game units; ×100 = newtons). */
-  thrust: number;
-  /** Fuel burnt per second at full throttle. */
-  burn: number;
-  /** Air resistance strength. */
-  drag: number;
-  gusts: boolean;
-  zone: [number, number];
-  minCargo: number;
-  idealT: number;
-  air: string;
-  tip: string;
-  sky: [string, string];
-  ground: [string, string];
+  tanks: number;
+  planet: BlockColors;
+  space: string;
 }
 
-const MISSIONS: MissionDef[] = [
+const MISSIONS: Mission[] = [
+  { name: "Orbit the Earth", short: "Earth orbit", emoji: "🌍", tanks: 2, planet: { top: "#3b82f6", side: "#22c55e", side2: "#1d4ed8" }, space: "linear-gradient(#0b1033, #1e1b4b 60%, #312e81)" },
+  { name: "Fly to the Moon", short: "the Moon", emoji: "🌕", tanks: 3, planet: { top: "#e5e7eb", side: "#cbd5e1", side2: "#94a3b8" }, space: "linear-gradient(#020617, #0f172a 60%, #1e293b)" },
+  { name: "Fly to Mars", short: "Mars", emoji: "🔴", tanks: 4, planet: { top: "#f97316", side: "#ea580c", side2: "#c2410c" }, space: "linear-gradient(#1c0a1e, #3b0d2e 60%, #6b1d2a)" },
+];
+
+interface Question {
+  q: string;
+  options: string[];
+  answer: number;
+  explain: string;
+}
+
+const QUESTIONS: Question[] = [
   {
-    name: "Escape to Earth Orbit",
-    place: "Earth",
-    emoji: "🌍",
-    g: 10,
-    thrust: 70,
-    burn: 9,
-    drag: 0.012,
-    gusts: false,
-    zone: [56, 72],
-    minCargo: 1,
-    idealT: 8,
-    air: "Normal air",
-    tip: "Earth pulls with 10 N for every kg. Push hard to lift off, then ease off so thrust equals weight!",
-    sky: ["#7dd3fc", "#1e1b4b"],
-    ground: ["#4ade80", "#15803d"],
+    q: "What force pulls the rocket back down to the ground?",
+    options: ["Gravity", "Thrust", "Magnetism"],
+    answer: 0,
+    explain: "Gravity pulls everything down. That pull is the rocket's weight.",
   },
   {
-    name: "Moon Hop",
-    place: "Moon",
-    emoji: "🌕",
-    g: 1.6,
-    thrust: 12,
-    burn: 5.2,
-    drag: 0,
-    gusts: false,
-    zone: [44, 60],
-    minCargo: 1,
-    idealT: 12,
-    air: "No air at all",
-    tip: "The Moon's gravity is weak, so you slow down very gently. Tap softly or you will float away!",
-    sky: ["#1e293b", "#020617"],
-    ground: ["#cbd5e1", "#64748b"],
+    q: "A rocket's thrust is the SAME as its weight. What happens?",
+    options: ["It zooms up fast", "It just hovers, it can't climb", "It falls through the floor"],
+    answer: 1,
+    explain: "Balanced forces: the push up equals the pull down, so it can't climb. Thrust must be BIGGER.",
   },
   {
-    name: "Mars Dash",
-    place: "Mars",
-    emoji: "🔴",
-    g: 3.8,
-    thrust: 27,
-    burn: 7.8,
-    drag: 0.004,
-    gusts: false,
-    zone: [52, 68],
-    minCargo: 2,
-    idealT: 10,
-    air: "Thin air",
-    tip: "Mars pulls about 4 N per kg. We need 2 supply crates for the crew!",
-    sky: ["#fdba74", "#431407"],
-    ground: ["#f97316", "#9a3412"],
-  },
-  {
-    name: "Heavy Cargo Run",
-    place: "Earth",
-    emoji: "📦",
-    g: 10,
-    thrust: 80,
-    burn: 10.4,
-    drag: 0.012,
-    gusts: false,
-    zone: [50, 66],
-    minCargo: 3,
-    idealT: 8,
-    air: "Normal air",
-    tip: "Three crates means more mass, so more weight! You'll need more thrust to stay balanced.",
-    sky: ["#93c5fd", "#1e1b4b"],
-    ground: ["#4ade80", "#15803d"],
-  },
-  {
-    name: "Windy Launch Day",
-    place: "Earth",
-    emoji: "🌬️",
-    g: 10,
-    thrust: 75,
-    burn: 9,
-    drag: 0.03,
-    gusts: true,
-    zone: [56, 72],
-    minCargo: 1,
-    idealT: 8,
-    air: "Thick air + gusts",
-    tip: "Strong air resistance and gusty wind today! Watch the grey arrow and keep correcting.",
-    sky: ["#a5b4fc", "#1e1b4b"],
-    ground: ["#4ade80", "#15803d"],
+    q: "The rocket burns its fuel to move. The fuel's chemical energy turns into...",
+    options: ["Kinetic (movement) energy", "Elastic energy", "Magnetic energy"],
+    answer: 0,
+    explain: "Chemical energy in the fuel changes into kinetic energy (movement), plus heat and sound.",
   },
 ];
 
-const QUESTIONS = [
-  { q: "When the ship hovers steadily, thrust and weight are…", options: ["Balanced", "Unbalanced", "Both zero"], a: 0 },
-  { q: "Which force pulls the rocket back down?", options: ["Gravity", "Thrust", "Magnetic force"], a: 0 },
-  { q: "The energy stored in rocket fuel is…", options: ["Chemical potential energy", "Kinetic energy", "Sound energy"], a: 0 },
-  { q: "As the rocket climbs higher, it gains more…", options: ["Gravitational potential energy", "Chemical potential energy", "Mass"], a: 0 },
-  { q: "Air resistance always acts…", options: ["Opposite to the motion", "In the same direction as the motion", "Upwards"], a: 0 },
-  { q: "Why does the rocket weigh less on the Moon?", options: ["The Moon's gravity is weaker", "Its mass is smaller there", "The Moon has no light"], a: 0 },
-  { q: "If thrust is bigger than weight, the rocket will…", options: ["Speed up upwards", "Stay still", "Fall down"], a: 0 },
-  { q: "Loading more cargo makes the rocket's weight…", options: ["Increase", "Decrease", "Stay the same"], a: 0 },
-  { q: "A rocket moving fast has a lot of…", options: ["Kinetic energy", "Chemical energy", "No energy"], a: 0 },
-  { q: "Burning fuel changes chemical energy into…", options: ["Kinetic energy, heat and sound", "Only light energy", "More fuel"], a: 0 },
+type Step = "build" | "launch" | "fly" | "quiz" | "done";
+type LaunchResult = "ok" | "heavy" | "hover" | "fuel";
+
+const STEP_LABELS: { key: Step; label: string }[] = [
+  { key: "build", label: "Build" },
+  { key: "launch", label: "Launch" },
+  { key: "fly", label: "Fly" },
+  { key: "quiz", label: "Quiz" },
 ];
 
-const MISSION_MAX = 16;
-const QUESTION_POINTS = 10;
-const QUIZ_AFTER = new Set([1, 3]);
-const DRY_MASS = 2;
-const FUEL_MASS = 0.02;
-const CRATE_MASS = 0.5;
-const THR_UP = 1.2;
-const THR_DOWN = 0.8;
-const HOLD_NEEDED = 2;
-const TIME_LIMIT = 40;
-const FUEL_STEPS = [30, 40, 50, 60, 70, 80, 90, 100];
-const GROUND = 50; // px of ground at the bottom of the flight view
-const ROCKET_H = 112; // px (nose to nozzle)
+// ── Flight (lane runner) ──────────────────────────────
+const LANES = 3;
+const TRACK = 10; // rows from far (0) to near
+const ROCKET_ROW = TRACK - 2.6;
+const FLY_SECONDS = 13;
 
-type Phase = "prep" | "flight" | "result" | "quiz" | "done";
-type Outcome = "orbit" | "crash" | "lost" | "timeout";
-
-interface Sim {
-  h: number;
-  v: number;
-  fuel: number;
-  thr: number;
-  t: number;
-  hold: number;
-  maxH: number;
-  launched: boolean;
-  inZone: boolean;
-  lowFuelWarned: boolean;
-  gust: number;
+interface Thing {
+  id: number;
+  lane: number;
+  y: number;
+  kind: "rock" | "star";
+  gone?: boolean;
 }
 
-interface Result {
-  outcome: Outcome;
-  pts: number;
-  why: string;
-  lines: { label: string; value: string }[];
-  time: number;
-  fuelLoaded: number;
+function shuffle<T>(arr: T[], rnd: () => number) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rnd() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
 }
-
-const clamp = (x: number, a = 0, b = 1) => Math.max(a, Math.min(b, x));
-
-function mixHex(a: string, b: string, t: number) {
-  const pa = a.match(/\w\w/g)!.map((h) => parseInt(h, 16));
-  const pb = b.match(/\w\w/g)!.map((h) => parseInt(h, 16));
-  return "#" + pa.slice(0, 3).map((v, i) => Math.round(v + (pb[i] - v) * t).toString(16).padStart(2, "0")).join("");
-}
-
-/** Vertical screen position (CSS bottom) for an altitude 0–100, measured to the rocket's centre. */
-const SPAN = `(100% - ${GROUND + ROCKET_H / 2 + 26}px)`;
-const altY = (h: number) => `calc(${GROUND + ROCKET_H / 2}px + ${clamp(h / 100, -0.2, 1.1)} * ${SPAN})`;
 
 export function RocketLaunch({ seed, reportProgress, finish }: GameProps) {
-  const rnd = useMemo(() => seededRandom(seed), [seed]);
+  const quiz = useMemo(() => {
+    const rnd = seededRandom(seed);
+    return QUESTIONS.map((q) => {
+      const order = shuffle([0, 1, 2], rnd);
+      return { ...q, options: order.map((k) => q.options[k]), answer: order.indexOf(q.answer) };
+    });
+  }, [seed]);
 
-  // Seeded variations so every live player gets the same missions.
-  const missions = useMemo(
-    () =>
-      MISSIONS.map((m) => {
-        const shift = Math.round((rnd() - 0.5) * 12);
-        const gp = [rnd() * 6, rnd() * 6, 0.9 + rnd() * 0.6, 0.4 + rnd() * 0.4];
-        return { ...m, zone: [m.zone[0] + shift, m.zone[1] + shift] as [number, number], gp };
-      }),
-    [rnd],
-  );
-  const questions = useMemo(
-    () =>
-      [...QUESTIONS]
-        .sort(() => rnd() - 0.5)
-        .slice(0, 2)
-        .map((q) => {
-          const order = [0, 1, 2].sort(() => rnd() - 0.5);
-          return { q: q.q, options: order.map((i) => q.options[i]), a: order.indexOf(q.a) };
-        }),
-    [rnd],
-  );
+  const [started, setStarted] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const [mi, setMi] = useState(0);
+  const [step, setStep] = useState<Step>("build");
+  const [engines, setEngines] = useState(1);
+  const [tanks, setTanks] = useState(1);
+  const [attempts, setAttempts] = useState(0);
+  const [result, setResult] = useState<LaunchResult | null>(null);
+  const [lift, setLift] = useState(0); // rocket height above the pad during launch, in blocks
+  const [pts, setPts] = useState(0);
+  const [firstTryLaunches, setFirstTryLaunches] = useState(0);
+  const [starsTotal, setStarsTotal] = useState(0);
+  const [hitsTotal, setHitsTotal] = useState(0);
+  const [rightAnswers, setRightAnswers] = useState(0);
+  const [answer, setAnswer] = useState<number | null>(null);
+  const [flash, setFlash] = useState<{ text: string; good: boolean; id: number } | null>(null);
+  const [shakeId, setShakeId] = useState(0);
 
-  const [missionIdx, setMissionIdx] = useState(0);
-  const [phase, setPhase] = useState<Phase>("prep");
-  const [fuelPick, setFuelPick] = useState(60);
-  const [cargoPick, setCargoPick] = useState(MISSIONS[0].minCargo);
-  const [ready, setReady] = useState(false);
-  const [results, setResults] = useState<Result[]>([]);
-  const [qPts, setQPts] = useState(0);
-  const [qCorrect, setQCorrect] = useState(0);
-  const [quizN, setQuizN] = useState(0);
-  const [quiz, setQuiz] = useState<{ idx: number; left: number; picked: number | null } | null>(null);
-  const [frame, setFrame] = useState<Sim | null>(null);
-  const [holding, setHolding] = useState(false);
-  const [pressedOnce, setPressedOnce] = useState(false);
+  const mission = MISSIONS[Math.min(mi, MISSIONS.length - 1)];
+  const allDone = mi >= MISSIONS.length;
+  const timeUp = elapsed >= ROUND_SECONDS;
+  const over = allDone || timeUp;
+  const score = Math.min(100, Math.round(pts));
+  const canPlay = started && !over;
 
-  const mission = missions[Math.min(missionIdx, missions.length - 1)];
-  const simRef = useRef<Sim | null>(null);
-  const holdRef = useRef(false);
-  holdRef.current = holding;
+  const thrust = thrustOf(engines);
+  const weight = weightOf(engines, tanks);
+  const liftsOff = thrust > weight;
+  const enoughFuel = tanks >= mission.tanks;
 
-  // Wait for the shell's 3-2-1 countdown before launches are allowed.
   useEffect(() => {
-    const t = setTimeout(() => setReady(true), 2600);
+    const t = setTimeout(() => setStarted(true), START_DELAY);
     return () => clearTimeout(t);
   }, []);
 
-  const missionPts = results.reduce((s, r) => s + r.pts, 0);
-  const score = Math.min(100, Math.round(missionPts + qPts));
-  const orbits = results.filter((r) => r.outcome === "orbit").length;
-  const progress = Math.min(1, results.length / missions.length);
+  useEffect(() => {
+    if (!started || over) return;
+    const id = setInterval(() => setElapsed((e) => e + 0.1), 100);
+    return () => clearInterval(id);
+  }, [started, over]);
 
+  const stepFrac = { build: 0.05, launch: 0.2, fly: 0.35, quiz: 0.85, done: 1 }[step];
+  const progress = Math.min(1, (mi + stepFrac) / MISSIONS.length);
   useEffect(() => {
     reportProgress(score, progress);
   }, [score, progress, reportProgress]);
 
   const finishedRef = useRef(false);
   useEffect(() => {
-    if (phase !== "done" || finishedRef.current) return;
+    if (!over || finishedRef.current) return;
     finishedRef.current = true;
-    const flightTime = results.reduce((s, r) => s + r.time, 0);
+    if (timeUp && !allDone) sfx.alarm();
     const t = setTimeout(
       () =>
         finish(score, [
-          { label: "Orbits reached", value: `${orbits}/${missions.length}` },
-          { label: "Bonus questions", value: `${qCorrect}/${questions.length}` },
-          { label: "Avg fuel loaded", value: `${Math.round(results.reduce((s, r) => s + r.fuelLoaded, 0) / Math.max(1, results.length))} units` },
-          { label: "Flight time", value: `${Math.round(flightTime)}s` },
+          { label: "Missions done", value: `${Math.min(mi, 3)}/3` },
+          { label: "First-try launches", value: `${firstTryLaunches}/3` },
+          { label: "Energy stars", value: `${starsTotal} (${hitsTotal} bumps)` },
+          { label: "Quiz answers", value: `${rightAnswers}/3` },
         ]),
-      700,
+      900,
     );
     return () => clearTimeout(t);
-  }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [over]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const mass = DRY_MASS + fuelPick * FUEL_MASS + cargoPick * CRATE_MASS;
+  const showFlash = (text: string, good: boolean) => {
+    const id = Date.now() + Math.random();
+    setFlash({ text, good, id });
+    setTimeout(() => setFlash((f) => (f?.id === id ? null : f)), 1500);
+  };
 
-  // ── Launch ─────────────────────────────────────────────
+  // ── Build ─────────────────────────
+  const change = (which: "e" | "t", d: number) => {
+    if (!canPlay || step !== "build") return;
+    if (which === "e") setEngines((v) => Math.max(1, Math.min(MAX_ENGINES, v + d)));
+    else setTanks((v) => Math.max(1, Math.min(MAX_TANKS, v + d)));
+    sfx.place();
+  };
+
+  // ── Launch ────────────────────────
+  const raf = useRef(0);
+  useEffect(() => () => cancelAnimationFrame(raf.current), []);
+
   const launch = () => {
-    if (!ready || phase !== "prep") return;
-    const s: Sim = { h: 0, v: 0, fuel: fuelPick, thr: 0, t: 0, hold: 0, maxH: 0, launched: false, inZone: false, lowFuelWarned: false, gust: 0 };
-    simRef.current = s;
-    setFrame({ ...s });
-    setPressedOnce(false);
-    setPhase("flight");
-    sfx.go();
-  };
-
-  const endFlight = (outcome: Outcome, s: Sim) => {
-    const m = mission;
-    let pts = 0;
-    let why = "";
-    const lines: { label: string; value: string }[] = [];
-    if (outcome === "orbit") {
-      const eff = clamp((90 - fuelPick) / 50);
-      const speed = clamp(1 - (s.t - m.idealT * 1.3) / 15);
-      const extra = Math.min(2, cargoPick - m.minCargo);
-      pts = 8 + 3 * eff + 3 * speed + extra;
-      why = "Thrust matched weight, so the forces were balanced and the ship stayed steady. Orbit!";
-      lines.push({ label: "Orbit reached", value: "+8" });
-      lines.push({ label: `Light fuel load (${fuelPick})`, value: `+${(3 * eff).toFixed(1)}` });
-      lines.push({ label: `Speed (${s.t.toFixed(1)}s)`, value: `+${(3 * speed).toFixed(1)}` });
-      if (extra > 0) lines.push({ label: "Extra supply crates", value: `+${extra}` });
-      sfx.correct();
-      setTimeout(() => sfx.levelUp(), 350);
-    } else {
-      pts = 3 * clamp(s.maxH / m.zone[0]);
-      if (outcome === "crash") {
-        why =
-          s.fuel <= 0
-            ? "Out of fuel! With no thrust, only weight pulled on the ship, so it fell back down. Try more fuel or gentler flying."
-            : "Weight was bigger than thrust for too long, so the ship sped up downwards. Hold THRUST sooner to slow the fall!";
-        sfx.explode();
-      } else if (outcome === "lost") {
-        why = "Thrust stayed bigger than weight, so the unbalanced force kept speeding you up. Let go earlier to let gravity slow you!";
-        sfx.wrong();
-      } else {
-        why = s.fuel <= 0 ? "The fuel tank ran dry before reaching orbit." : "Time's up! Climb to the green zone and hold steady there.";
-        sfx.wrong();
-      }
-      lines.push({ label: `Best height ${Math.round(s.maxH)} km`, value: `+${pts.toFixed(1)}` });
-    }
-    pts = Math.min(MISSION_MAX, pts);
-    setResults((r) => [...r, { outcome, pts, why, lines, time: s.t, fuelLoaded: fuelPick }]);
-    setHolding(false);
-    setPhase("result");
-  };
-  const endRef = useRef(endFlight);
-  endRef.current = endFlight;
-
-  // ── Physics loop ───────────────────────────────────────
-  useEffect(() => {
-    if (phase !== "flight") return;
-    let raf = 0;
-    let last = performance.now();
-    let acc = 0;
-    const m = mission;
-    const step = (now: number) => {
-      const s = simRef.current;
-      if (!s) return;
-      const dt = Math.min(1 / 30, (now - last) / 1000);
-      last = now;
-      const massNow = DRY_MASS + s.fuel * FUEL_MASS + cargoPick * CRATE_MASS;
-      s.thr = clamp(s.thr + (holdRef.current && s.fuel > 0 ? THR_UP : -THR_DOWN) * dt);
-      const T = s.fuel > 0 ? s.thr * m.thrust : 0;
-      const W = massNow * m.g;
-      const D = m.drag * s.v * Math.abs(s.v);
-      const [p1, p2, w1, w2] = m.gp;
-      s.gust = m.gusts ? 9 * (0.6 * Math.sin(s.t * w1 + p1) + 0.4 * Math.sin(s.t * w2 * 3 + p2)) : 0;
-      const onPad = s.h <= 0 && T + s.gust <= W;
-      const a = onPad ? 0 : (T - W - D + s.gust) / massNow;
-      s.v += a * dt;
-      s.h += s.v * dt;
-      s.fuel = Math.max(0, s.fuel - s.thr * m.burn * dt);
-      if (s.fuel <= 0) s.thr = 0;
-      s.t += dt;
-      s.maxH = Math.max(s.maxH, s.h);
-      if (!s.launched && s.h > 0.5) {
-        s.launched = true;
-        sfx.launch();
-      }
-      if (!s.lowFuelWarned && s.fuel < fuelPick * 0.2) {
-        s.lowFuelWarned = true;
-        sfx.alarm();
-      }
-      if (s.h <= 0) {
-        if (s.launched && s.v < -8) {
-          s.h = 0;
-          setFrame({ ...s });
-          endRef.current("crash", s);
-          return;
-        }
-        s.h = 0;
-        s.v = Math.max(0, s.v);
-        if (s.fuel <= 0) {
-          setFrame({ ...s });
-          endRef.current(s.launched ? "crash" : "timeout", s);
-          return;
-        }
-      }
-      if (s.h > 100) {
-        setFrame({ ...s });
-        endRef.current("lost", s);
-        return;
-      }
-      const inZone = s.h >= m.zone[0] && s.h <= m.zone[1];
-      if (inZone && !s.inZone) sfx.whoosh();
-      s.inZone = inZone;
-      if (inZone) {
-        const before = Math.floor(s.hold * 2);
-        s.hold += dt;
-        if (Math.floor(s.hold * 2) > before) sfx.tick();
-        if (s.hold >= HOLD_NEEDED) {
-          setFrame({ ...s });
-          endRef.current("orbit", s);
-          return;
-        }
-      } else s.hold = Math.max(0, s.hold - dt * 2);
-      if (s.t >= TIME_LIMIT) {
-        setFrame({ ...s });
-        endRef.current("timeout", s);
-        return;
-      }
-      acc += dt;
-      if (acc >= 1 / 40) {
-        acc = 0;
-        setFrame({ ...s });
-      }
-      raf = requestAnimationFrame(step);
+    if (!canPlay || step !== "build") return;
+    const res: LaunchResult = thrust < weight ? "heavy" : thrust === weight ? "hover" : !enoughFuel ? "fuel" : "ok";
+    setAttempts((a) => a + 1);
+    setResult(res);
+    setStep("launch");
+    sfx.launch();
+    const t0 = performance.now();
+    const dur = res === "ok" ? 2300 : 2600;
+    const tick = (now: number) => {
+      const t = (now - t0) / 1000;
+      if (res === "ok") setLift(1.2 * t * t * 3);
+      else if (res === "hover") setLift(Math.min(0.35, t * 0.6));
+      else if (res === "fuel") setLift(t < 1.3 ? 1.6 * t * t * 2 : Math.max(0, 5.4 - (t - 1.3) * 4.2));
+      else setLift(0);
+      if (now - t0 < dur) raf.current = requestAnimationFrame(tick);
+      else afterLaunch(res);
     };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
-  }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
+    raf.current = requestAnimationFrame(tick);
+    if (res === "heavy" || res === "hover") setShakeId((s) => s + 1);
+  };
 
-  // Keyboard: Space / ↑ to thrust, Enter to launch / continue.
-  useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if (e.code === "Space" || e.code === "ArrowUp") {
-        if (phaseRef.current === "flight") {
-          e.preventDefault();
-          if (!holdRef.current) {
-            setHolding(true);
-            setPressedOnce(true);
+  const attemptsRef = useRef(0);
+  attemptsRef.current = attempts;
+  const afterLaunch = (res: LaunchResult) => {
+    if (res !== "ok") {
+      sfx.wrong();
+      setLift(0);
+      setStep("build");
+      return;
+    }
+    const tries = attemptsRef.current;
+    const gained = tries <= 1 ? 12 : tries === 2 ? 8 : 4;
+    const perfect = tanks === mission.tanks && engines === minEngines(tanks);
+    setPts((p) => p + gained + (perfect ? 4 : 0));
+    if (tries <= 1) setFirstTryLaunches((n) => n + 1);
+    sfx.correct();
+    showFlash(perfect ? `Perfect rocket! +${gained + 4}` : `Lift-off! +${gained}`, true);
+    setResult(null);
+    setLift(0);
+    startFlight();
+  };
+
+  // ── Flight ────────────────────────
+  const [lane, setLane] = useState(1);
+  const laneRef = useRef(1);
+  const [things, setThings] = useState<Thing[]>([]);
+  const [flyT, setFlyT] = useState(0);
+  const [flyStars, setFlyStars] = useState(0);
+  const [flyHits, setFlyHits] = useState(0);
+  const [bump, setBump] = useState(0);
+  const flyRaf = useRef(0);
+  useEffect(() => () => cancelAnimationFrame(flyRaf.current), []);
+
+  const startFlight = () => {
+    setStep("fly");
+    setLane(1);
+    laneRef.current = 1;
+    setFlyT(0);
+    setFlyStars(0);
+    setFlyHits(0);
+    const rnd = seededRandom(seed + mi * 7919);
+    const speed = 5.5 + mi * 1.2; // rows per second
+    let list: Thing[] = [];
+    let nextSpawn = 0.6;
+    let id = 0;
+    let stars = 0;
+    let hits = 0;
+    let last = performance.now();
+    const t0 = last;
+    const tick = (now: number) => {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      const t = (now - t0) / 1000;
+      // spawn a row: one rock or star, sometimes a rock + star
+      if (t >= nextSpawn && t < FLY_SECONDS - 1.5) {
+        const l = Math.floor(rnd() * LANES);
+        list.push({ id: id++, lane: l, y: -1, kind: rnd() < 0.42 ? "star" : "rock" });
+        if (rnd() < 0.35) list.push({ id: id++, lane: (l + 1 + Math.floor(rnd() * 2)) % LANES, y: -1, kind: rnd() < 0.5 ? "star" : "rock" });
+        nextSpawn += Math.max(0.5, 0.95 - mi * 0.12 - t * 0.012);
+      }
+      list = list.map((o) => ({ ...o, y: o.y + speed * dt }));
+      for (const o of list) {
+        if (o.gone || o.lane !== laneRef.current) continue;
+        if (Math.abs(o.y - ROCKET_ROW) < 0.55) {
+          o.gone = true;
+          if (o.kind === "star") {
+            stars++;
+            sfx.coin();
+          } else {
+            hits++;
+            sfx.explode();
+            setBump((b) => b + 1);
           }
         }
       }
+      list = list.filter((o) => o.y < TRACK + 1 && !o.gone);
+      setThings(list);
+      setFlyT(t);
+      setFlyStars(stars);
+      setFlyHits(hits);
+      if (t < FLY_SECONDS) flyRaf.current = requestAnimationFrame(tick);
+      else endFlight(stars, hits);
     };
-    const up = (e: KeyboardEvent) => {
-      if (e.code === "Space" || e.code === "ArrowUp") setHolding(false);
-    };
-    window.addEventListener("keydown", down);
-    window.addEventListener("keyup", up);
-    return () => {
-      window.removeEventListener("keydown", down);
-      window.removeEventListener("keyup", up);
-    };
-  }, []);
-  const phaseRef = useRef(phase);
-  phaseRef.current = phase;
-
-  // ── Between missions ───────────────────────────────────
-  const next = () => {
-    if (phase === "result" && QUIZ_AFTER.has(missionIdx) && quizN < questions.length) {
-      setQuiz({ idx: quizN, left: 10, picked: null });
-      setQuizN((n) => n + 1);
-      setPhase("quiz");
-      sfx.alarm();
-      return;
-    }
-    goNextMission();
-  };
-  const goNextMission = () => {
-    setQuiz(null);
-    const ni = missionIdx + 1;
-    if (ni >= missions.length) {
-      setPhase("done");
-      sfx.fanfare();
-      return;
-    }
-    setMissionIdx(ni);
-    setCargoPick(missions[ni].minCargo);
-    setFrame(null);
-    simRef.current = null;
-    setPhase("prep");
-    sfx.pop();
+    flyRaf.current = requestAnimationFrame(tick);
   };
 
-  // Auto-advance after a result so live races keep moving.
-  useEffect(() => {
-    if (phase !== "result") return;
-    const t = setTimeout(() => nextRef.current(), 6000);
-    return () => clearTimeout(t);
-  }, [phase, missionIdx]);
-  const nextRef = useRef(next);
-  nextRef.current = next;
+  const endFlight = (stars: number, hits: number) => {
+    const gained = Math.max(0, Math.min(9, stars) - hits);
+    setPts((p) => p + gained);
+    setStarsTotal((n) => n + stars);
+    setHitsTotal((n) => n + hits);
+    setThings([]);
+    sfx.fanfare();
+    showFlash(`Arrived at ${mission.short}! +${gained}`, true);
+    setAnswer(null);
+    setStep("quiz");
+  };
 
-  // Quiz countdown
-  useEffect(() => {
-    if (phase !== "quiz" || !quiz || quiz.picked !== null) return;
-    const id = setInterval(() => {
-      setQuiz((q) => {
-        if (!q || q.picked !== null) return q;
-        const left = q.left - 0.1;
-        if (left <= 0) return { ...q, left: 0, picked: -1 };
-        return { ...q, left };
-      });
-    }, 100);
-    return () => clearInterval(id);
-  }, [phase, quiz?.idx, quiz?.picked]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (phase !== "quiz" || quiz?.picked !== -1) return;
-    sfx.wrong();
-    const t = setTimeout(() => goNextRef.current(), 1100);
-    return () => clearTimeout(t);
-  }, [phase, quiz?.picked]);
-  const goNextRef = useRef(goNextMission);
-  goNextRef.current = goNextMission;
+  const moveLane = (d: number) => {
+    if (step !== "fly") return;
+    const nl = Math.max(0, Math.min(LANES - 1, laneRef.current + d));
+    if (nl === laneRef.current) return;
+    laneRef.current = nl;
+    setLane(nl);
+    sfx.tick();
+  };
 
-  const answer = (i: number) => {
-    if (!quiz || quiz.picked !== null) return;
-    const q = questions[quiz.idx];
-    if (i === q.a) {
+  // ── Quiz ──────────────────────────
+  const question = quiz[Math.min(mi, quiz.length - 1)];
+  const answerQ = (i: number) => {
+    if (step !== "quiz" || answer !== null || !canPlay) return;
+    setAnswer(i);
+    const right = i === question.answer;
+    if (right) {
       sfx.correct();
-      setQPts((p) => p + QUESTION_POINTS * Math.max(0.5, quiz.left / 10));
-      setQCorrect((c) => c + 1);
+      setPts((p) => p + 9);
+      setRightAnswers((n) => n + 1);
+      showFlash("Correct! +9", true);
     } else sfx.wrong();
-    setQuiz({ ...quiz, picked: i });
-    setTimeout(() => goNextRef.current(), 1300);
+    setTimeout(() => {
+      setStep("done");
+      sfx.levelUp();
+      setTimeout(() => {
+        setMi((m) => m + 1);
+        setStep("build");
+        setEngines(1);
+        setTanks(1);
+        setAttempts(0);
+        setAnswer(null);
+      }, 1800);
+    }, right ? 1800 : 3200);
   };
 
-  // ── Derived visuals ────────────────────────────────────
-  const s: Sim = frame ?? { h: 0, v: 0, fuel: fuelPick, thr: 0, t: 0, hold: 0, maxH: 0, launched: false, inZone: false, lowFuelWarned: false, gust: 0 };
-  const massNow = DRY_MASS + s.fuel * FUEL_MASS + cargoPick * CRATE_MASS;
-  const W = massNow * mission.g;
-  const T = s.fuel > 0 ? s.thr * mission.thrust : 0;
-  const D = mission.drag * s.v * Math.abs(s.v);
-  const onPad = s.h <= 0 && T + s.gust <= W;
-  const support = onPad ? W - T : 0; // the launch pad pushes up while we sit on it
-  const net = T + support - W - D + s.gust;
-  const balanced = Math.abs(net) < Math.max(0.6, W * 0.08);
-  const lastResult = results[results.length - 1];
-  const crashed = phase === "result" && lastResult?.outcome === "crash";
-  const lost = phase === "result" && lastResult?.outcome === "lost";
-  const won = phase === "result" && lastResult?.outcome === "orbit";
+  // ── Keyboard ──────────────────────
+  const keyRef = useRef<(e: KeyboardEvent) => void>(() => {});
+  keyRef.current = (e: KeyboardEvent) => {
+    const k = e.key;
+    if (step === "fly") {
+      if (k === "ArrowLeft" || k === "a" || k === "A") moveLane(-1);
+      else if (k === "ArrowRight" || k === "d" || k === "D") moveLane(1);
+      else return;
+    } else if (step === "build") {
+      if (k === "ArrowRight") change("e", 1);
+      else if (k === "ArrowLeft") change("e", -1);
+      else if (k === "ArrowUp") change("t", 1);
+      else if (k === "ArrowDown") change("t", -1);
+      else if (k === "Enter" || k === " ") launch();
+      else return;
+    } else if (step === "quiz" && ["1", "2", "3"].includes(k)) answerQ(Number(k) - 1);
+    else return;
+    e.preventDefault();
+  };
+  useEffect(() => {
+    const fn = (e: KeyboardEvent) => keyRef.current(e);
+    window.addEventListener("keydown", fn);
+    return () => window.removeEventListener("keydown", fn);
+  }, []);
 
-  const forceStatus = onPad
-    ? s.thr > 0.02
-      ? { text: "Thrust < weight: still on the pad", tone: "bg-amber-400 text-slate-900" }
-      : { text: "On the pad: hold THRUST!", tone: "bg-white text-slate-900" }
-    : balanced
-      ? { text: "Balanced: steady speed!", tone: "bg-emerald-400 text-slate-900" }
-      : net > 0
-        ? s.v >= 0
-          ? { text: "Unbalanced: speeding up ⬆", tone: "bg-sky-400 text-slate-900" }
-          : { text: "Unbalanced: slowing the fall", tone: "bg-sky-300 text-slate-900" }
-        : s.v > 0
-          ? { text: "Unbalanced: slowing down", tone: "bg-orange-300 text-slate-900" }
-          : { text: "Unbalanced: falling faster ⬇", tone: "bg-rose-500 text-white" };
+  // ── Layout sizing ─────────────────
+  const worldRef = useRef<HTMLDivElement>(null);
+  const [box, setBox] = useState({ w: 700, h: 380 });
+  useEffect(() => {
+    const el = worldRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setBox({ w: el.clientWidth, h: el.clientHeight }));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
-  const altFrac = clamp(s.h / 100);
-  const skyLow = mixHex(mission.sky[0], mission.sky[1], altFrac * 0.75);
-  const skyHigh = mixHex(mission.sky[0], mission.sky[1], 0.55 + altFrac * 0.45);
-  const starOpacity = mission.place === "Moon" ? 1 : clamp((s.h - 25) / 50);
-  const stars = useMemo(() => {
-    const r = seededRandom(seed + 7);
-    return Array.from({ length: 46 }, () => ({ x: r() * 100, y: r() * 100, s: 1 + Math.round(r() * 2), d: r() * 3 }));
-  }, [seed]);
+  const emily = STEMBOTS.emily;
+  const timeLeft = Math.max(0, Math.ceil(ROUND_SECONDS - elapsed));
+  const flying = step === "fly";
 
-  const arrowScale = 120 / mission.thrust; // px per force unit
-  const eRef = massNow * mission.g * 100 || 1;
-  const ke = clamp((0.5 * massNow * s.v * s.v) / eRef);
-  const gpe = clamp((massNow * mission.g * s.h) / eRef);
-  const chem = clamp(s.fuel / 100);
-  const timeLeft = Math.max(0, Math.ceil(TIME_LIMIT - s.t));
-  const tilt = (s.gust || 0) * 0.6 + (crashed ? 70 : 0);
-  const shake = phase === "flight" && s.thr > 0.6 ? (Math.sin(s.t * 60) * s.thr * 1.2).toFixed(2) : "0";
-  const showPhysics = phase === "flight" || won;
+  const objective = (() => {
+    if (allDone) return "All 3 missions done! You're a real rocket scientist!";
+    if (!started) return `Mission ${mi + 1}: ${mission.name}!`;
+    switch (step) {
+      case "build":
+        return `Build a rocket that can reach ${mission.short} ${mission.emoji}. Make both checks green, then LAUNCH!`;
+      case "launch":
+        return result === "ok" ? "3... 2... 1... LIFT-OFF!" : "Launching...";
+      case "fly":
+        return "Tap ◀ ▶ to dodge the asteroids and grab the ⭐ energy stars!";
+      case "quiz":
+        return `You reached ${mission.short}! One quick question:`;
+      case "done":
+        return `Mission ${mi + 1} complete! 🎉`;
+    }
+  })();
 
-  const missionNo = Math.min(missionIdx + 1, missions.length);
+  const failMsg =
+    step === "build" && result && result !== "ok"
+      ? result === "heavy"
+        ? `Too heavy! Weight (${weightOf(engines, tanks)}) pulls down harder than thrust (${thrustOf(engines)}) pushes up. Add engines or take away fuel.`
+        : result === "hover"
+          ? `It just hovered! Thrust and weight are both ${thrustOf(engines)}. Balanced forces can't climb. Thrust must be BIGGER.`
+          : `Out of fuel! ${mission.short} needs ${mission.tanks} fuel tanks of energy. You had ${tanks}.`
+      : null;
 
   return (
     <div
-      className="absolute inset-0 isolate @container flex flex-col overflow-hidden select-none game-fun"
-      style={{ background: `linear-gradient(to top, ${skyLow}, ${skyHigh})` }}
-      data-h={s.h.toFixed(2)}
-      data-v={s.v.toFixed(2)}
-      data-thr={s.thr.toFixed(2)}
-      data-phase={phase}
-      data-zone={mission.zone.join(",")}
-      data-hover={(W / mission.thrust).toFixed(3)}
+      data-game="rocket"
+      className="absolute inset-0 flex flex-col overflow-hidden transition-[background] duration-700"
+      style={{ background: flying || step === "quiz" || step === "done" ? mission.space : "linear-gradient(#38bdf8, #a5e1ff 60%, #e0f6ff)" }}
     >
-      <style>{ROCKET_CSS}</style>
-
-      {/* Stars */}
-      <div className="absolute inset-0 pointer-events-none" style={{ opacity: starOpacity, transform: `translateY(${s.h * 0.6}px)` }}>
-        {stars.map((st, i) => (
-          <span
-            key={i}
-            className="absolute bg-white rl-twinkle"
-            style={{ left: `${st.x}%`, top: `${st.y * 0.9 - 30}%`, width: st.s * 2, height: st.s * 2, animationDelay: `${st.d}s` }}
-          />
-        ))}
-        {mission.place !== "Earth" && (
-          <div
-            className="absolute right-[18%] top-[16%] w-10 h-10 rounded-full"
-            style={{ background: "radial-gradient(circle at 35% 35%, #93c5fd, #2563eb 60%, #1e3a8a)", boxShadow: "0 0 18px #60a5fa88" }}
-            title="Earth"
-          />
-        )}
-      </div>
+      <Starfield dim={!(flying || step === "quiz" || step === "done")} moving={flying} />
 
       {/* HUD */}
-      <div className="relative z-20 flex items-stretch gap-2 p-2 @xl:p-3">
-        <div className="flex-1 min-w-0 bg-white/95 rounded-2xl game-panel px-3 py-1.5 flex items-center gap-2 @xl:gap-3">
-          <span className="text-2xl @xl:text-3xl">{mission.emoji}</span>
+      <div className="relative z-10 flex items-stretch gap-2 p-2 sm:p-3">
+        <div key={`${mi}-${step}`} className="flex-1 min-w-0 bg-white/95 rounded-2xl game-panel px-2 sm:px-3 py-2 flex items-center gap-2 sm:gap-3 game-bounce-in">
+          <div className="relative shrink-0 rounded-2xl p-1 bg-violet-500">
+            <img src={emily.avatar} alt={emily.name} className="w-10 h-10 sm:w-14 sm:h-14 object-contain drop-shadow" />
+            <span className="absolute -bottom-1 -right-1 text-lg">{mission.emoji}</span>
+          </div>
           <div className="flex-1 min-w-0">
-            <p className="game-pixel text-[8px] @xl:text-[9px] text-slate-500">
-              MISSION {missionNo}/{missions.length} · {mission.place.toUpperCase()}
+            <p className="game-pixel text-[8px] sm:text-[9px] text-slate-500 truncate">
+              {allDone ? "ALL MISSIONS DONE" : `MISSION ${mi + 1}/3 · ${mission.name.toUpperCase()}`}
             </p>
-            <p className="font-bold text-slate-900 leading-tight text-sm @xl:text-base truncate">{mission.name}</p>
-            <div className="flex gap-1 mt-1">
-              {missions.map((_, i) => (
-                <span
-                  key={i}
-                  className={cn(
-                    "h-2 flex-1 rounded-full border border-black/10",
-                    i < results.length ? (results[i].outcome === "orbit" ? "bg-emerald-500" : "bg-rose-400") : i === missionIdx ? "bg-amber-300" : "bg-slate-200",
-                  )}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-        <div className="bg-slate-900/85 text-white rounded-2xl game-panel px-2 @xl:px-3 py-1.5 flex flex-col items-center justify-center min-w-[58px] @xl:min-w-[78px]">
-          <Timer size={14} className="text-amber-300" />
-          <span className={cn("game-pixel text-xs @xl:text-sm", phase === "flight" && timeLeft <= 10 && "text-rose-400")}>
-            {phase === "flight" ? timeLeft : "--"}
-          </span>
-        </div>
-        <div className="bg-slate-900/85 text-white rounded-2xl game-panel px-2 @xl:px-3 py-1.5 flex flex-col items-center justify-center min-w-[58px] @xl:min-w-[78px]">
-          <span className="text-[9px] font-bold text-amber-300">SCORE</span>
-          <span className="game-pixel text-xs @xl:text-sm text-yellow-300">{score}</span>
-        </div>
-      </div>
-
-      {/* Flight view */}
-      <div className="relative flex-1 min-h-0">
-        {/* Clouds at fixed heights (Earth only), you fly past them */}
-        {mission.place === "Earth" &&
-          [
-            { h: 14, x: 12, w: 1 },
-            { h: 26, x: 70, w: 1.3 },
-            { h: 38, x: 25, w: 0.9 },
-            { h: 47, x: 82, w: 1.1 },
-          ].map((c, i) => (
-            <div key={i} className="absolute pointer-events-none" style={{ left: `${c.x}%`, bottom: altY(c.h), opacity: 0.9 - altFrac * 0.5 }}>
-              <BlockCloud scale={c.w} grey={mission.gusts} />
-            </div>
-          ))}
-        {/* Wind streaks */}
-        {mission.gusts &&
-          Array.from({ length: 7 }, (_, i) => (
-            <span
-              key={i}
-              className="absolute h-[3px] rounded-full bg-white/70 rl-wind pointer-events-none"
-              style={{ top: `${12 + i * 11}%`, width: 40 + (i % 3) * 30, animationDelay: `${i * 0.37}s`, animationDuration: `${1.1 + (i % 3) * 0.3}s` }}
-            />
-          ))}
-        {/* Speed lines */}
-        {phase === "flight" && Math.abs(s.v) > 9 &&
-          Array.from({ length: 6 }, (_, i) => (
-            <span
-              key={`sp${i}`}
-              className="absolute w-[3px] bg-white/50 rounded-full pointer-events-none rl-speed"
-              style={{ left: `${20 + i * 12}%`, height: 30 + Math.abs(s.v) * 2, animationDelay: `${i * 0.11}s`, animationDirection: s.v > 0 ? "normal" : "reverse" }}
-            />
-          ))}
-
-        {/* Orbit zone band */}
-        <div
-          className={cn("absolute inset-x-0 border-y-4 border-dashed pointer-events-none", s.inZone ? "border-emerald-300 bg-emerald-400/30" : "border-emerald-400/80 bg-emerald-400/15")}
-          style={{ bottom: altY(mission.zone[0]), height: `calc(${(mission.zone[1] - mission.zone[0]) / 100} * ${SPAN})` }}
-        >
-          <span className="absolute left-14 top-1/2 -translate-y-1/2 game-pixel text-[8px] @xl:text-[9px] text-emerald-100 drop-shadow bg-emerald-700/70 px-1.5 py-1 rounded">
-            ORBIT ZONE
-          </span>
-        </div>
-        {/* Too-high line */}
-        <div className="absolute inset-x-0 border-t-4 border-dotted border-rose-400/80 pointer-events-none" style={{ bottom: altY(100) }}>
-          <span className="absolute left-14 -top-5 text-[10px] font-bold text-rose-200">⚠ Too high: lost in space!</span>
-        </div>
-
-        {/* Ground + launch pad */}
-        <div className="absolute inset-x-0 bottom-0" style={{ height: GROUND }}>
-          <div className="absolute inset-0" style={{ background: `linear-gradient(${mission.ground[0]} 0 14px, ${mission.ground[1]} 14px)` }} />
-          <div
-            className="absolute inset-0 opacity-25"
-            style={{
-              backgroundImage: "linear-gradient(90deg, rgba(0,0,0,.35) 2px, transparent 2px), linear-gradient(rgba(0,0,0,.25) 2px, transparent 2px)",
-              backgroundSize: "28px 28px",
-            }}
-          />
-          {mission.place === "Moon" && (
-            <>
-              <span className="absolute left-[12%] top-5 w-10 h-3 rounded-[50%] bg-slate-500/70" />
-              <span className="absolute right-[20%] top-7 w-14 h-4 rounded-[50%] bg-slate-500/70" />
-            </>
-          )}
-          {/* Pad */}
-          <div className="absolute left-1/2 @xl:left-[42%] -translate-x-1/2 -top-3 w-28 h-5 rounded-md bg-slate-500 border-2 border-black/30" style={{ boxShadow: "inset 0 3px 0 #94a3b8, 0 4px 0 #334155" }}>
-            <div className="absolute inset-x-2 top-1.5 h-1 bg-[repeating-linear-gradient(90deg,#facc15_0_8px,#1e293b_8px_16px)]" />
-          </div>
-          {/* Tower */}
-          <div className="absolute bottom-full left-1/2 @xl:left-[42%] -ml-[118px] w-4 h-32 bg-[repeating-linear-gradient(0deg,#64748b_0_10px,#facc15_10px_13px)] border-2 border-black/30 rounded-sm" />
-        </div>
-
-        {/* Rocket */}
-        <div
-          className="absolute left-1/2 @xl:left-[42%] z-10"
-          style={{
-            bottom: `calc(${altY(Math.max(0, s.h))} - ${ROCKET_H / 2}px)`,
-            transform: `translateX(-50%) translateX(${shake}px) rotate(${tilt}deg)`,
-            transition: crashed ? "transform 500ms ease-out" : undefined,
-          }}
-        >
-          <Rocket thr={phase === "flight" ? s.thr : won ? 0.45 : 0} crashed={crashed} />
-          {/* Force arrows */}
-          {showPhysics && !crashed && (
-            <>
-              <Arrow dir="up" len={T * arrowScale} color="#22c55e" label={`Thrust ${Math.round(T * 100)} N`} style={{ left: "50%", bottom: ROCKET_H + 6, marginLeft: -9 }} />
-              <Arrow dir="down" len={W * arrowScale} color="#ef4444" label={`Weight ${Math.round(W * 100)} N`} labelLeft style={{ right: "100%", top: ROCKET_H / 2, marginRight: 8 }} />
-              {Math.abs(D) > 0.3 && (
-                <Arrow
-                  key={s.v > 0 ? "air-down" : "air-up"}
-                  dir={s.v > 0 ? "down" : "up"}
-                  len={Math.abs(D) * arrowScale}
-                  color="#94a3b8"
-                  label={`Air ${Math.round(Math.abs(D) * 100)} N`}
-                  style={s.v > 0 ? { left: "100%", top: ROCKET_H / 2, marginLeft: 8 } : { left: "100%", bottom: ROCKET_H / 2, marginLeft: 8 }}
-                />
-              )}
-              {mission.gusts && Math.abs(s.gust) > 1 && (
-                <span className="absolute -right-16 top-2 text-[10px] font-bold text-white bg-slate-700/70 rounded px-1 whitespace-nowrap">
-                  <Wind size={10} className="inline" /> gust {s.gust > 0 ? "⬆" : "⬇"}
-                </span>
-              )}
-            </>
-          )}
-          {/* Smoke */}
-          {phase === "flight" && s.h < 14 && s.thr > 0.25 &&
-            Array.from({ length: 8 }, (_, i) => (
-              <span
-                key={i}
-                className="absolute rounded-full bg-white/80 rl-smoke"
-                style={{ bottom: -26 - s.h * 3, left: "50%", width: 26, height: 26, ["--sx" as string]: `${(i % 2 ? 1 : -1) * (30 + i * 10)}px`, animationDelay: `${i * 0.09}s` }}
-              />
-            ))}
-          {crashed && (
-            <div className="absolute left-1/2 -translate-x-1/2 -top-6 game-bounce-in">
-              <span className="text-6xl block">💥</span>
-              <span className="game-pixel text-xs text-yellow-300 drop-shadow-[0_2px_0_#000] absolute -right-10 -top-2 rotate-12">BONK!</span>
-            </div>
-          )}
-        </div>
-
-        {/* Altimeter */}
-        <div className="absolute left-2 top-2 bottom-3 w-9 @xl:w-11 z-10 pointer-events-none">
-          <div className="absolute inset-x-2 @xl:inset-x-3 rounded-full bg-slate-900/60 border-2 border-black/30" style={{ top: 0, bottom: 0 }} />
-          <div className="relative h-full">
-            <div className="absolute left-0 right-0" style={{ top: 18, bottom: GROUND - 6 }}>
-              <div className="relative h-full">
-                <div
-                  className="absolute inset-x-2 @xl:inset-x-3 bg-emerald-400/90 rounded"
-                  style={{ bottom: `${mission.zone[0]}%`, height: `${mission.zone[1] - mission.zone[0]}%` }}
-                />
-                <div className="absolute left-0 right-0 flex items-center transition-[bottom] duration-75" style={{ bottom: `calc(${clamp(s.h / 100) * 100}% - 8px)` }}>
-                  <span className="text-[13px] leading-none mx-auto drop-shadow">🚀</span>
-                </div>
-              </div>
-            </div>
-            <span className="absolute top-0 inset-x-0 text-center text-[8px] font-bold text-white">km</span>
-            <span className="absolute -bottom-0 inset-x-0 text-center game-pixel text-[7px] text-yellow-300">{Math.round(s.h)}</span>
-          </div>
-        </div>
-
-        {/* Physics panel (wide screens) */}
-        {phase === "flight" && (
-          <div className="hidden @xl:block absolute right-3 top-2 w-[200px] z-10 bg-slate-900/95 text-white rounded-2xl game-panel p-2.5 space-y-2">
-            <div className={cn("rounded-lg px-2 py-1 text-[11px] font-bold text-center", forceStatus.tone)}>{forceStatus.text}</div>
-            <ForceRow color="#22c55e" label="Thrust ⬆" value={T} max={mission.thrust} />
-            <ForceRow color="#ef4444" label="Weight ⬇" value={W} max={mission.thrust} />
-            <ForceRow color="#94a3b8" label={`Air resistance ${s.v > 0 ? "⬇" : s.v < 0 ? "⬆" : ""}`} value={Math.abs(D)} max={mission.thrust} />
-            <div className="pt-1 border-t border-white/15">
-              <p className="text-[10px] font-bold text-amber-200 mb-1">ENERGY CHANGES</p>
-              <div className="flex items-end gap-2 h-[70px]">
-                <EnergyBar label="Fuel" sub="chemical" v={chem} color="#f59e0b" />
-                <span className="self-center text-white/60 text-xs">→</span>
-                <EnergyBar label="Motion" sub="kinetic" v={ke} color="#38bdf8" />
-                <span className="self-center text-white/60 text-xs">+</span>
-                <EnergyBar label="Height" sub="grav. PE" v={gpe} color="#a78bfa" />
-              </div>
-            </div>
-          </div>
-        )}
-        {/* Compact physics (phones) */}
-        {phase === "flight" && (
-          <div className="@xl:hidden absolute right-2 top-2 z-10 flex flex-col items-end gap-1">
-            <div className={cn("rounded-lg px-2 py-1 text-[10px] font-bold game-panel max-w-[150px] text-center", forceStatus.tone)}>{forceStatus.text}</div>
-            <div className="bg-slate-900/80 rounded-lg px-2 py-1 text-[10px] text-white font-bold flex gap-2">
-              <span className="text-amber-300">⛽{Math.round(s.fuel)}</span>
-              <span className="text-sky-300">KE {Math.round(ke * 100)}</span>
-              <span className="text-violet-300">PE {Math.round(gpe * 100)}</span>
-            </div>
-          </div>
-        )}
-
-        {/* Hold-in-zone ring */}
-        {phase === "flight" && s.hold > 0 && (
-          <div className="absolute left-1/2 -translate-x-1/2 z-20 bg-emerald-500 text-white rounded-2xl game-panel px-3 py-1.5 game-bounce-in" style={{ bottom: GROUND + 10 }}>
-            <p className="game-pixel text-[9px]">HOLD STEADY… {Math.min(HOLD_NEEDED, s.hold).toFixed(1)}s</p>
-            <div className="h-2 mt-1 bg-white/30 rounded-full overflow-hidden">
-              <div className="h-full bg-yellow-300" style={{ width: `${(s.hold / HOLD_NEEDED) * 100}%` }} />
-            </div>
-          </div>
-        )}
-        {phase === "flight" && !pressedOnce && s.t > 0.8 && (
-          <div className="absolute left-1/2 -translate-x-1/2 top-16 z-20 game-pixel text-[10px] text-white bg-slate-900/70 rounded-lg px-3 py-2 animate-bounce">
-            HOLD THRUST TO LIFT OFF!
-          </div>
-        )}
-
-        {/* Prep card */}
-        {phase === "prep" && (
-          <div className="absolute inset-0 z-30 flex items-center justify-center p-2 @xl:p-3 bg-slate-950/30">
-            <div className="w-full max-w-[460px] bg-white rounded-3xl game-panel p-3 @xl:p-4 game-bounce-in text-slate-900">
-              <div className="flex items-start gap-2">
-                <img src={STEMBOTS.emily.avatar} alt="Emily" className="w-12 h-12 @xl:w-14 @xl:h-14 object-contain game-float shrink-0" />
-                <div className="flex-1 min-w-0 bg-amber-50 border-2 border-amber-200 rounded-2xl rounded-tl-none px-3 py-1.5">
-                  <p className="text-[10px] font-bold text-amber-700">EMILY · MISSION {missionNo}</p>
-                  <p className="text-xs @xl:text-[13px] leading-snug">{mission.tip}</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-1.5 mt-2.5 text-center">
-                <Chip k="Gravity" v={`${mission.g} N/kg`} />
-                <Chip k="Air" v={mission.air} />
-                <Chip k="Max thrust" v={`${mission.thrust * 100} N`} />
-              </div>
-
-              <div className="mt-2.5">
-                <div className="flex items-center justify-between text-xs font-bold mb-1">
-                  <span className="flex items-center gap-1">
-                    <Fuel size={14} className="text-amber-500" /> Fuel (chemical energy)
-                  </span>
-                  <span className="game-pixel text-[9px] text-amber-600">{fuelPick} units</span>
-                </div>
-                <div className="grid grid-cols-8 gap-1">
-                  {FUEL_STEPS.map((f) => (
-                    <button
-                      key={f}
-                      onClick={() => {
-                        setFuelPick(f);
-                        sfx.tick();
-                      }}
-                      className={cn(
-                        "h-9 rounded-lg border-2 border-black/20 text-[10px] font-bold transition-transform",
-                        f <= fuelPick ? "bg-gradient-to-t from-orange-500 to-amber-300 text-white" : "bg-slate-100 text-slate-400",
-                        f === fuelPick && "scale-110 ring-2 ring-amber-500",
-                      )}
-                      style={{ boxShadow: "0 3px 0 rgba(0,0,0,.2)" }}
-                    >
-                      {f}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mt-2.5">
-                <div className="flex items-center justify-between text-xs font-bold mb-1">
-                  <span className="flex items-center gap-1">
-                    <Package size={14} className="text-amber-700" /> Supply crates (need {mission.minCargo}+)
-                  </span>
-                  <span className="game-pixel text-[9px] text-amber-700">{cargoPick}</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  {Array.from({ length: mission.minCargo + 2 }, (_, i) => {
-                    const n = i + 1;
-                    const on = n <= cargoPick;
-                    return (
-                      <button
-                        key={n}
-                        onClick={() => {
-                          setCargoPick(Math.max(mission.minCargo, n === cargoPick && n > mission.minCargo ? n - 1 : n));
-                          sfx.place();
-                        }}
-                        className={cn("w-9 h-9 @xl:w-10 @xl:h-10 rounded-md border-2 border-black/30 text-lg transition-all", on ? "game-bounce-in" : "opacity-30 grayscale")}
-                        style={{ background: "linear-gradient(135deg,#d97706,#92400e)", boxShadow: "inset 0 0 0 3px #fbbf24aa, 0 3px 0 rgba(0,0,0,.3)" }}
-                        title={n <= mission.minCargo ? "Needed" : "Extra crate: bonus points but more weight"}
-                      >
-                        📦
-                      </button>
-                    );
-                  })}
-                  <span className="text-[10px] text-slate-500 leading-tight ml-1">Extra crates = bonus, but heavier!</span>
-                </div>
-              </div>
-
-              <div className="mt-2.5 grid grid-cols-2 gap-1.5 text-center">
-                <div className="rounded-xl bg-slate-100 py-1">
-                  <p className="text-[9px] font-bold text-slate-500">MASS</p>
-                  <p className="font-bold text-sm">{Math.round(mass * 100)} kg</p>
-                </div>
-                <div className="rounded-xl bg-rose-50 py-1">
-                  <p className="text-[9px] font-bold text-rose-500">WEIGHT (mass × gravity)</p>
-                  <p className="font-bold text-sm text-rose-600">{Math.round(mass * 100 * mission.g)} N</p>
-                </div>
-              </div>
-
-              <button
-                onClick={launch}
-                disabled={!ready}
-                className={cn("game-btn w-full mt-3 bg-gradient-to-r from-orange-500 to-rose-500 text-white text-lg", ready && "game-pulse")}
-              >
-                {ready ? "🚀 LAUNCH!" : "Get ready…"}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Result card */}
-        {phase === "result" && lastResult && (
-          <div className={cn("absolute inset-x-2 z-30 flex justify-center", won ? "bottom-3" : "top-3")}>
-            <div className={cn("w-full max-w-[420px] rounded-3xl game-panel p-3 @xl:p-4 game-bounce-in text-white", won ? "bg-emerald-600" : "bg-indigo-700")}>
-              <div className="flex items-center gap-2">
-                <span className="text-4xl">{won ? "🛰️" : crashed ? "💥" : lost ? "🌌" : "⏰"}</span>
-                <div className="flex-1">
-                  <p className="game-pixel text-[11px] @xl:text-xs text-yellow-300">
-                    {won ? "ORBIT REACHED!" : crashed ? "CRASH! BONK!" : lost ? "LOST IN SPACE!" : "TIME'S UP!"}
-                  </p>
-                  <p className="text-xs @xl:text-[13px] leading-snug mt-1">{lastResult.why}</p>
-                </div>
-                <img src={STEMBOTS.emily.avatar} alt="" className={cn("w-12 h-12 object-contain shrink-0", won ? "game-float" : "game-shake")} />
-              </div>
-              <div className="mt-2 bg-black/20 rounded-xl px-3 py-1.5 space-y-0.5">
-                {lastResult.lines.map((l) => (
-                  <div key={l.label} className="flex justify-between text-xs">
-                    <span>{l.label}</span>
-                    <span className="font-bold text-yellow-300">{l.value}</span>
-                  </div>
-                ))}
-              </div>
-              <button onClick={next} className="game-btn w-full mt-2.5 bg-yellow-300 text-slate-900">
-                {missionIdx + 1 >= missions.length && !(QUIZ_AFTER.has(missionIdx) && quizN < questions.length) ? "See results ▶" : "Next mission ▶"}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Bonus question */}
-        {phase === "quiz" && quiz && (
-          <div className="absolute inset-x-2 top-3 z-30 flex justify-center">
-            <div className="bg-indigo-600 text-white rounded-2xl game-panel p-3 w-full max-w-lg game-bounce-in">
-              <div className="flex items-center justify-between mb-1">
-                <span className="game-pixel text-[9px] text-indigo-200">⚡ BONUS QUESTION</span>
-                <span className="game-pixel text-[9px] text-yellow-300">{Math.ceil(quiz.left)}s</span>
-              </div>
-              <div className="h-1.5 bg-white/20 rounded-full overflow-hidden mb-2">
-                <div className="h-full bg-yellow-300" style={{ width: `${(quiz.left / 10) * 100}%` }} />
-              </div>
-              <p className="font-bold text-sm mb-2">{questions[quiz.idx].q}</p>
-              <div className="grid grid-cols-1 @xl:grid-cols-3 gap-2">
-                {questions[quiz.idx].options.map((o, i) => {
-                  const q = questions[quiz.idx];
-                  const show = quiz.picked !== null;
+            <p className="game-fun font-bold text-slate-900 leading-snug text-[14px] sm:text-[17px]">{objective}</p>
+            {!allDone && (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {STEP_LABELS.map((s, i) => {
+                  const cur = STEP_LABELS.findIndex((x) => x.key === step);
+                  const doneStep = step === "done" || i < cur;
                   return (
-                    <button
-                      key={o}
-                      onClick={() => answer(i)}
+                    <span
+                      key={s.key}
                       className={cn(
-                        "game-btn text-xs py-2 px-2",
-                        !show && "bg-white text-indigo-700",
-                        show && i === q.a && "bg-emerald-400 text-white",
-                        show && i === quiz.picked && i !== q.a && "bg-rose-500 text-white game-shake",
-                        show && i !== q.a && i !== quiz.picked && "bg-white/40 text-indigo-900",
+                        "game-fun font-bold text-[11px] rounded-md px-1.5 py-0.5 flex items-center gap-0.5",
+                        doneStep ? "bg-emerald-100 text-emerald-700" : i === cur ? "bg-amber-300 text-slate-900" : "bg-slate-100 text-slate-400",
                       )}
                     >
-                      {o}
-                    </button>
+                      {doneStep ? <Check size={11} strokeWidth={3} /> : `${i + 1}.`} {s.label}
+                    </span>
                   );
                 })}
               </div>
+            )}
+          </div>
+        </div>
+        <div className="flex flex-col gap-2">
+          <div className="flex-1 bg-slate-900/85 text-white rounded-2xl game-panel px-2 py-1 flex items-center justify-center gap-1.5 min-w-[64px] sm:min-w-[78px]">
+            <Timer size={14} className="text-amber-300" />
+            <span className={cn("game-pixel text-xs", timeLeft <= 30 && "text-rose-400")}>{timeLeft}</span>
+          </div>
+          <div className="flex-1 bg-slate-900/85 text-white rounded-2xl game-panel px-2 py-1 flex items-center justify-center gap-1.5 min-w-[64px] sm:min-w-[78px]">
+            <span className="text-[8px] font-bold text-amber-300">PTS</span>
+            <span className="game-pixel text-xs text-yellow-300">{score}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Scene */}
+      <div ref={worldRef} className="relative flex-1 min-h-0">
+        {(step === "build" || step === "launch") && (
+          <PadScene box={box} engines={engines} tanks={tanks} lift={lift} firing={step === "launch"} result={result} shakeId={shakeId} mission={mission} />
+        )}
+        {flying && <FlightScene box={box} things={things} lane={lane} bump={bump} />}
+        {(step === "quiz" || step === "done") && <ArrivalScene box={box} mission={mission} />}
+
+        {/* Build: forces + fuel panels */}
+        {(step === "build" || step === "launch") && (
+          <>
+            <div className="absolute left-2 top-2 z-10 bg-white/95 rounded-2xl game-panel p-2.5 w-[168px] sm:w-[190px]">
+              <p className="game-pixel text-[8px] text-slate-500 mb-1.5">FORCES</p>
+              <ForceBar label="Thrust (push up)" value={thrust} max={22} color="bg-emerald-500" icon={<ArrowUp size={14} strokeWidth={3} />} />
+              <ForceBar label="Weight (pull down)" value={weight} max={22} color="bg-rose-500" icon={<ArrowDown size={14} strokeWidth={3} />} />
+              <p className="text-[10px] text-slate-500 leading-tight mt-1">
+                Each engine: +{THRUST_PER_ENGINE} thrust, +{ENGINE_WEIGHT} weight. Each fuel tank: +{TANK_WEIGHT} weight.
+              </p>
+            </div>
+            <div className="absolute right-2 top-2 z-10 bg-white/95 rounded-2xl game-panel p-2.5 w-[168px] sm:w-[190px]">
+              <p className="game-pixel text-[8px] text-slate-500 mb-1.5">CHECKLIST</p>
+              <CheckRow ok={liftsOff} text={liftsOff ? "Thrust is bigger than weight" : "Thrust must beat weight"} />
+              <CheckRow ok={enoughFuel} text={enoughFuel ? `Enough fuel for ${mission.short}` : `Fuel: ${tanks} of ${mission.tanks} tanks needed`} />
+              <FuelRoute tanks={tanks} mission={mission} />
+            </div>
+          </>
+        )}
+
+        {/* Flight HUD */}
+        {flying && (
+          <>
+            <div className="absolute left-2 top-2 z-10 bg-slate-900/80 text-white rounded-2xl game-panel px-3 py-2">
+              <p className="game-pixel text-[8px] text-amber-300">ENERGY STARS</p>
+              <p className="game-pixel text-lg text-yellow-300">⭐ {flyStars}</p>
+              {flyHits > 0 && <p className="game-fun font-bold text-xs text-rose-300 mt-0.5">Bumps: {flyHits}</p>}
+            </div>
+            <div className="absolute right-3 top-3 bottom-3 z-10 w-9 bg-slate-900/70 rounded-full game-panel flex flex-col items-center justify-between py-2">
+              <span className="text-xl">{mission.emoji}</span>
+              <div className="relative flex-1 w-2 my-2 bg-white/20 rounded-full">
+                <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-amber-400 to-lime-300 rounded-full" style={{ height: `${Math.min(100, (flyT / FLY_SECONDS) * 100)}%` }} />
+              </div>
+              <span className="text-lg">🚀</span>
+            </div>
+          </>
+        )}
+
+        {/* Failed launch explanation */}
+        {failMsg && (
+          <div className="absolute inset-x-0 bottom-2 z-10 flex justify-center px-2">
+            <div key={attempts} className="bg-rose-50 border-rose-300 text-rose-900 rounded-2xl game-panel px-3 py-2 game-shake flex gap-2 max-w-md">
+              <img src={emily.avatar} alt="" className="w-9 h-9 object-contain shrink-0" />
+              <p className="text-[13px] font-semibold leading-snug">{failMsg}</p>
             </div>
           </div>
         )}
 
-        {phase === "done" && (
-          <div className="absolute inset-0 z-30 flex items-center justify-center">
-            <div className="bg-white rounded-3xl game-panel px-6 py-4 text-center game-bounce-in">
-              <p className="text-4xl">🏁</p>
-              <p className="game-pixel text-xs text-indigo-700 mt-1">ALL MISSIONS DONE!</p>
+        {/* Flash */}
+        {flash && (
+          <div className="absolute inset-x-0 top-16 flex justify-center z-20 pointer-events-none">
+            <span key={flash.id} className={cn("game-bounce-in text-white game-fun font-bold px-4 py-2 rounded-2xl game-panel text-lg", flash.good ? "bg-emerald-500" : "bg-rose-500")}>
+              {flash.text}
+            </span>
+          </div>
+        )}
+
+        {step === "done" && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
+            <div className="bg-violet-600 text-white rounded-3xl game-panel px-6 py-4 text-center game-bounce-in">
+              <p className="text-5xl">{mission.emoji}</p>
+              <p className="game-pixel text-[11px] mt-2">MISSION {mi + 1} COMPLETE!</p>
             </div>
           </div>
         )}
       </div>
 
       {/* Controls */}
-      <div className="relative z-20 bg-slate-900/90 text-white px-2 @xl:px-3 py-2 flex items-center gap-2 @xl:gap-3 border-t-4 border-black/30">
-        <button
-          onPointerDown={(e) => {
-            if (phase !== "flight") return;
-            (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
-            setHolding(true);
-            setPressedOnce(true);
-          }}
-          onPointerUp={() => setHolding(false)}
-          onPointerCancel={() => setHolding(false)}
-          onPointerLeave={() => setHolding(false)}
-          onContextMenu={(e) => e.preventDefault()}
-          disabled={phase !== "flight"}
-          className={cn(
-            "game-btn touch-none shrink-0 w-[130px] @xl:w-[190px] h-14 text-base @xl:text-xl text-white",
-            holding ? "bg-gradient-to-t from-red-600 to-orange-400 translate-y-1" : "bg-gradient-to-t from-orange-600 to-amber-400",
-          )}
-        >
-          🔥 THRUST
-        </button>
-        <div className="flex-1 min-w-0 space-y-1.5">
-          <div>
-            <div className="flex justify-between text-[10px] font-bold text-white/80">
-              <span>Engine power</span>
-              <span className="text-yellow-300">{Math.round(s.thr * 100)}%</span>
-            </div>
-            <div className="relative h-3.5 rounded-full bg-white/10 border-2 border-black/30 overflow-hidden">
-              <div className="h-full rounded-full bg-gradient-to-r from-yellow-300 via-orange-400 to-red-500" style={{ width: `${s.thr * 100}%` }} />
-              {/* Balance marker: power where thrust = weight */}
-              <div className="absolute inset-y-0 w-1 bg-white" style={{ left: `${clamp(W / mission.thrust) * 100}%` }} title="Thrust = weight here" />
-            </div>
+      <div className="relative z-10 bg-slate-900/90 text-white px-2 sm:px-3 py-2 min-h-[104px] flex items-center justify-center">
+        {(step === "build" || step === "launch") && (
+          <div className="w-full grid grid-cols-[1fr_1fr_auto] gap-2 sm:gap-4 items-center max-w-3xl">
+            <Stepper label="Engines" emoji="🔥" value={engines} max={MAX_ENGINES} color="#f97316" disabled={!canPlay || step !== "build"} onChange={(d) => change("e", d)} />
+            <Stepper label="Fuel tanks" emoji="⛽" value={tanks} max={MAX_TANKS} color="#0ea5e9" disabled={!canPlay || step !== "build"} onChange={(d) => change("t", d)} />
+            <button
+              onClick={launch}
+              disabled={!canPlay || step !== "build"}
+              className={cn("game-btn bg-yellow-400 text-slate-900 text-lg sm:text-xl px-5 sm:px-8 py-3 sm:py-4 flex items-center gap-2", liftsOff && enoughFuel && step === "build" && "game-pulse")}
+            >
+              <Rocket size={20} /> LAUNCH!
+            </button>
           </div>
-          <div>
-            <div className="flex justify-between text-[10px] font-bold text-white/80">
-              <span>⛽ Fuel left</span>
-              <span className={cn(s.fuel < fuelPick * 0.2 ? "text-rose-400" : "text-amber-300")}>{Math.round(s.fuel)}</span>
-            </div>
-            <div className="h-3 rounded-full bg-white/10 border-2 border-black/30 overflow-hidden">
-              <div
-                className={cn("h-full rounded-full", s.fuel < fuelPick * 0.2 ? "bg-rose-500" : "bg-amber-400")}
-                style={{ width: `${clamp(s.fuel / 100) * 100}%` }}
-              />
-            </div>
+        )}
+        {flying && (
+          <div className="w-full grid grid-cols-2 gap-3 max-w-xl">
+            <button onPointerDown={() => moveLane(-1)} className="game-btn bg-sky-400 text-slate-900 py-4 flex items-center justify-center text-lg" aria-label="Move left">
+              <ChevronLeft size={28} strokeWidth={3} /> LEFT
+            </button>
+            <button onPointerDown={() => moveLane(1)} className="game-btn bg-sky-400 text-slate-900 py-4 flex items-center justify-center text-lg" aria-label="Move right">
+              RIGHT <ChevronRight size={28} strokeWidth={3} />
+            </button>
           </div>
-        </div>
-        <p className="hidden @2xl:block text-[10px] text-white/60 w-[110px] leading-tight">
-          Hold <b className="text-white">SPACE</b> or the button. White line = thrust equals weight.
-        </p>
+        )}
+        {step === "quiz" && (
+          <div key={mi} className="w-full max-w-3xl game-bounce-in">
+            <p className="game-fun font-bold text-[14px] sm:text-[16px] text-center mb-2 leading-snug">{question.q}</p>
+            <div className="grid grid-cols-3 gap-2">
+              {question.options.map((o, i) => {
+                const reveal = answer !== null;
+                const right = i === question.answer;
+                return (
+                  <button
+                    key={o}
+                    onClick={() => answerQ(i)}
+                    disabled={reveal || !canPlay}
+                    className={cn(
+                      "game-btn text-[13px] sm:text-[15px] px-2 py-2.5 leading-tight !opacity-100",
+                      !reveal && "bg-white text-slate-900",
+                      reveal && right && "bg-emerald-400 text-slate-900",
+                      reveal && !right && i === answer && "bg-rose-500 text-white",
+                      reveal && !right && i !== answer && "bg-white/40 text-slate-700",
+                    )}
+                  >
+                    {o}
+                  </button>
+                );
+              })}
+            </div>
+            {answer !== null && <p className="text-center text-[12px] sm:text-[13px] text-sky-100 mt-1.5 game-bounce-in">{question.explain}</p>}
+          </div>
+        )}
+        {(step === "done" || allDone) && <p className="game-fun font-bold text-lg">{allDone ? "🎉 All missions done!" : "Next mission coming up..."}</p>}
       </div>
     </div>
   );
 }
 
-// ── Pieces ───────────────────────────────────────────────
+// ── Scenes ────────────────────────────────────────────
 
-function Rocket({ thr, crashed }: { thr: number; crashed: boolean }) {
-  const flameH = 14 + thr * 64;
+const BODY: BlockColors = { top: "#f8fafc", side: "#e2e8f0", side2: "#cbd5e1" };
+const BODY_ALT: BlockColors = { top: "#f1f5f9", side: "#dbeafe", side2: "#bfdbfe" };
+const CAPSULE: BlockColors = { top: "#ef4444", side: "#dc2626", side2: "#b91c1c" };
+const ENGINE: BlockColors = { top: "#475569", side: "#334155", side2: "#1e293b" };
+const PAD: BlockColors = { top: "#94a3b8", side: "#64748b", side2: "#475569" };
+const FLAME: BlockColors = { top: "#fde047", side: "#f97316", side2: "#ea580c" };
+const TANK_STRIPE: BlockColors = { top: "#0ea5e9", side: "#0284c7", side2: "#0369a1" };
+
+/** The rocket, standing at (x, y) with its base at height z (block units, size S). */
+function RocketModel({ S, x, y, z, engines, tanks, firing }: { S: number; x: number; y: number; z: number; engines: number; tanks: number; firing: boolean }) {
+  const parts: ReactNode[] = [];
+  const s = S * 0.5; // engines and nose are half blocks
+  const enginePos: [number, number][] = [
+    [0.5, 0.5],
+    [0, 0],
+    [1, 1],
+    [1, 0],
+    [0, 1],
+  ];
+  for (let i = 0; i < engines; i++) {
+    const [ex, ey] = enginePos[i];
+    parts.push(<Voxel key={`e${i}`} x={(x + ex * 0.5) * 2} y={(y + ey * 0.5) * 2} z={z * 2} size={s} heightScale={1.2} colors={ENGINE} />);
+    if (firing)
+      parts.push(
+        <Voxel key={`f${i}`} x={(x + ex * 0.5) * 2 + 0.15} y={(y + ey * 0.5) * 2 + 0.15} z={z * 2 - 1.1} size={s * 0.7} heightScale={1.5} colors={FLAME} textured={false} className="rocket-flame" />,
+      );
+  }
+  let zz = z + 0.6;
+  for (let i = 0; i < tanks; i++) {
+    parts.push(<Voxel key={`t${i}`} x={x} y={y} z={zz} size={S} heightScale={0.82} colors={i % 2 ? BODY_ALT : BODY} />);
+    parts.push(<Voxel key={`ts${i}`} x={x} y={y} z={zz + 0.82} size={S} heightScale={0.18} colors={TANK_STRIPE} textured={false} />);
+    zz += 1;
+  }
+  parts.push(<Voxel key="cap" x={x} y={y} z={zz} size={S} heightScale={0.9} colors={CAPSULE} />);
+  parts.push(<Voxel key="nose" x={x * 2 + 0.5} y={y * 2 + 0.5} z={(zz + 0.9) * 2} size={s} heightScale={1.1} colors={CAPSULE} />);
+  return <>{parts}</>;
+}
+
+function PadScene({
+  box,
+  engines,
+  tanks,
+  lift,
+  firing,
+  result,
+  shakeId,
+  mission,
+}: {
+  box: { w: number; h: number };
+  engines: number;
+  tanks: number;
+  lift: number;
+  firing: boolean;
+  result: LaunchResult | null;
+  shakeId: number;
+  mission: Mission;
+}) {
+  const G = 5;
+  const S = Math.max(16, Math.min(40, Math.floor(Math.min(box.w / 9, box.h / 10.5))));
+  const shaking = firing && (result === "heavy" || result === "hover");
+  const ground: ReactNode[] = [];
+  for (let y = 0; y < G; y++)
+    for (let x = 0; x < G; x++) {
+      const pad = x >= 1 && x <= 3 && y >= 1 && y <= 3;
+      ground.push(<Voxel key={`${x},${y}`} x={x} y={y} z={-0.4} size={S} heightScale={0.4} colors={pad ? PAD : BLOCKS.grass} />);
+    }
   return (
-    <div className="relative" style={{ width: 62, height: ROCKET_H }}>
-      {/* Flame */}
-      {thr > 0.02 && !crashed && (
-        <div className="absolute left-1/2 -translate-x-1/2" style={{ top: ROCKET_H - 8 }}>
-          <div
-            className="rl-flame mx-auto"
-            style={{
-              width: 22 + thr * 8,
-              height: flameH,
-              background: "radial-gradient(ellipse at 50% 15%, #fff 0 18%, #fde047 30%, #fb923c 58%, #ef4444 80%, transparent 82%)",
-              borderRadius: "45% 45% 50% 50% / 25% 25% 75% 75%",
-              filter: "drop-shadow(0 0 10px #fb923c)",
-            }}
-          />
-          {Array.from({ length: Math.round(thr * 7) }, (_, i) => (
-            <span
-              key={i}
-              className="absolute rounded-sm rl-spark"
-              style={{
-                left: `${(i * 37) % 22}px`,
-                top: flameH * 0.5,
-                width: 6,
-                height: 6,
-                background: i % 2 ? "#fde047" : "#fb923c",
-                animationDelay: `${i * 0.07}s`,
-                ["--sx" as string]: `${(i % 2 ? 1 : -1) * (6 + i * 3)}px`,
-              }}
-            />
+    <div key={shakeId} className="absolute inset-0" style={shaking ? { animation: "vx-wobble 120ms linear infinite" } : undefined}>
+      <VoxelWorld cols={G} rows={G} size={S} className="absolute inset-0" style={{ paddingTop: S * 4.2 }}>
+        {ground}
+        {/* Launch tower */}
+        {Array.from({ length: Math.max(3, tanks + 1) }, (_, i) => (
+          <Voxel key={`tw${i}`} x={3.5 * 2} y={1 * 2} z={i * 2} size={S * 0.5} heightScale={2} colors={{ top: "#f59e0b", side: "#d97706", side2: "#b45309" }} />
+        ))}
+        <div className="vx-group" style={{ transform: `translateZ(${lift * S}px)` }}>
+          <RocketModel S={S} x={2} y={2} z={0} engines={engines} tanks={tanks} firing={firing && result !== "heavy"} />
+        </div>
+        {/* Smoke puffs when firing */}
+        {firing &&
+          [0, 1, 2, 3, 4, 5].map((i) => (
+            <div key={`sm${i}`} className="vx-group vx-rise" style={{ "--dur": "1.4s", "--delay": `${i * 0.2}s`, "--to": `${S * 1.4}px` } as CSSProperties}>
+              <Voxel x={(1.4 + (i % 3) * 0.7) / 0.6} y={(1.4 + Math.floor(i / 3) * 1.2) / 0.6} z={0} size={S * 0.6} colors={{ top: "#f8fafc", side: "#e2e8f0", side2: "#cbd5e1" }} textured={false} />
+            </div>
           ))}
-        </div>
-      )}
-      {/* Fins (behind body) */}
-      <div className="absolute left-0 bottom-0 w-4 h-10 rounded-bl-lg" style={{ background: "linear-gradient(90deg,#991b1b,#dc2626)", clipPath: "polygon(100% 0, 100% 100%, 0 100%, 0 45%)", boxShadow: "inset 0 -3px 0 rgba(0,0,0,.3)" }} />
-      <div className="absolute right-0 bottom-0 w-4 h-10 rounded-br-lg" style={{ background: "linear-gradient(90deg,#dc2626,#7f1d1d)", clipPath: "polygon(0 0, 100% 45%, 100% 100%, 0 100%)" }} />
-      {/* Nozzle */}
-      <div className="absolute left-1/2 -translate-x-1/2 w-6 h-3 rounded-b-md" style={{ top: ROCKET_H - 10, background: "linear-gradient(90deg,#334155,#94a3b8 45%,#1e293b)" }} />
-      {/* Body (shaded like a cylinder) */}
-      <div
-        className="absolute left-1/2 -translate-x-1/2 rounded-b-xl border-2 border-black/25"
-        style={{
-          top: 32,
-          width: 40,
-          height: ROCKET_H - 40,
-          background: "linear-gradient(90deg,#94a3b8 0%,#f8fafc 30%,#ffffff 42%,#e2e8f0 65%,#64748b 100%)",
-          boxShadow: "inset 0 -10px 0 rgba(220,38,38,.9)",
-        }}
-      >
-        {/* Stripe */}
-        <div className="absolute inset-x-0 top-[46px] h-2" style={{ background: "linear-gradient(90deg,#991b1b,#ef4444 40%,#7f1d1d)" }} />
-        {/* Window with Emily */}
-        <div
-          className="absolute left-1/2 -translate-x-1/2 top-2 w-7 h-7 rounded-full overflow-hidden border-[3px] border-slate-500"
-          style={{ background: "radial-gradient(circle at 35% 30%, #e0f2fe, #38bdf8 60%, #0369a1)", boxShadow: "inset 0 0 0 2px #cbd5e1" }}
-        >
-          <img src={STEMBOTS.emily.avatar} alt="" className="w-full h-full object-cover object-top scale-125 translate-y-0.5" draggable={false} />
-          <span className="absolute left-1 top-0.5 w-2 h-1.5 rounded-full bg-white/70" />
-        </div>
-      </div>
-      {/* Nose cone */}
-      <div
-        className="absolute left-1/2 -translate-x-1/2 top-0 w-10 h-9"
-        style={{
-          background: "linear-gradient(90deg,#7f1d1d,#ef4444 35%,#fca5a5 45%,#dc2626 65%,#7f1d1d)",
-          clipPath: "polygon(50% 0, 82% 45%, 100% 100%, 0 100%, 18% 45%)",
-        }}
-      />
-      {/* Middle fin (front) */}
-      <div className="absolute left-1/2 -translate-x-1/2 bottom-0 w-2 h-9 rounded-t-sm" style={{ background: "linear-gradient(90deg,#b91c1c,#f87171,#b91c1c)" }} />
+      </VoxelWorld>
+      <span className="absolute left-1/2 -translate-x-1/2 bottom-1 game-pixel text-[9px] text-slate-700/70">TARGET: {mission.short.toUpperCase()}</span>
     </div>
   );
 }
 
-function Arrow({ dir, len, color, label, style, labelLeft }: { dir: "up" | "down"; len: number; color: string; label: string; style: React.CSSProperties; labelLeft?: boolean }) {
-  const L = Math.max(0, Math.min(150, len));
-  if (L < 3) return null;
-  return (
-    <div className="absolute pointer-events-none" style={{ ...style, width: 18, height: L + 12, ...(dir === "down" ? {} : {}) }}>
-      <div className={cn("relative w-full h-full flex items-center", dir === "up" ? "flex-col-reverse" : "flex-col")}>
-        <div style={{ width: 8, height: L, background: color, borderRadius: 3, boxShadow: "0 0 0 2px rgba(0,0,0,.35)" }} />
+function FlightScene({ box, things, lane, bump }: { box: { w: number; h: number }; things: Thing[]; lane: number; bump: number }) {
+  const S = Math.max(20, Math.min(50, Math.floor(Math.min(box.w / 6.5, box.h / 7))));
+  const tiles: ReactNode[] = [];
+  for (let y = 0; y < TRACK; y++)
+    for (let x = 0; x < LANES; x++)
+      tiles.push(
         <div
+          key={`${x},${y}`}
+          className="absolute"
+          style={{ left: x * S, top: y * S, width: S, height: S, border: "1px solid rgba(165,180,252,0.25)", background: (x + y) % 2 ? "rgba(99,102,241,0.12)" : "rgba(99,102,241,0.05)" }}
+        />,
+      );
+  return (
+    <div key={bump} className="absolute inset-0" style={bump ? { animation: "game-shake 300ms ease" } : undefined}>
+      <VoxelWorld cols={LANES} rows={TRACK} size={S} tilt={62} spin={0} sway={false} className="absolute inset-x-0 top-0" style={{ bottom: S * 1.2, perspective: 900, perspectiveOrigin: "50% 30%" }}>
+        {tiles}
+        {things.map((o) =>
+          o.kind === "rock" ? (
+            <Voxel key={o.id} x={(o.lane + 0.1) / 0.8} y={o.y / 0.8} z={0.1} size={S * 0.8} colors={{ top: "#a8a29e", side: "#78716c", side2: "#57534e" }} />
+          ) : (
+            <Voxel key={o.id} x={(o.lane + 0.25) / 0.5} y={(o.y + 0.25) / 0.5} z={0.8} size={S * 0.5} colors={BLOCKS.gold} textured={false} className="flight-star" />
+          ),
+        )}
+        <div className="vx-group" style={{ transform: `translateX(${lane * S}px)`, transition: "transform 120ms ease-out" }}>
+          <RocketModel S={S * 0.7} x={0.21 / 0.7} y={ROCKET_ROW / 0.7} z={0.3} engines={3} tanks={1} firing />
+        </div>
+      </VoxelWorld>
+    </div>
+  );
+}
+
+function ArrivalScene({ box, mission }: { box: { w: number; h: number }; mission: Mission }) {
+  const S = Math.max(16, Math.min(40, Math.floor(Math.min(box.w / 10, box.h / 8))));
+  // A blocky planet: a 3×3×3 cube with corners knocked off.
+  const blocks: ReactNode[] = [];
+  for (let z = 0; z < 3; z++)
+    for (let y = 0; y < 3; y++)
+      for (let x = 0; x < 3; x++) {
+        const corner = (x !== 1 ? 1 : 0) + (y !== 1 ? 1 : 0) + (z !== 1 ? 1 : 0);
+        if (corner === 3) continue;
+        blocks.push(<Voxel key={`${x}${y}${z}`} x={x + 1} y={y + 1} z={z} size={S} colors={mission.planet} />);
+      }
+  return (
+    <div className="absolute inset-0">
+      <VoxelWorld cols={5} rows={5} size={S} className="absolute inset-0 game-float" style={{ paddingTop: S * 2.5 }}>
+        <div className="vx-group" style={{ animation: "planet-spin 14s linear infinite", transformOrigin: `${2.5 * S}px ${2.5 * S}px` }}>
+          {blocks}
+        </div>
+        <div className="vx-group">
+          <RocketModel S={S * 0.5} x={8.2} y={1.2} z={8} engines={1} tanks={1} firing={false} />
+        </div>
+      </VoxelWorld>
+    </div>
+  );
+}
+
+function Starfield({ dim, moving }: { dim: boolean; moving: boolean }) {
+  const stars = useMemo(() => {
+    const rnd = seededRandom(42);
+    return Array.from({ length: 40 }, () => ({ x: rnd() * 100, y: rnd() * 100, s: 1 + Math.floor(rnd() * 3) }));
+  }, []);
+  if (dim) return null;
+  return (
+    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+      {stars.map((st, i) => (
+        <span
+          key={i}
+          className="absolute bg-white"
           style={{
-            width: 0,
-            height: 0,
-            borderLeft: "10px solid transparent",
-            borderRight: "10px solid transparent",
-            [dir === "up" ? "borderBottom" : "borderTop"]: `13px solid ${color}`,
-            filter: "drop-shadow(0 0 1px rgba(0,0,0,.6))",
+            left: `${st.x}%`,
+            top: `${st.y}%`,
+            width: st.s * 2,
+            height: moving ? st.s * 8 : st.s * 2,
+            opacity: 0.7,
+            animation: moving ? `star-streak ${0.6 + st.s * 0.3}s ${-(i % 7) * 0.2}s linear infinite` : undefined,
           }}
         />
-        <span
-          className="absolute whitespace-nowrap text-[10px] font-bold text-white px-1 rounded"
-          style={{ background: color, [dir === "up" ? "top" : "bottom"]: -2, [labelLeft ? "right" : "left"]: 22, textShadow: "0 1px 0 rgba(0,0,0,.4)" }}
-        >
-          {label}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function ForceRow({ color, label, value, max }: { color: string; label: string; value: number; max: number }) {
-  return (
-    <div>
-      <div className="flex justify-between text-[10px] font-bold">
-        <span style={{ color }}>{label}</span>
-        <span>{Math.round(value * 100)} N</span>
-      </div>
-      <div className="h-2.5 rounded-full bg-white/10 overflow-hidden border border-black/30">
-        <div className="h-full rounded-full" style={{ width: `${clamp(value / max) * 100}%`, background: color }} />
-      </div>
-    </div>
-  );
-}
-
-function EnergyBar({ label, sub, v, color }: { label: string; sub: string; v: number; color: string }) {
-  return (
-    <div className="flex-1 flex flex-col items-center h-full">
-      <div className="relative flex-1 w-full rounded-md bg-white/10 border border-black/30 overflow-hidden">
-        <div className="absolute inset-x-0 bottom-0 rounded-sm" style={{ height: `${v * 100}%`, background: color }} />
-      </div>
-      <span className="text-[9px] font-bold mt-0.5" style={{ color }}>
-        {label}
-      </span>
-      <span className="text-[8px] text-white/60 -mt-0.5">{sub}</span>
-    </div>
-  );
-}
-
-function Chip({ k, v }: { k: string; v: string }) {
-  return (
-    <div className="rounded-xl bg-indigo-50 border-2 border-indigo-100 px-1 py-1">
-      <p className="text-[9px] font-bold text-indigo-400 uppercase">{k}</p>
-      <p className="text-[11px] @xl:text-xs font-bold text-indigo-900 leading-tight">{v}</p>
-    </div>
-  );
-}
-
-function BlockCloud({ scale, grey }: { scale: number; grey: boolean }) {
-  const c = grey ? "#cbd5e1" : "#ffffff";
-  const u = 18 * scale;
-  return (
-    <div className="flex items-end rl-drift" style={{ filter: "drop-shadow(0 4px 0 rgba(0,0,0,.08))" }}>
-      {[0.6, 1, 1.3, 0.8].map((k, i) => (
-        <span key={i} className="block" style={{ width: u * 1.4, height: u * k, background: c, boxShadow: "inset 0 -4px 0 rgba(0,0,0,.08)" }} />
       ))}
     </div>
   );
 }
 
-const ROCKET_CSS = `
-@keyframes rl-flicker { 0%,100% { transform: scaleY(1) scaleX(1); } 50% { transform: scaleY(1.12) scaleX(0.92); } }
-.rl-flame { transform-origin: 50% 0; animation: rl-flicker 90ms linear infinite; }
-@keyframes rl-spark { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(var(--sx,0), 46px) scale(.3); opacity: 0; } }
-.rl-spark { animation: rl-spark 420ms ease-out infinite; }
-@keyframes rl-smoke { 0% { transform: translate(-50%,0) scale(.4); opacity: .9; } 100% { transform: translate(calc(-50% + var(--sx,0)), -10px) scale(1.8); opacity: 0; } }
-.rl-smoke { animation: rl-smoke 900ms ease-out infinite; }
-@keyframes rl-twinkle { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
-.rl-twinkle { animation: rl-twinkle 2.2s ease-in-out infinite; }
-@keyframes rl-wind { from { transform: translateX(-120px); opacity: 0; } 20% { opacity: 1; } to { transform: translateX(1100px); opacity: 0; } }
-.rl-wind { left: 0; animation: rl-wind 1.4s linear infinite; }
-@keyframes rl-speed { from { transform: translateY(-120%); top: 0; } to { transform: translateY(0); top: 100%; } }
-.rl-speed { animation: rl-speed 380ms linear infinite; }
-@keyframes rl-drift { 0%,100% { transform: translateX(0); } 50% { transform: translateX(14px); } }
-.rl-drift { animation: rl-drift 6s ease-in-out infinite; }
-`;
+// ── Controls & panels ─────────────────────────────────
+
+function ForceBar({ label, value, max, color, icon }: { label: string; value: number; max: number; color: string; icon: ReactNode }) {
+  return (
+    <div className="mb-1.5">
+      <div className="flex items-center justify-between text-[11px] font-bold text-slate-700">
+        <span className="flex items-center gap-1">
+          {icon} {label}
+        </span>
+        <span className="game-pixel text-[10px]">{value}</span>
+      </div>
+      <div className="h-3.5 bg-slate-200 rounded-full overflow-hidden mt-0.5">
+        <div className={cn("h-full rounded-full transition-all duration-300", color)} style={{ width: `${Math.min(100, (value / max) * 100)}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function CheckRow({ ok, text }: { ok: boolean; text: string }) {
+  return (
+    <div className={cn("flex items-start gap-1.5 rounded-lg px-1.5 py-1 mb-1 text-[12px] font-bold leading-tight", ok ? "bg-emerald-100 text-emerald-800" : "bg-rose-100 text-rose-800")}>
+      <span className={cn("shrink-0 w-4 h-4 rounded-full flex items-center justify-center text-white mt-px", ok ? "bg-emerald-500" : "bg-rose-500")}>
+        {ok ? <Check size={11} strokeWidth={3} /> : <X size={11} strokeWidth={3} />}
+      </span>
+      {text}
+    </div>
+  );
+}
+
+function FuelRoute({ tanks, mission }: { tanks: number; mission: Mission }) {
+  const stops = [
+    { label: "Earth orbit", emoji: "🌍", need: 2 },
+    { label: "Moon", emoji: "🌕", need: 3 },
+    { label: "Mars", emoji: "🔴", need: 4 },
+  ];
+  return (
+    <div className="mt-1.5">
+      <p className="text-[10px] font-bold text-slate-500 mb-0.5">FUEL TANKS REACH:</p>
+      <div className="flex items-center gap-1">
+        {stops.map((s) => (
+          <div
+            key={s.label}
+            className={cn(
+              "flex-1 rounded-lg text-center py-0.5 border-2",
+              tanks >= s.need ? "bg-sky-100 border-sky-400" : "bg-slate-100 border-transparent opacity-50",
+              s.need === mission.tanks && "ring-2 ring-amber-400",
+            )}
+          >
+            <p className="text-sm leading-none">{s.emoji}</p>
+            <p className="text-[9px] font-bold text-slate-600">{s.need} tanks</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Stepper({
+  label,
+  emoji,
+  value,
+  max,
+  color,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  emoji: string;
+  value: number;
+  max: number;
+  color: string;
+  disabled: boolean;
+  onChange: (d: number) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2 bg-white/5 rounded-2xl px-2 py-1.5">
+      <button aria-label={`Fewer ${label}`} disabled={disabled || value <= 1} onClick={() => onChange(-1)} className="game-btn !p-0 w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center text-white" style={{ background: color }}>
+        <Minus size={20} strokeWidth={3} />
+      </button>
+      <div className="text-center min-w-0">
+        <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wide text-white/70">{label}</p>
+        <p className="text-lg sm:text-xl leading-none mt-0.5 whitespace-nowrap">
+          {Array.from({ length: value }, () => emoji).join("")}
+        </p>
+        <p className="game-pixel text-[11px] mt-0.5" style={{ color }}>
+          {value}
+        </p>
+      </div>
+      <button aria-label={`More ${label}`} disabled={disabled || value >= max} onClick={() => onChange(1)} className="game-btn !p-0 w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center text-white" style={{ background: color }}>
+        <Plus size={20} strokeWidth={3} />
+      </button>
+    </div>
+  );
+}

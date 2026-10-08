@@ -406,7 +406,7 @@ export function GameShell({
 
           {phase === "countdown" && (
             <div className="absolute inset-0 z-20 bg-slate-950/60 flex items-center justify-center">
-              <span key={count} className="game-pixel text-7xl text-yellow-300 drop-shadow-[0_6px_0_rgba(0,0,0,0.5)] game-bounce-in">
+              <span key={count} className="game-pixel text-7xl text-yellow-300 drop-shadow-[0_8px_18px_rgba(0,0,0,0.35)] game-bounce-in">
                 {count > 0 ? count : "GO!"}
               </span>
             </div>

@@ -1,4 +1,4 @@
-// Minecraft-style 3D blocks drawn with CSS 3D transforms.
+// 3D blocks drawn with CSS 3D transforms.
 // <VoxelWorld> tilts a flat grid into an isometric view; <Voxel> is one cube
 // on that grid at (x, y) with height z (all in block units).
 
@@ -108,6 +108,7 @@ export function VoxelWorld({
   size,
   tilt = 58,
   spin = 45,
+  sway = true,
   children,
   className,
   style,
@@ -117,6 +118,8 @@ export function VoxelWorld({
   size: number;
   tilt?: number;
   spin?: number;
+  /** Gently rock the scene back and forth. */
+  sway?: boolean;
   children: ReactNode;
   className?: string;
   style?: CSSProperties;
@@ -124,12 +127,16 @@ export function VoxelWorld({
   return (
     <div className={`relative flex items-center justify-center ${className ?? ""}`} style={{ perspective: 2200, ...style }}>
       <div
-        className="vx-world"
-        style={{
-          width: cols * size,
-          height: rows * size,
-          transform: `rotateX(${tilt}deg) rotateZ(${spin}deg)`,
-        }}
+        className={`vx-world${sway ? " vx-sway" : ""}`}
+        style={
+          {
+            width: cols * size,
+            height: rows * size,
+            "--tilt": `${tilt}deg`,
+            "--spin": `${spin}deg`,
+            transform: `rotateX(${tilt}deg) rotateZ(${spin}deg)`,
+          } as CSSProperties
+        }
       >
         {children}
       </div>

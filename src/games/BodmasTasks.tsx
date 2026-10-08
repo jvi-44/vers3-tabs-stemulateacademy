@@ -714,7 +714,7 @@ export function BodmasTasks({ seed, reportProgress, finish }: GameProps) {
         <Overlay>
           <div className="text-center game-bounce-in">
             <p className="text-6xl mb-3">🛰️✨</p>
-            <p className="game-pixel text-lg sm:text-2xl text-emerald-300 drop-shadow-[0_4px_0_rgba(0,0,0,0.5)]">ALL SYSTEMS ONLINE!</p>
+            <p className="game-pixel text-lg sm:text-2xl text-emerald-300 drop-shadow-[0_6px_14px_rgba(0,0,0,0.35)]">ALL SYSTEMS ONLINE!</p>
             <p className="text-white/90 mt-3 font-semibold">Ship safety bonus: +{Math.round(SAB_POINTS * (1 - (sabEnd ?? 0)))}</p>
             <p className="text-amber-300 mt-1 font-bold">But wait… someone broke the ship on purpose…</p>
           </div>
@@ -731,7 +731,7 @@ export function BodmasTasks({ seed, reportProgress, finish }: GameProps) {
         <Overlay red>
           <div className="text-center game-bounce-in px-4">
             <p className="text-6xl mb-3">💥</p>
-            <p className="game-pixel text-lg sm:text-2xl text-rose-300 drop-shadow-[0_4px_0_rgba(0,0,0,0.5)]">SHIP SABOTAGED!</p>
+            <p className="game-pixel text-lg sm:text-2xl text-rose-300 drop-shadow-[0_6px_14px_rgba(0,0,0,0.35)]">SHIP SABOTAGED!</p>
             <p className="text-white/90 mt-3 font-semibold">The impostor wins this time. Replay and fix the systems faster!</p>
           </div>
         </Overlay>
@@ -852,9 +852,7 @@ function ShipMap({
                   side2={S ? "#1e1b4b" : "#64748b"}
                   topStyle={{
                     backgroundImage:
-                      "linear-gradient(45deg, rgba(255,255,255,0.12) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.12) 75%), linear-gradient(45deg, rgba(255,255,255,0.12) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.12) 75%)",
-                    backgroundSize: "28px 28px",
-                    backgroundPosition: "0 0, 14px 14px",
+                      "radial-gradient(circle at 30% 25%, rgba(255,255,255,0.28), transparent 55%), linear-gradient(160deg, rgba(255,255,255,0.12), rgba(0,0,0,0.04))",
                     boxShadow: done ? "inset 0 0 0 4px #4ade80, 0 0 24px #4ade80" : isSys ? "inset 0 0 0 4px rgba(248,113,113,0.85)" : "inset 0 0 0 4px #e2e8f0",
                     pointerEvents: "auto",
                     transition: "background-color 500ms",
@@ -1419,7 +1417,7 @@ function Meeting({ suspects, vote, onVote }: { suspects: SuspectInfo[]; vote: nu
     <div className="absolute inset-0 z-30 flex p-2 sm:p-4 overflow-y-auto" style={{ background: "radial-gradient(ellipse at 50% 0%, #7f1d1d, #1e1b4b 70%)" }}>
       <div className="m-auto w-full max-w-[760px]">
       <div className="text-center mb-2 game-bounce-in">
-        <p className="game-pixel text-sm sm:text-xl text-rose-300 drop-shadow-[0_3px_0_rgba(0,0,0,0.6)]">🚨 EMERGENCY MEETING 🚨</p>
+        <p className="game-pixel text-sm sm:text-xl text-rose-300 drop-shadow-[0_6px_14px_rgba(0,0,0,0.4)]">🚨 EMERGENCY MEETING 🚨</p>
         <p className="text-white font-bold text-sm sm:text-base mt-1">Who is the impostor? One crewmate's working breaks BODMAS. Vote them out!</p>
       </div>
       <div className="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-2 sm:gap-3 w-full max-w-[760px]">
