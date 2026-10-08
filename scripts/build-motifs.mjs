@@ -94,16 +94,22 @@ for (const [id, t] of Object.entries(THEMES)) {
   const dsel = id === "sunshine" ? `.dark, .dark[data-theme="sunshine"]` : `.dark[data-theme="${id}"]`;
   css += `
 ${sel} {
-  --motif: ${tile(t.icons, t.light, 0.16)};
-  --motif-on: ${tile(t.icons, "#ffffff", 0.22)};
+  --motif: ${tile(t.icons, t.light, 0.2)};
+  --motif-strong: ${tile(t.icons, t.light, 0.38)};
+  --motif-on: ${tile(t.icons, "#ffffff", 0.24)};
   --motif-icon: ${single(t.icons[0], t.light)};
   --motif-icon-2: ${single(t.icons[1], t.light)};
+  --motif-icon-3: ${single(t.icons[2], t.light)};
+  --motif-icon-4: ${single(t.icons[3], t.light)};
 }
 ${dsel} {
-  --motif: ${tile(t.icons, t.dark, 0.09)};
+  --motif: ${tile(t.icons, t.dark, 0.1)};
+  --motif-strong: ${tile(t.icons, t.dark, 0.2)};
   --motif-on: ${tile(t.icons, "#ffffff", 0.14)};
   --motif-icon: ${single(t.icons[0], t.dark)};
   --motif-icon-2: ${single(t.icons[1], t.dark)};
+  --motif-icon-3: ${single(t.icons[2], t.dark)};
+  --motif-icon-4: ${single(t.icons[3], t.dark)};
 }
 `;
 }

@@ -100,7 +100,7 @@ function Highlight({ text, query }: { text: string; query: string }) {
   return (
     <>
       {text.slice(0, i)}
-      <mark className="bg-primary/30 text-inherit rounded px-0.5">{text.slice(i, i + q.length)}</mark>
+      <mark className="bg-pop-2 text-[#1b1b12] rounded-md px-1 border-[1.5px] border-ink">{text.slice(i, i + q.length)}</mark>
       {text.slice(i + q.length)}
     </>
   );
@@ -320,62 +320,60 @@ export function FriendsTab({ myUserId }: { myUserId: number }) {
       </div>
 
       {offline && (
-        <p className="mb-3 text-xs font-bold text-destructive bg-destructive/10 rounded-2xl px-4 py-2">
+        <p className="mb-3 text-xs font-bold text-white bg-destructive border-2 border-ink shadow-[0_3px_0_var(--ink-line)] rounded-2xl px-4 py-2 -rotate-[0.5deg]">
           Can't reach the Academy server right now. Chats will reappear once it's back.
         </p>
       )}
 
       {/* Fixed-height chat area, the same size on every visit and every chat */}
-      <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] sticker overflow-hidden h-[calc(100dvh-17rem)] md:h-[calc(100dvh-14rem)] min-h-[440px] max-h-[760px]">
+      <div className="grid grid-cols-1 md:grid-cols-[310px_1fr] sticker overflow-hidden h-[calc(100dvh-17rem)] md:h-[calc(100dvh-14rem)] min-h-[440px] max-h-[760px]">
         {/* ---------------- List panel ---------------- */}
         <div
           className={cn(
-            "border-b md:border-b-0 md:border-r border-border flex flex-col min-h-0",
+            "md:border-r-[2.5px] border-ink flex flex-col min-h-0 bg-soft-1",
             active ? "hidden md:flex" : "flex",
           )}
         >
           {/* Search at the top of chat */}
-          <div className="p-3 border-b border-border shrink-0">
+          <div className="p-3 border-b-[2.5px] border-ink shrink-0 bg-card">
             <div className="relative">
-              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Search size={16} strokeWidth={2.5} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search chats & messages"
-                className="w-full pl-9 pr-8 py-2 rounded-2xl border border-border bg-background text-sm outline-none focus:ring-2 focus:ring-primary/40"
+                className="pop-field w-full h-11 pl-10 pr-10 !rounded-full text-sm"
               />
               {search && (
                 <button
                   onClick={() => setSearch("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
+                  className="icon-pop icon-pop-sm !w-7 !h-7 !shadow-none absolute right-2 top-1/2 -translate-y-1/2"
                   aria-label="Clear search"
                 >
-                  <X size={14} />
+                  <X size={13} strokeWidth={3} />
                 </button>
               )}
             </div>
 
             {/* Chats & groups kept separate */}
-            <div className="grid grid-cols-3 gap-1 mt-3 bg-accent/50 p-1 rounded-2xl">
+            <div className="pop-tabs-list grid grid-cols-3 w-full mt-3 !p-1">
               {(
                 [
-                  ["chats", "Chats", <MessageSquare size={13} key="i" />],
-                  ["groups", "Groups", <Hash size={13} key="i" />],
-                  ["friends", "Friends", <Users size={13} key="i" />],
+                  ["chats", "Chats", <MessageSquare size={14} key="i" />],
+                  ["groups", "Groups", <Hash size={14} key="i" />],
+                  ["friends", "Friends", <Users size={14} key="i" />],
                 ] as const
               ).map(([id, label, icon]) => (
                 <button
                   key={id}
                   onClick={() => setTab(id)}
-                  className={cn(
-                    "relative flex items-center justify-center gap-1 text-xs font-bold py-1.5 rounded-xl transition-all",
-                    tab === id ? "bg-card text-primary shadow-sm" : "text-muted-foreground hover:text-foreground",
-                  )}
+                  aria-pressed={tab === id}
+                  className="pop-tab relative !px-1 !py-1.5 !text-[13px]"
                 >
                   {icon}
                   {label}
                   {id === "friends" && incoming.length > 0 && (
-                    <span className="absolute -top-1 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-destructive text-white text-[9px] leading-4">
+                    <span className="absolute -top-2.5 -right-1.5 min-w-5 h-5 px-1 rounded-full bg-destructive text-white border-2 border-ink text-[10px] font-black leading-4 rotate-12 shadow-[0_2px_0_var(--ink-line)]">
                       {incoming.length}
                     </span>
                   )}
@@ -384,22 +382,22 @@ export function FriendsTab({ myUserId }: { myUserId: number }) {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-2 space-y-1 min-h-0">
+          <div className="flex-1 overflow-y-auto p-3 space-y-2 min-h-0">
             {q.length >= 2 && messageHits.length > 0 && (
-              <div className="mb-2">
-                <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground px-2 mb-1">
-                  Messages
-                </p>
+              <div className="mb-3 space-y-2">
+                <span className="tag-pop">
+                  <Search size={11} strokeWidth={3} /> Messages
+                </span>
                 {messageHits.map((hit) => (
                   <button
                     key={hit.messageId}
                     onClick={() => openSearchHit(hit)}
-                    className="w-full text-left p-2.5 rounded-2xl hover:bg-accent/60"
+                    className="w-full text-left px-3 py-2.5 rounded-2xl bg-card border-2 border-ink shadow-[0_2px_0_var(--ink-line)] hover:-translate-y-0.5 transition-transform"
                   >
-                    <p className="text-[11px] font-bold text-primary truncate">
+                    <p className="text-[11px] font-black text-soft-3-ink truncate">
                       {convoName(hit.conversationId)} · {hit.senderName}
                     </p>
-                    <p className="text-xs text-foreground line-clamp-2">
+                    <p className="text-xs font-semibold text-foreground line-clamp-2">
                       <Highlight text={hit.body} query={search} />
                     </p>
                   </button>
@@ -432,10 +430,10 @@ export function FriendsTab({ myUserId }: { myUserId: number }) {
                 <button
                   onClick={() => setGroupDialog("create")}
                   disabled={friends.length === 0}
-                  className="w-full flex items-center gap-2 p-2.5 rounded-2xl text-sm font-bold text-primary hover:bg-accent/60 disabled:opacity-50"
+                  className="w-full flex items-center gap-2.5 p-2.5 rounded-2xl border-2 border-dashed border-ink bg-card/60 text-sm font-display font-semibold text-foreground hover:bg-card hover:-rotate-[0.6deg] transition-transform disabled:opacity-50 disabled:hover:rotate-0"
                 >
-                  <span className="w-9 h-9 rounded-full border-2 border-dashed border-primary/50 flex items-center justify-center">
-                    <Plus size={16} />
+                  <span className="w-10 h-10 rounded-full bg-pop-2 text-[#1b1b12] border-2 border-ink shadow-[0_2px_0_var(--ink-line)] flex items-center justify-center">
+                    <Plus size={18} strokeWidth={3} />
                   </span>
                   Create a group chat
                 </button>
@@ -477,56 +475,59 @@ export function FriendsTab({ myUserId }: { myUserId: number }) {
         </div>
 
         {/* ---------------- Chat panel ---------------- */}
-        <div className={cn("flex flex-col min-h-0", active ? "flex" : "hidden md:flex")}>
+        <div className={cn("flex flex-col min-h-0 chat-paper", active ? "flex" : "hidden md:flex")}>
           {!active ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-center p-6 gap-3">
-              <img src={stembotGreen} alt="" className="h-28 w-auto drop-shadow-md" />
-              <p className="font-black text-foreground">Pick a chat to start talking!</p>
-              <p className="text-sm text-muted-foreground max-w-xs">
-                Chats with one friend live under Chats, and group chats live under Groups.
+            <div className="flex-1 flex flex-col items-center justify-center text-center p-6 gap-4">
+              <div className="chat-bubble chat-bubble-them !max-w-xs !rotate-[-2deg] font-display !text-lg !font-semibold !px-5 !py-3">
+                Pick a chat to start talking!
+              </div>
+              <img src={stembotGreen} alt="" className="h-32 w-auto die-cut bob ml-10" />
+              <p className="text-sm font-semibold text-muted-foreground max-w-xs">
+                Chats with one friend live under <b className="text-foreground">Chats</b>, and group chats live under{" "}
+                <b className="text-foreground">Groups</b>.
               </p>
             </div>
           ) : (
             <>
-              <div className="flex items-center justify-between gap-2 p-3 md:p-4 border-b border-border shrink-0">
-                <div className="flex items-center gap-2 min-w-0">
+              <div className="bg-hero text-primary-foreground flex items-center justify-between gap-2 px-3 py-2.5 md:px-4 border-b-[2.5px] border-ink shrink-0">
+                <div className="flex items-center gap-2.5 min-w-0">
                   <button
                     onClick={() => setActiveId(null)}
-                    className="md:hidden p-1.5 -ml-1 rounded-xl hover:bg-accent"
+                    className="md:hidden icon-pop icon-pop-sm"
                     aria-label="Back to chats"
                   >
-                    <ArrowLeft size={18} />
+                    <ArrowLeft size={16} strokeWidth={2.75} />
                   </button>
                   <ConvoAvatar convo={active} size="sm" />
                   <div className="min-w-0">
-                    <p className="font-bold text-foreground truncate">{active.name}</p>
+                    <p className="font-display font-bold text-lg leading-tight truncate">{active.name}</p>
                     {active.isGroup && (
-                      <p className="text-[11px] text-muted-foreground truncate">
+                      <p className="text-[11px] font-bold opacity-80 truncate">
                         {active.members.length} members
                       </p>
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex items-center gap-2 shrink-0">
                   <button
                     onClick={() => setTradeOpen(true)}
-                    className="hidden sm:flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl bg-accent text-accent-foreground"
+                    className="hidden sm:inline-flex btn-pop btn-pop-sm !text-xs"
                   >
-                    <Repeat size={13} /> Trade Cards
+                    <Repeat size={14} strokeWidth={2.5} /> Trade Cards
                   </button>
                   <button
                     onClick={() => toast("Playing games together is coming soon! 🎮")}
-                    className="hidden sm:flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl bg-primary text-primary-foreground"
+                    className="hidden sm:inline-flex btn-pop btn-pop-sm btn-pop2 !text-xs"
                   >
-                    <Gamepad2 size={13} /> Play Together
+                    <Gamepad2 size={14} strokeWidth={2.5} /> Play Together
                   </button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <button className="p-2 rounded-xl hover:bg-accent" aria-label="Chat options">
-                        <MoreVertical size={16} />
+                      <button className="icon-pop" aria-label="Chat options">
+                        <MoreVertical size={17} strokeWidth={2.75} />
                       </button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuContent align="end" className="w-52">
                       <DropdownMenuItem onSelect={() => setMembersOpen(true)}>
                         <Users size={14} /> {active.isGroup ? "View members" : "View profile"}
                       </DropdownMenuItem>
@@ -561,11 +562,13 @@ export function FriendsTab({ myUserId }: { myUserId: number }) {
                 </div>
               </div>
 
-              <div ref={scrollRef} className="flex-1 p-4 space-y-2 overflow-y-auto min-h-0">
+              <div ref={scrollRef} className="flex-1 px-5 py-5 space-y-3.5 overflow-y-auto min-h-0">
                 {messages.length === 0 && (
-                  <p className="text-center text-sm text-muted-foreground py-8">
-                    Say hello to {active.name}! 👋
-                  </p>
+                  <div className="flex justify-center py-8">
+                    <span className="kicker kicker-3 !text-xs !normal-case !tracking-normal !font-bold border-2 border-ink">
+                      Say hello to {active.name}! 👋
+                    </span>
+                  </div>
                 )}
                 {messages.map((m) => {
                   const mine = m.senderId === myUserId;
@@ -573,31 +576,29 @@ export function FriendsTab({ myUserId }: { myUserId: number }) {
                     <div
                       key={m.id}
                       id={`msg-${m.id}`}
-                      className={cn("flex gap-2 items-end", mine ? "justify-end" : "justify-start")}
+                      className={cn("flex gap-2 items-end", mine ? "justify-end pr-2" : "justify-start pl-2")}
                     >
                       {!mine && active.isGroup && (
                         <img
                           src={avatarFor({ userId: m.senderId ?? 0, avatar: m.senderAvatar })}
                           alt=""
-                          className="w-6 h-6 rounded-full bg-muted shrink-0"
+                          className="w-8 h-8 rounded-full bg-soft-3 border-2 border-ink shrink-0 mr-2.5 object-cover"
                         />
                       )}
                       <div
                         className={cn(
-                          "text-sm px-3 py-2 rounded-2xl max-w-[75%] transition-shadow",
-                          mine
-                            ? "bg-primary text-primary-foreground rounded-br-sm"
-                            : "bg-muted text-foreground rounded-bl-sm",
-                          jumpToMessage === m.id && "ring-4 ring-primary/40",
+                          "chat-bubble",
+                          mine ? "chat-bubble-me" : "chat-bubble-them",
+                          jumpToMessage === m.id && "chat-bubble-hit",
                         )}
                       >
                         {!mine && active.isGroup && (
-                          <p className="text-[10px] font-black opacity-70">{m.senderName}</p>
+                          <p className="font-display text-[11px] font-bold text-soft-3-ink">{m.senderName}</p>
                         )}
                         <p className="whitespace-pre-wrap">
                           <Highlight text={m.body} query={jumpToMessage === m.id ? search : ""} />
                         </p>
-                        <p className={cn("text-[9px] mt-0.5", mine ? "opacity-70 text-right" : "opacity-60")}>
+                        <p className={cn("text-[9.5px] font-bold mt-0.5 opacity-70", mine && "text-right")}>
                           {timeLabel(m.createdAt)}
                         </p>
                       </div>
@@ -605,22 +606,22 @@ export function FriendsTab({ myUserId }: { myUserId: number }) {
                   );
                 })}
               </div>
-              <div className="p-3 border-t border-border flex items-center gap-2 shrink-0">
+              <div className="p-3 border-t-[2.5px] border-ink bg-card flex items-center gap-2.5 shrink-0">
                 <input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && send()}
                   maxLength={500}
                   placeholder={`Message ${active.name}...`}
-                  className="flex-1 min-w-0 px-3 py-2 rounded-xl border border-border bg-background text-sm outline-none focus:ring-2 focus:ring-primary/40"
+                  className="pop-field flex-1 min-w-0 h-11 px-4 !rounded-full text-sm"
                 />
                 <button
                   onClick={send}
                   disabled={!input.trim()}
-                  className="p-2 rounded-xl bg-primary text-primary-foreground shrink-0 disabled:opacity-50"
+                  className="icon-pop !w-11 !h-11 !bg-primary !text-primary-foreground -rotate-6 hover-wiggle"
                   aria-label="Send"
                 >
-                  <Send size={15} />
+                  <Send size={17} strokeWidth={2.5} />
                 </button>
               </div>
             </>
@@ -633,15 +634,24 @@ export function FriendsTab({ myUserId }: { myUserId: number }) {
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>{active?.isGroup ? `${active.name} members` : active?.name}</DialogTitle>
+            {active?.isGroup && <DialogDescription>Everyone in this group chat.</DialogDescription>}
           </DialogHeader>
-          <div className="space-y-2 max-h-72 overflow-y-auto">
-            {active?.members.map((m) => (
-              <div key={m.userId} className="flex items-center gap-3 p-2 rounded-2xl bg-accent/40">
-                <img src={avatarFor(m)} alt="" className="w-9 h-9 rounded-full bg-muted" />
+          <div className="space-y-2.5 max-h-72 overflow-y-auto p-1">
+            {active?.members.map((m, i) => (
+              <div
+                key={m.userId}
+                className={cn(
+                  "flex items-center gap-3 p-2.5 rounded-2xl bg-soft-1 border-2 border-ink shadow-[0_2px_0_var(--ink-line)]",
+                  i % 2 ? "rotate-[0.6deg]" : "-rotate-[0.6deg]",
+                )}
+              >
+                <img src={avatarFor(m)} alt="" className="w-10 h-10 rounded-full bg-card border-2 border-ink object-cover" />
                 <p className="text-sm font-bold text-foreground flex-1 truncate">
                   {m.username} {m.userId === myUserId && <span className="text-muted-foreground">(you)</span>}
                 </p>
-                <span className="text-[10px] font-black text-primary">Lv {m.level}</span>
+                <span className="chip-ink !py-0.5 !px-2 !text-[11px] !shadow-[0_2px_0_var(--ink-line)] bg-pop-2 !text-[#1b1b12]">
+                  Lv {m.level}
+                </span>
               </div>
             ))}
           </div>
@@ -676,8 +686,11 @@ export function FriendsTab({ myUserId }: { myUserId: number }) {
 
       {/* Are-you-sure for leaving a group / removing a friend */}
       <AlertDialog open={!!confirm} onOpenChange={(o) => !o && setConfirm(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
+            <span className="w-14 h-14 mx-auto sm:mx-0 rounded-2xl bg-destructive text-white border-[2.5px] border-ink shadow-[0_3px_0_var(--ink-line)] flex items-center justify-center -rotate-6">
+              {confirm?.kind === "leave" ? <LogOut size={24} strokeWidth={2.5} /> : <UserMinus size={24} strokeWidth={2.5} />}
+            </span>
             <AlertDialogTitle>
               {confirm?.kind === "leave" ? `Leave ${confirm.convo.name}?` : `Remove ${confirm?.kind === "unfriend" ? confirm.user.username : ""}?`}
             </AlertDialogTitle>
@@ -689,7 +702,7 @@ export function FriendsTab({ myUserId }: { myUserId: number }) {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={doConfirm} className="bg-destructive text-white hover:bg-destructive/90">
+            <AlertDialogAction onClick={doConfirm} className="bg-destructive text-white">
               {confirm?.kind === "leave" ? "Leave group" : "Remove friend"}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -697,24 +710,36 @@ export function FriendsTab({ myUserId }: { myUserId: number }) {
       </AlertDialog>
 
       {tradeOpen && active && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setTradeOpen(false)}>
-          <div onClick={(e) => e.stopPropagation()} className="bg-card rounded-3xl p-6 max-w-md w-full border border-border shadow-2xl">
-            <h3 className="font-black text-foreground mb-1">Trade cards with {active.name}</h3>
-            <p className="text-xs text-muted-foreground mb-4">
+        <div className="fixed inset-0 z-50 pop-overlay flex items-center justify-center p-4" onClick={() => setTradeOpen(false)}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="pop-dialog relative max-w-md w-full animate-in fade-in-0 zoom-in-95"
+          >
+            <button onClick={() => setTradeOpen(false)} className="pop-close" aria-label="Close">
+              <X size={16} strokeWidth={3} />
+            </button>
+            <span className="tag-pop tag-pop-2 mb-2">
+              <Repeat size={11} strokeWidth={3} /> Card swap
+            </span>
+            <h3 className="pop-dialog-title mb-1 pr-10">Trade cards with {active.name}</h3>
+            <p className="pop-dialog-desc mb-4">
               Pick a card to offer. (Card trading is a preview and isn't saved yet.)
             </p>
-            <div className="grid grid-cols-3 gap-2 max-h-56 overflow-y-auto mb-4">
-              {MOCK_CARDS.map((c) => (
-                <div key={c.id} className="aspect-[3/4] rounded-xl overflow-hidden border border-border">
+            <div className="grid grid-cols-3 gap-3 max-h-60 overflow-y-auto mb-5 p-1.5">
+              {MOCK_CARDS.map((c, i) => (
+                <div
+                  key={c.id}
+                  className={cn(
+                    "aspect-[3/4] rounded-xl overflow-hidden border-[2.5px] border-ink shadow-[0_3px_0_var(--ink-line)] bg-soft-1 transition-transform hover:-translate-y-1 hover:rotate-0",
+                    i % 3 === 0 ? "-rotate-2" : i % 3 === 1 ? "rotate-1" : "rotate-2",
+                  )}
+                >
                   <img src={c.imageUrl} className="w-full h-full object-cover" />
                 </div>
               ))}
             </div>
-            <button
-              onClick={() => setTradeOpen(false)}
-              className="w-full py-2.5 rounded-xl bg-primary text-primary-foreground font-bold text-sm"
-            >
-              Send Trade Request
+            <button onClick={() => setTradeOpen(false)} className="btn-pop btn-primary w-full">
+              <Repeat size={16} strokeWidth={2.5} /> Send Trade Request
             </button>
           </div>
         </div>
@@ -726,11 +751,16 @@ export function FriendsTab({ myUserId }: { myUserId: number }) {
 // ---------------------------------------------------------------------------
 
 function ConvoAvatar({ convo, size = "md" }: { convo: Conversation; size?: "sm" | "md" }) {
-  const cls = size === "sm" ? "w-8 h-8" : "w-10 h-10";
+  const cls = size === "sm" ? "w-10 h-10" : "w-11 h-11";
   if (convo.isGroup) {
     return (
-      <div className={cn(cls, "rounded-full bg-primary/20 text-primary flex items-center justify-center shrink-0")}>
-        <Hash size={size === "sm" ? 14 : 16} />
+      <div
+        className={cn(
+          cls,
+          "rounded-2xl bg-pop-3 text-white border-[2.5px] border-ink shadow-[0_2px_0_var(--ink-line)] flex items-center justify-center shrink-0 rotate-[-4deg]",
+        )}
+      >
+        <Hash size={size === "sm" ? 17 : 19} strokeWidth={3} />
       </div>
     );
   }
@@ -739,7 +769,7 @@ function ConvoAvatar({ convo, size = "md" }: { convo: Conversation; size?: "sm" 
     <img
       src={other ? avatarFor(other) : AVATAR_OPTIONS[0]}
       alt=""
-      className={cn(cls, "rounded-full bg-muted shrink-0 object-cover")}
+      className={cn(cls, "rounded-full bg-soft-3 border-[2.5px] border-ink shadow-[0_2px_0_var(--ink-line)] shrink-0 object-cover")}
     />
   );
 }
@@ -759,21 +789,30 @@ function ConversationRow({
     <button
       onClick={onClick}
       className={cn(
-        "w-full flex items-center gap-2.5 p-2.5 rounded-2xl text-left transition-all",
-        active ? "bg-accent" : "hover:bg-accent/50",
+        "w-full flex items-center gap-3 p-2.5 rounded-2xl text-left border-2 transition-all",
+        active
+          ? "bg-primary text-primary-foreground border-ink shadow-[0_3px_0_var(--ink-line)] -rotate-[0.8deg]"
+          : "bg-card border-ink shadow-[0_2px_0_var(--ink-line)] hover:shadow-[0_4px_0_var(--ink-line)] hover:-translate-y-0.5",
       )}
     >
       <ConvoAvatar convo={convo} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-bold text-foreground truncate flex-1">
+          <span className="font-display font-semibold truncate flex-1">
             <Highlight text={convo.name} query={query} />
           </span>
           {convo.lastMessage && (
-            <span className="text-[10px] text-muted-foreground shrink-0">{timeLabel(convo.lastMessage.createdAt)}</span>
+            <span
+              className={cn(
+                "text-[10px] font-bold shrink-0 px-1.5 py-0.5 rounded-full",
+                active ? "bg-card text-foreground border-[1.5px] border-ink" : "text-muted-foreground",
+              )}
+            >
+              {timeLabel(convo.lastMessage.createdAt)}
+            </span>
           )}
         </div>
-        <p className="text-xs text-muted-foreground truncate">
+        <p className={cn("text-xs font-semibold truncate", active ? "opacity-85" : "text-muted-foreground")}>
           {convo.lastMessage
             ? `${convo.isGroup && convo.lastMessage.sender ? `${convo.lastMessage.sender}: ` : ""}${convo.lastMessage.body}`
             : convo.isGroup
@@ -787,11 +826,12 @@ function ConversationRow({
 
 function EmptyHint({ text, action }: { text: string; action?: { label: string; onClick: () => void } }) {
   return (
-    <div className="text-center px-4 py-6">
-      <p className="text-xs text-muted-foreground">{text}</p>
+    <div className="text-center px-4 py-6 flex flex-col items-center">
+      <span className="motif-icon w-14 h-14 mb-2 -rotate-12 opacity-90" aria-hidden />
+      <p className="text-sm font-semibold text-muted-foreground max-w-[15rem]">{text}</p>
       {action && (
-        <button onClick={action.onClick} className="mt-2 text-xs font-bold text-primary hover:underline">
-          {action.label}
+        <button onClick={action.onClick} className="btn-pop btn-pop-sm btn-primary mt-3 rotate-[-2deg]">
+          <UserPlus size={14} strokeWidth={2.5} /> {action.label}
         </button>
       )}
     </div>
@@ -865,12 +905,12 @@ function FriendsPanel({
   );
 
   return (
-    <div className="space-y-4 p-1">
-      <div className="relative">
-        <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground px-1 mb-1.5">
-          Add a friend
-        </p>
-        <div className="flex items-center gap-1.5">
+    <div className="space-y-5 p-0.5">
+      <div className="relative bg-card border-2 border-ink rounded-2xl shadow-[0_3px_0_var(--ink-line)] p-3">
+        <span className="tag-pop tag-pop-2 mb-2.5">
+          <UserPlus size={11} strokeWidth={3} /> Add a friend
+        </span>
+        <div className="flex items-center gap-2">
           <input
             value={name}
             onChange={(e) => {
@@ -881,35 +921,35 @@ function FriendsPanel({
             onBlur={() => setTimeout(() => setOpen(false), 150)}
             onKeyDown={(e) => e.key === "Enter" && name.trim() && send(name.trim())}
             placeholder="Type their username"
-            className="flex-1 min-w-0 px-3 py-2 rounded-xl border border-border bg-background text-sm outline-none focus:ring-2 focus:ring-primary/40"
+            className="pop-field flex-1 min-w-0 h-10 px-3.5 !rounded-full text-sm"
           />
           <button
             onClick={() => name.trim() && send(name.trim())}
             disabled={!exactMatch || exactMatch.status !== "none"}
-            className="p-2 rounded-xl bg-primary text-primary-foreground shrink-0 disabled:opacity-40"
+            className="icon-pop !bg-primary !text-primary-foreground"
             aria-label="Send friend request"
           >
-            <UserPlus size={15} />
+            <UserPlus size={16} strokeWidth={2.5} />
           </button>
         </div>
         {open && name.trim().length >= 2 && (
-          <div className="absolute z-20 left-0 right-0 mt-1 bg-popover border border-border rounded-2xl shadow-lg p-1 max-h-60 overflow-y-auto">
+          <div className="pop-menu absolute z-20 left-2 right-2 mt-2 max-h-60 overflow-y-auto">
             {results.length === 0 ? (
-              <p className="text-xs text-muted-foreground p-3">No Academy account with that username.</p>
+              <p className="text-xs font-semibold text-muted-foreground p-3">No Academy account with that username.</p>
             ) : (
               results.map((u) => (
-                <div key={u.userId} className="flex items-center gap-2 p-2 rounded-xl hover:bg-accent/60">
-                  <img src={avatarFor(u)} alt="" className="w-7 h-7 rounded-full bg-muted" />
-                  <span className="text-sm font-semibold text-foreground flex-1 truncate">{u.username}</span>
+                <div key={u.userId} className="flex items-center gap-2 p-2 rounded-xl hover:bg-soft-1">
+                  <img src={avatarFor(u)} alt="" className="w-8 h-8 rounded-full bg-soft-3 border-2 border-ink object-cover" />
+                  <span className="text-sm font-bold text-foreground flex-1 truncate">{u.username}</span>
                   <button
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => (u.status === "none" || u.status === "incoming") && send(u.username)}
                     disabled={u.status === "friends" || u.status === "requested"}
                     className={cn(
-                      "text-[11px] font-bold px-2.5 py-1 rounded-lg",
+                      "font-display text-[12px] font-semibold px-3 py-1 rounded-full border-2",
                       u.status === "none" || u.status === "incoming"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-accent text-muted-foreground",
+                        ? "bg-primary text-primary-foreground border-ink shadow-[0_2px_0_var(--ink-line)] hover:-translate-y-px"
+                        : "bg-transparent text-muted-foreground border-dashed border-ink/40",
                     )}
                   >
                     {STATUS_LABEL[u.status]}
@@ -922,60 +962,69 @@ function FriendsPanel({
       </div>
 
       {incoming.length > 0 && (
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground px-1 mb-1">
-            Friend requests ({incoming.length})
-          </p>
+        <div className="space-y-2">
+          <span className="tag-pop !bg-destructive !text-white">Friend requests ({incoming.length})</span>
           {incoming.map((r) => (
-            <div key={r.requestId} className="flex items-center gap-2 p-2 rounded-2xl bg-primary/10">
-              <img src={avatarFor(r.user)} alt="" className="w-8 h-8 rounded-full bg-muted" />
-              <span className="text-sm font-bold text-foreground flex-1 truncate">{r.user.username}</span>
+            <div
+              key={r.requestId}
+              className="flex items-center gap-2 p-2 pl-2.5 rounded-2xl bg-soft-2 border-2 border-ink shadow-[0_3px_0_var(--ink-line)] rotate-[0.6deg]"
+            >
+              <img src={avatarFor(r.user)} alt="" className="w-9 h-9 rounded-full bg-card border-2 border-ink object-cover" />
+              <div className="flex-1 min-w-0">
+                <p className="font-display font-semibold text-foreground truncate leading-tight">{r.user.username}</p>
+                <p className="text-[10px] font-bold text-soft-2-ink">wants to be friends!</p>
+              </div>
               <button
                 onClick={() => onAnswer(r, "accept")}
-                className="p-1.5 rounded-lg bg-primary text-primary-foreground"
+                className="icon-pop icon-pop-sm !bg-pop-2 !text-[#1b1b12]"
                 aria-label={`Accept ${r.user.username}`}
               >
-                <Check size={14} />
+                <Check size={15} strokeWidth={3} />
               </button>
               <button
                 onClick={() => onAnswer(r, "decline")}
-                className="p-1.5 rounded-lg bg-accent text-muted-foreground"
+                className="icon-pop icon-pop-sm"
                 aria-label={`Decline ${r.user.username}`}
               >
-                <X size={14} />
+                <X size={15} strokeWidth={3} />
               </button>
             </div>
           ))}
         </div>
       )}
 
-      <div>
-        <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground px-1 mb-1">
-          Your friends ({friends.length})
-        </p>
+      <div className="space-y-2">
+        <span className="tag-pop">
+          <Users size={11} strokeWidth={3} /> Your friends ({friends.length})
+        </span>
         {friends.length === 0 && (
-          <p className="text-xs text-muted-foreground px-1">
+          <p className="text-xs font-semibold text-muted-foreground px-1">
             No friends yet. Ask a classmate for their username and add them above!
           </p>
         )}
         {friends.map((f) => (
-          <div key={f.userId} className="flex items-center gap-2 p-2 rounded-2xl hover:bg-accent/50">
-            <img src={avatarFor(f)} alt="" className="w-8 h-8 rounded-full bg-muted" />
+          <div
+            key={f.userId}
+            className="flex items-center gap-2.5 p-2 pl-2.5 rounded-2xl bg-card border-2 border-ink shadow-[0_2px_0_var(--ink-line)] hover:-translate-y-0.5 transition-transform"
+          >
+            <img src={avatarFor(f)} alt="" className="w-9 h-9 rounded-full bg-soft-3 border-2 border-ink object-cover" />
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-foreground truncate">{f.username}</p>
-              <p className="text-[10px] text-muted-foreground">Level {f.level}</p>
+              <p className="font-display font-semibold text-foreground truncate leading-tight">{f.username}</p>
+              <span className="inline-block mt-0.5 text-[10px] font-black px-1.5 rounded-full bg-soft-1 text-foreground border-[1.5px] border-ink">
+                Level {f.level}
+              </span>
             </div>
             <button
               onClick={() => onMessage(f)}
-              className="p-1.5 rounded-lg text-primary hover:bg-primary/10"
+              className="icon-pop icon-pop-sm !bg-primary !text-primary-foreground"
               aria-label={`Message ${f.username}`}
             >
-              <MessageSquare size={15} />
+              <MessageSquare size={14} strokeWidth={2.5} />
             </button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="p-1.5 rounded-lg hover:bg-accent" aria-label={`Options for ${f.username}`}>
-                  <MoreVertical size={14} />
+                <button className="icon-pop icon-pop-sm" aria-label={`Options for ${f.username}`}>
+                  <MoreVertical size={14} strokeWidth={2.75} />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -994,17 +1043,20 @@ function FriendsPanel({
       </div>
 
       {outgoing.length > 0 && (
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground px-1 mb-1">
-            Waiting for a reply
-          </p>
+        <div className="space-y-2">
+          <span className="tag-pop tag-pop-1">
+            <Clock size={11} strokeWidth={3} /> Waiting for a reply
+          </span>
           {outgoing.map((r) => (
-            <div key={r.requestId} className="flex items-center gap-2 p-2">
+            <div
+              key={r.requestId}
+              className="flex items-center gap-2 px-3 py-2 rounded-2xl border-2 border-dashed border-ink/50 bg-card/50"
+            >
               <Clock size={14} className="text-muted-foreground" />
-              <span className="text-xs font-semibold text-foreground flex-1 truncate">{r.user.username}</span>
+              <span className="text-xs font-bold text-foreground flex-1 truncate">{r.user.username}</span>
               <button
                 onClick={() => onAnswer(r, "cancel")}
-                className="text-[11px] font-bold text-muted-foreground hover:text-destructive"
+                className="font-display text-[11px] font-semibold px-2.5 py-0.5 rounded-full border-2 border-ink bg-card hover:bg-destructive hover:text-white"
               >
                 Cancel
               </button>
@@ -1058,40 +1110,47 @@ function GroupDialog({
             onChange={(e) => setName(e.target.value)}
             maxLength={40}
             placeholder="Group name, e.g. Volcano Squad 🌋"
-            className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm outline-none focus:ring-2 focus:ring-primary/40"
+            className="pop-field w-full h-11 px-4 text-sm"
           />
         )}
-        <div className="space-y-1 max-h-60 overflow-y-auto">
+        <div className="space-y-2 max-h-60 overflow-y-auto p-1">
           {choices.length === 0 && (
-            <p className="text-sm text-muted-foreground">All your friends are already in this group.</p>
+            <p className="text-sm font-semibold text-muted-foreground">All your friends are already in this group.</p>
           )}
-          {choices.map((f) => (
-            <label
-              key={f.userId}
-              className={cn(
-                "flex items-center gap-3 p-2 rounded-2xl cursor-pointer",
-                picked.includes(f.userId) ? "bg-primary/10" : "hover:bg-accent/50",
-              )}
-            >
-              <input
-                type="checkbox"
-                checked={picked.includes(f.userId)}
-                onChange={() => toggle(f.userId)}
-                className="w-4 h-4 accent-[var(--primary)]"
-              />
-              <img src={avatarFor(f)} alt="" className="w-8 h-8 rounded-full bg-muted" />
-              <span className="text-sm font-bold text-foreground">{f.username}</span>
-            </label>
-          ))}
+          {choices.map((f) => {
+            const on = picked.includes(f.userId);
+            return (
+              <label
+                key={f.userId}
+                className={cn(
+                  "flex items-center gap-3 p-2 pr-3 rounded-2xl cursor-pointer border-2 border-ink transition-all",
+                  on
+                    ? "bg-soft-1 shadow-[0_3px_0_var(--ink-line)] -rotate-[0.6deg]"
+                    : "bg-card shadow-[0_1px_0_var(--ink-line)] hover:-translate-y-0.5",
+                )}
+              >
+                <input type="checkbox" checked={on} onChange={() => toggle(f.userId)} className="sr-only peer" />
+                <span
+                  data-state={on ? "checked" : "unchecked"}
+                  className="pop-check peer-focus-visible:ring-4 peer-focus-visible:ring-ring/45"
+                  aria-hidden
+                >
+                  {on && <Check size={13} strokeWidth={3.5} />}
+                </span>
+                <img src={avatarFor(f)} alt="" className="w-9 h-9 rounded-full bg-soft-3 border-2 border-ink object-cover" />
+                <span className="font-display font-semibold text-foreground">{f.username}</span>
+              </label>
+            );
+          })}
         </div>
         <DialogFooter>
-          <button onClick={onClose} className="px-4 py-2 rounded-xl text-sm font-bold hover:bg-accent">
+          <button onClick={onClose} className="btn-pop btn-pop-sm">
             Cancel
           </button>
           <button
             onClick={() => onSubmit(name.trim(), picked)}
             disabled={!canSubmit}
-            className="px-4 py-2 rounded-xl text-sm font-bold bg-primary text-primary-foreground disabled:opacity-50"
+            className="btn-pop btn-pop-sm btn-primary"
           >
             {mode === "create" ? `Create group${picked.length ? ` (${picked.length + 1})` : ""}` : "Add"}
           </button>

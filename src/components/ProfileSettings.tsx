@@ -27,11 +27,13 @@ function memberSince(createdAt?: string) {
 
 function DetailRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
-    <div className="flex items-center gap-3 p-3 rounded-2xl bg-accent/40 min-w-0">
-      <div className="w-9 h-9 rounded-xl bg-card text-primary flex items-center justify-center shrink-0">{icon}</div>
+    <div className="flex items-center gap-3 p-3 rounded-2xl bg-soft-1 border-2 border-ink shadow-[0_3px_0_var(--ink-line)] min-w-0 transition-transform hover:-translate-y-0.5 hover:-rotate-[0.5deg]">
+      <div className="w-10 h-10 rounded-xl bg-primary text-primary-foreground border-2 border-ink shadow-[0_2px_0_var(--ink-line)] flex items-center justify-center shrink-0 -rotate-6">
+        {icon}
+      </div>
       <div className="min-w-0">
         <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">{label}</p>
-        <p className="text-sm font-bold text-foreground truncate">{value}</p>
+        <p className="font-display font-semibold text-foreground truncate">{value}</p>
       </div>
     </div>
   );
@@ -77,21 +79,20 @@ export function ProfileDetails({ authUser, onChange }: { authUser: AuthUser; onC
 
   return (
     <div className="sticker p-6 ">
-      <div className="flex items-center justify-between mb-4 gap-3">
-        <p className="font-bold text-foreground">My details</p>
-        <button
-          onClick={startEdit}
-          className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl bg-primary text-primary-foreground hover:opacity-90"
-        >
-          <Pencil size={13} /> Edit
+      <div className="flex items-center justify-between mb-5 gap-3">
+        <h2 className="font-display text-foreground !text-xl flex items-center gap-2">
+          <AtSign size={20} className="text-primary" strokeWidth={2.5} /> My details
+        </h2>
+        <button onClick={startEdit} className="btn-pop btn-pop-sm btn-primary rotate-[2deg] hover-wiggle">
+          <Pencil size={14} strokeWidth={2.5} /> Edit
         </button>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <DetailRow icon={<Pencil size={16} />} label="Name" value={authUser.fullName} />
-        <DetailRow icon={<AtSign size={16} />} label="Username" value={authUser.username} />
-        <DetailRow icon={<Building2 size={16} />} label="Organisation" value={authUser.orgName ?? "—"} />
-        <DetailRow icon={<GraduationCap size={16} />} label="School level" value={authUser.schoolLevelName ?? "—"} />
-        <DetailRow icon={<CalendarDays size={16} />} label="Member since" value={memberSince(authUser.createdAt)} />
+        <DetailRow icon={<Pencil size={17} strokeWidth={2.5} />} label="Name" value={authUser.fullName} />
+        <DetailRow icon={<AtSign size={17} strokeWidth={2.5} />} label="Username" value={authUser.username} />
+        <DetailRow icon={<Building2 size={17} strokeWidth={2.5} />} label="Organisation" value={authUser.orgName ?? "—"} />
+        <DetailRow icon={<GraduationCap size={17} strokeWidth={2.5} />} label="School level" value={authUser.schoolLevelName ?? "—"} />
+        <DetailRow icon={<CalendarDays size={17} strokeWidth={2.5} />} label="Member since" value={memberSince(authUser.createdAt)} />
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -102,35 +103,36 @@ export function ProfileDetails({ authUser, onChange }: { authUser: AuthUser; onC
               Friends see your username. Your name is only shown to you and your teachers.
             </DialogDescription>
           </DialogHeader>
-          <label className="block space-y-1">
-            <span className="text-xs font-bold text-muted-foreground">Name</span>
+          <label className="block space-y-1.5">
+            <span className="text-sm font-bold text-foreground">Name</span>
             <input
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               maxLength={60}
-              className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm outline-none focus:ring-2 focus:ring-primary/40"
+              className="pop-field w-full h-11 px-3.5 text-sm"
             />
           </label>
-          <label className="block space-y-1">
-            <span className="text-xs font-bold text-muted-foreground">Username</span>
+          <label className="block space-y-1.5">
+            <span className="text-sm font-bold text-foreground">Username</span>
             <input
               value={username}
               onChange={(e) => USERNAME_PATTERN.test(e.target.value) && setUsername(e.target.value)}
               maxLength={20}
-              className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-sm outline-none focus:ring-2 focus:ring-primary/40"
+              aria-invalid={!usernameValid}
+              className="pop-field w-full h-11 px-3.5 text-sm"
             />
-            <span className={cn("text-[11px]", usernameValid ? "text-muted-foreground" : "text-destructive")}>
+            <span className={cn("block text-[11px] font-semibold", usernameValid ? "text-muted-foreground" : "text-destructive")}>
               3–20 letters, numbers or underscores. You'll sign in with the new one.
             </span>
           </label>
           <DialogFooter>
-            <button onClick={() => setOpen(false)} className="px-4 py-2 rounded-xl text-sm font-bold hover:bg-accent">
+            <button onClick={() => setOpen(false)} className="btn-pop btn-pop-sm">
               Cancel
             </button>
             <button
               onClick={save}
               disabled={saving || !usernameValid || !fullName.trim()}
-              className="px-4 py-2 rounded-xl text-sm font-bold bg-primary text-primary-foreground disabled:opacity-50"
+              className="btn-pop btn-pop-sm btn-primary"
             >
               {saving ? "Saving…" : "Save"}
             </button>
@@ -165,26 +167,26 @@ export function ThemePicker({ theme, onTheme }: { theme: ThemeId; onTheme: (t: T
               // come from that theme, whatever theme is active.
               data-theme={t.id}
               className={cn(
-                "relative rounded-[1.4rem] overflow-hidden text-left transition-all border-[2.5px]",
+                "relative rounded-[1.4rem] overflow-hidden text-left transition-all border-[2.5px] border-ink",
                 active
-                  ? "border-ink shadow-[0_5px_0_var(--ink-line)] -translate-y-1"
-                  : "border-transparent hover:-translate-y-1 hover:border-border",
+                  ? "shadow-[0_7px_0_var(--ink-line)] -translate-y-1.5 ring-4 ring-offset-2 ring-offset-card ring-[var(--primary)]"
+                  : "shadow-[0_3px_0_var(--ink-line)] hover:-translate-y-1 hover:shadow-[0_5px_0_var(--ink-line)]",
                 i % 2 ? "rotate-[1deg]" : "rotate-[-1deg]",
               )}
             >
               <div className="h-24 flex items-end justify-center bg-hero relative">
                 <img src={t.bot} alt="" className="h-20 w-auto -mb-2 die-cut" />
               </div>
-              <div className="flex items-center justify-between gap-1 px-3 py-2 bg-white">
+              <div className="flex items-center justify-between gap-1 px-3 py-2 bg-white border-t-[2.5px] border-ink">
                 <p className="text-sm font-black text-[#1c1a17]">{t.name}</p>
                 <span className="flex -space-x-1">
                   {t.swatch.map((c) => (
-                    <span key={c} className="w-3 h-3 rounded-full border border-black/20" style={{ background: c }} />
+                    <span key={c} className="w-3.5 h-3.5 rounded-full border-[1.5px] border-[#1c1a17]" style={{ background: c }} />
                   ))}
                 </span>
               </div>
               {active && (
-                <span className="absolute top-2 right-2 w-6 h-6 rounded-full bg-white text-[#1c1a17] border-2 border-[#1c1a17] flex items-center justify-center">
+                <span className="absolute top-2 right-2 w-7 h-7 rounded-full bg-pop-2 text-[#1c1a17] border-2 border-[#1c1a17] shadow-[0_2px_0_#1c1a17] flex items-center justify-center rotate-[-8deg]">
                   <Check size={13} strokeWidth={3} />
                 </span>
               )}
@@ -234,25 +236,19 @@ export function PrivacyAndAccount({ authUser, onDeleted }: { authUser: AuthUser;
 
   return (
     <div className="sticker p-6 ">
-      <p className="font-bold text-foreground mb-1 flex items-center gap-2">
-        <ShieldCheck size={18} className="text-primary" /> Privacy &amp; account
-      </p>
-      <p className="text-xs text-muted-foreground mb-4">
+      <h2 className="font-display text-foreground !text-xl mb-1 flex items-center gap-2">
+        <ShieldCheck size={20} className="text-primary" strokeWidth={2.5} /> Privacy &amp; account
+      </h2>
+      <p className="text-sm font-semibold text-muted-foreground mb-5">
         We keep your name, username, centre, school level, lesson progress, friends and chat messages so the Academy
         works. You can download a copy or delete everything at any time.
       </p>
       <div className="flex flex-col sm:flex-row gap-3">
-        <button
-          onClick={download}
-          className="flex items-center justify-center gap-2 text-sm font-bold px-4 py-2.5 rounded-2xl bg-accent text-accent-foreground hover:opacity-90"
-        >
-          <Download size={16} /> Download my data
+        <button onClick={download} className="btn-pop btn-pop-sm btn-pop3">
+          <Download size={16} strokeWidth={2.5} /> Download my data
         </button>
-        <button
-          onClick={() => setStep("confirm")}
-          className="flex items-center justify-center gap-2 text-sm font-bold px-4 py-2.5 rounded-2xl bg-destructive/10 text-destructive hover:bg-destructive/20"
-        >
-          <Trash2 size={16} /> Delete my account
+        <button onClick={() => setStep("confirm")} className="btn-pop btn-pop-sm !bg-destructive !text-white">
+          <Trash2 size={16} strokeWidth={2.5} /> Delete my account
         </button>
       </div>
 
@@ -260,7 +256,7 @@ export function PrivacyAndAccount({ authUser, onDeleted }: { authUser: AuthUser;
       <AlertDialog open={step !== "closed"} onOpenChange={(o) => !o && close()}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <img src={stembotRed} alt="" className="h-20 w-20 object-contain mx-auto sm:mx-0" />
+            <img src={stembotRed} alt="" className="h-24 w-24 object-contain mx-auto sm:mx-0 die-cut -rotate-6" />
             <AlertDialogTitle>
               {step === "confirm" ? "Are you sure you want to delete your account?" : "Type your PIN to delete"}
             </AlertDialogTitle>
@@ -285,23 +281,20 @@ export function PrivacyAndAccount({ authUser, onDeleted }: { authUser: AuthUser;
               onChange={(e) => /^\d{0,4}$/.test(e.target.value) && setPin(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && pin.length === 4 && doDelete()}
               placeholder="••••"
-              className="w-full px-3 py-3 rounded-xl border border-border bg-background text-center text-lg tracking-[0.5em] outline-none focus:ring-2 focus:ring-destructive/40"
+              className="pop-field w-full h-14 px-3 text-center text-2xl font-bold tracking-[0.6em] focus-visible:!shadow-[0_0_0_4px_color-mix(in_srgb,var(--destructive)_30%,transparent),0_3px_0_var(--ink-line)]"
             />
           )}
           <AlertDialogFooter>
             <AlertDialogCancel>Keep my account</AlertDialogCancel>
             {step === "confirm" ? (
-              <button
-                onClick={() => setStep("pin")}
-                className="px-4 py-2 rounded-md text-sm font-bold bg-destructive text-white hover:bg-destructive/90"
-              >
+              <button onClick={() => setStep("pin")} className="btn-pop btn-pop-sm !bg-destructive !text-white">
                 Yes, delete it
               </button>
             ) : (
               <button
                 onClick={doDelete}
                 disabled={pin.length !== 4 || busy}
-                className="px-4 py-2 rounded-md text-sm font-bold bg-destructive text-white hover:bg-destructive/90 disabled:opacity-50"
+                className="btn-pop btn-pop-sm !bg-destructive !text-white"
               >
                 {busy ? "Deleting…" : "Delete forever"}
               </button>

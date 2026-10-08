@@ -6,7 +6,7 @@ import {
   Palette,
   Music2,
   Dumbbell,
-  Circle,
+  Check,
 } from "lucide-react";
 import { cn } from "./ui/utils";
 import type { ReferenceOption } from "../types-auth";
@@ -32,8 +32,8 @@ export function ColourBlockPicker({
   onChange: (id: string) => void;
 }) {
   return (
-    <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
-      {options.map((c) => {
+    <div className="grid grid-cols-4 gap-2.5 pb-1">
+      {options.map((c, i) => {
         const hex = COLOUR_HEX[c.name] ?? "#94a3b8";
         const active = value === String(c.id);
         return (
@@ -41,18 +41,21 @@ export function ColourBlockPicker({
             key={c.id}
             type="button"
             onClick={() => onChange(String(c.id))}
+            aria-pressed={active}
             className={cn(
-              "flex flex-col items-center gap-1.5 py-2.5 rounded-2xl border-2 transition-all",
-              active ? "border-lime-500 bg-lime-50 scale-105" : "border-lime-100 bg-white hover:border-lime-300",
+              "flex flex-col items-center gap-1.5 py-2.5 rounded-2xl border-[2.5px] border-[#1b2e1c] transition-all",
+              active
+                ? "bg-[#c6ef72] shadow-[0_5px_0_#1b2e1c] -translate-y-1 " + (i % 2 ? "rotate-[3deg]" : "-rotate-[3deg]")
+                : "bg-white shadow-[0_3px_0_#1b2e1c] hover:-translate-y-0.5 hover:bg-[#fffbea]",
             )}
           >
             <span
-              className="w-8 h-8 rounded-full border-2 border-white shadow-sm flex items-center justify-center"
+              className="w-8 h-8 rounded-full border-[2.5px] border-[#1b2e1c] flex items-center justify-center"
               style={{ backgroundColor: hex }}
             >
-              {active && <Circle className="w-3 h-3 fill-white text-white" />}
+              {active && <Check className="w-4 h-4 text-white drop-shadow-[0_1px_0_#1b2e1c]" strokeWidth={4} />}
             </span>
-            <span className="text-[10px] font-bold text-slate-600">{c.name}</span>
+            <span className="text-[11px] font-bold text-[#1b2e1c]">{c.name}</span>
           </button>
         );
       })}
@@ -81,8 +84,8 @@ export function SubjectBlockPicker({
   onChange: (id: string) => void;
 }) {
   return (
-    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-      {options.map((s) => {
+    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 pb-1">
+      {options.map((s, i) => {
         const Icon = SUBJECT_ICON[s.name] ?? BookOpen;
         const active = value === String(s.id);
         return (
@@ -90,15 +93,23 @@ export function SubjectBlockPicker({
             key={s.id}
             type="button"
             onClick={() => onChange(String(s.id))}
+            aria-pressed={active}
             className={cn(
-              "flex flex-col items-center justify-center gap-1.5 py-3 px-1 rounded-2xl border-2 transition-all",
+              "flex flex-col items-center justify-center gap-1.5 py-3 px-1 rounded-2xl border-[2.5px] border-[#1b2e1c] text-[#1b2e1c] transition-all",
               active
-                ? "border-lime-500 bg-lime-50 text-lime-700 scale-105"
-                : "border-lime-100 bg-white text-slate-500 hover:border-lime-300",
+                ? "bg-[#c6ef72] shadow-[0_5px_0_#1b2e1c] -translate-y-1 " + (i % 2 ? "rotate-[2deg]" : "-rotate-[2deg]")
+                : "bg-white shadow-[0_3px_0_#1b2e1c] hover:-translate-y-0.5 hover:bg-[#fffbea]",
             )}
           >
-            <Icon size={22} className={active ? "text-lime-600" : "text-slate-400"} />
-            <span className="text-[10px] font-bold text-center leading-tight">{s.name}</span>
+            <span
+              className={cn(
+                "w-9 h-9 rounded-full border-2 border-[#1b2e1c] flex items-center justify-center",
+                active ? "bg-[#7c4dff] text-white" : "bg-[#efe7ff] text-[#5a2fd8]",
+              )}
+            >
+              <Icon size={18} strokeWidth={2.5} />
+            </span>
+            <span className="text-[11px] font-bold text-center leading-tight">{s.name}</span>
           </button>
         );
       })}

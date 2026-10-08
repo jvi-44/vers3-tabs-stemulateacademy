@@ -96,10 +96,10 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        "relative flex flex-col w-64 shrink-0 bg-sidebar px-4 pt-5 pb-4 gap-5 overflow-hidden",
+        "relative flex flex-col w-64 shrink-0 theme-rail px-4 pt-5 pb-4 gap-5 overflow-hidden",
         variant === "desktop"
-          ? "hidden md:flex h-screen sticky top-0 border-r-2 border-sidebar-border"
-          : "flex h-full w-full",
+          ? "hidden md:flex h-screen sticky top-0"
+          : "flex h-full w-full !border-r-0",
       )}
     >
       {/* Wordmark, like the website's nav */}

@@ -40,8 +40,39 @@ export const adminStats = (token: string) => request<AdminStats>("/admin/stats",
 
 export const adminUsers = (token: string) => request<{ users: AdminUser[] }>("/admin/users", {}, token);
 
-export const adminUserProgress = (token: string, userId: number) =>
-  request<{ progress: AdminProgressRow[] }>(`/admin/users/${userId}/progress`, {}, token);
+export interface AdminGameRow {
+  game_id: string;
+  best_score: number;
+  plays: number;
+  updated_at: string;
+}
 
-export const adminDeleteUser = (token: string, userId: number) =>
-  request(`/admin/users/${userId}`, { method: "DELETE" }, token);
+export const adminUserProgress = (token: string, userId: number) =>
+  request<{ progress: AdminProgressRow[]; games?: AdminGameRow[] }>(`/admin/users/${userId}/progress`, {}, token);
+
+export type AdminStatsPatch = Partial<Pick<AdminUser, "xp" | "level" | "atoms">>;
+
+export const adminUpdateUser = (token: string, userId: number, patch: AdminStatsPatch) =>
+  request<{ success: true; user: { xp: number; level: number; atoms: number } }>(
+    `/admin/users/${userId}`,
+    { method: "PATCH", body: JSON.stringify(patch) },
+    token,
+  );
+
+export const adminResetProgress = (token: string, userId: number) =>
+  request<{ success: true; removed: { lessons: number; games: number } }>(
+    `/admin/users/${userId}/reset-progress`,
+    { method: "POST" },
+    token,
+  );
+
+export const adminResetPin = (token: string, userId: number, pin: string) =>
+  request<{ success: true; signedOut: number }>(
+    `/admin/users/${userId}/reset-pin`,
+    { method: "POST", body: JSON.stringify({ pin }) },
+    token,
+  );
+
+// `confirm` must be the account's username, typed by the admin.
+export const adminDeleteUser = (token: string, userId: number, confirm: string) =>
+  request(`/admin/users/${userId}`, { method: "DELETE", body: JSON.stringify({ confirm }) }, token);

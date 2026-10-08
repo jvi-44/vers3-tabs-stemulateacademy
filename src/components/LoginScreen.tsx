@@ -34,6 +34,13 @@ type View = "signin" | "signup" | "forgot";
 type ForgotStep = "verify" | "reset";
 
 const PIN_PATTERN = /^\d{0,4}$/;
+
+// The login page keeps the website's fixed forest palette whatever colour
+// theme or dark mode is saved, so fields and buttons pin their colours here.
+const FIELD =
+  "!border-[#1b2e1c] !bg-[#fffdf3] !text-[#1b2e1c] placeholder:!text-[#4e5f50]/60 !rounded-2xl focus-visible:!bg-white focus-visible:!shadow-[0_0_0_4px_rgba(124,194,66,0.5),0_3px_0_#1b2e1c] data-[state=open]:!shadow-[0_0_0_4px_rgba(124,194,66,0.5),0_3px_0_#1b2e1c]";
+const BIG_BUTTON =
+  "w-full !py-4 h-auto text-lg !bg-[#7cc242] hover:!bg-[#8fd152] !text-[#1b2e1c] !border-[#1b2e1c] shadow-[0_4px_0_#1b2e1c] hover:shadow-[0_6px_0_#1b2e1c] active:shadow-[0_1px_0_#1b2e1c]";
 const USERNAME_PATTERN = /^[A-Za-z0-9_]*$/;
 
 export function LoginScreen({
@@ -101,6 +108,38 @@ export function LoginScreen({
           </h2>
           <p className="text-[#4e5f50] font-semibold">Your STEM adventure awaits!</p>
         </div>
+
+        {view === "forgot" ? (
+          <div className="flex justify-center mb-6">
+            <span className="kicker !bg-[#ffe1f0] !text-[#9d174d] border-2 border-[#1b2e1c] !text-[0.75rem]">
+              Forgot your PIN? Let's fix it
+            </span>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-1 p-1 mb-6 rounded-full bg-[#eaf8d8] border-[2.5px] border-[#1b2e1c] shadow-[0_3px_0_#1b2e1c]">
+            {(
+              [
+                ["signin", "Sign in"],
+                ["signup", "New here? Join"],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setView(id)}
+                aria-pressed={view === id}
+                className={
+                  "font-display font-semibold text-sm py-2 rounded-full border-2 transition-all " +
+                  (view === id
+                    ? "bg-[#7c4dff] text-white border-[#1b2e1c] shadow-[0_2px_0_#1b2e1c] -rotate-[1.5deg]"
+                    : "border-transparent text-[#4e5f50] hover:text-[#1b2e1c]")
+                }
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
 
         <AnimatePresence mode="wait">
           {view === "signin" && (
@@ -208,7 +247,7 @@ function SignInForm({
             USERNAME_PATTERN.test(e.target.value) && setUsername(e.target.value)
           }
           placeholder="Enter your username"
-          className="w-full px-4 py-4 h-auto rounded-2xl border-2 border-[#1b2e1c]/15 focus-visible:border-[#7cc242] font-bold bg-[#fffdf3]"
+          className={`${FIELD} w-full px-4 py-4 h-auto font-bold`}
           onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
         />
       </div>
@@ -224,7 +263,7 @@ function SignInForm({
           onChange={(e) => PIN_PATTERN.test(e.target.value) && setPin(e.target.value)}
           placeholder="••••"
           maxLength={4}
-          className="w-full px-4 py-4 h-auto rounded-2xl border-2 border-[#1b2e1c]/15 focus-visible:border-[#7cc242] font-bold text-center text-2xl tracking-[1em] bg-[#fffdf3]"
+          className={`${FIELD} w-full px-4 py-4 h-auto font-bold text-center text-2xl tracking-[1em]`}
           onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
         />
       </div>
@@ -240,7 +279,7 @@ function SignInForm({
       <Button
         disabled={!username.trim() || pin.length !== 4 || loading}
         onClick={handleSubmit}
-        className="btn-pop w-full !py-4 h-auto !rounded-full text-lg !bg-[#7cc242] hover:!bg-[#8fd152] !text-[#1b2e1c]"
+        className={BIG_BUTTON}
       >
         {loading ? "Signing in..." : "Sign In"}
       </Button>
@@ -330,7 +369,7 @@ function SignUpForm({
   };
 
   if (!refData) {
-    return <p className="text-center text-[#4e5f50] py-8">Loading form...</p>;
+    return <LoadingBlock text="Loading form..." />;
   }
 
   return (
@@ -340,13 +379,13 @@ function SignUpForm({
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
           placeholder="Your full name"
-          className="rounded-xl border-2 border-[#1b2e1c]/15 bg-[#fffdf3] py-3 h-auto"
+          className={`${FIELD} py-3 h-auto`}
         />
       </Field>
 
       <Field label="Primary School Level">
         <Select value={schoolLevelId} onValueChange={setSchoolLevelId}>
-          <SelectTrigger className="rounded-xl border-2 border-[#1b2e1c]/15 bg-[#fffdf3] h-11">
+          <SelectTrigger className={`${FIELD} h-11 [&>span:last-child]:!bg-[#c6ef72] [&>span:last-child]:!text-[#1b2e1c] [&>span:last-child]:!border-[#1b2e1c]`}>
             <SelectValue placeholder="Select your level" />
           </SelectTrigger>
           <SelectContent>
@@ -361,7 +400,7 @@ function SignUpForm({
 
       <Field label="Organisation / Centre">
         <Select value={orgId} onValueChange={setOrgId}>
-          <SelectTrigger className="rounded-xl border-2 border-[#1b2e1c]/15 bg-[#fffdf3] h-11">
+          <SelectTrigger className={`${FIELD} h-11 [&>span:last-child]:!bg-[#c6ef72] [&>span:last-child]:!text-[#1b2e1c] [&>span:last-child]:!border-[#1b2e1c]`}>
             <SelectValue placeholder="Select your organisation" />
           </SelectTrigger>
           <SelectContent>
@@ -378,7 +417,7 @@ function SignUpForm({
             value={customOrgName}
             onChange={(e) => setCustomOrgName(e.target.value)}
             placeholder="Type your organisation's name"
-            className="rounded-xl border-2 border-[#1b2e1c]/15 bg-[#fffdf3] py-3 h-auto mt-2"
+            className={`${FIELD} py-3 h-auto mt-2`}
           />
         )}
       </Field>
@@ -391,7 +430,7 @@ function SignUpForm({
           }
           placeholder="3–20 letters, numbers or _"
           maxLength={20}
-          className="rounded-xl border-2 border-[#1b2e1c]/15 bg-[#fffdf3] py-3 h-auto"
+          className={`${FIELD} py-3 h-auto`}
         />
       </Field>
 
@@ -404,7 +443,7 @@ function SignUpForm({
             onChange={(e) => PIN_PATTERN.test(e.target.value) && setPin(e.target.value)}
             maxLength={4}
             placeholder="••••"
-            className="rounded-xl border-2 border-[#1b2e1c]/15 bg-[#fffdf3] py-3 h-auto text-center tracking-[0.5em]"
+            className={`${FIELD} py-3 h-auto text-center tracking-[0.5em]`}
           />
         </Field>
         <Field label="Confirm PIN">
@@ -417,17 +456,19 @@ function SignUpForm({
             }
             maxLength={4}
             placeholder="••••"
-            className="rounded-xl border-2 border-[#1b2e1c]/15 bg-[#fffdf3] py-3 h-auto text-center tracking-[0.5em]"
+            className={`${FIELD} py-3 h-auto text-center tracking-[0.5em]`}
           />
         </Field>
       </div>
 
-      <p className="text-xs font-bold text-[#4e5f50] uppercase tracking-wide pt-2">
-        Recovery Questions
-      </p>
-      <p className="text-xs text-[#4e5f50]/80 -mt-3">
-        Used to reset your PIN if you forget it.
-      </p>
+      <div className="pt-3 mt-1 border-t-2 border-dashed border-[#1b2e1c]/15">
+        <span className="kicker !bg-[#efe7ff] !text-[#5a2fd8] border-2 border-[#1b2e1c]">
+          Recovery questions
+        </span>
+        <p className="text-xs font-semibold text-[#4e5f50] mt-2">
+          Used to reset your PIN if you forget it. Pick ones you'll remember!
+        </p>
+      </div>
 
       <Field label="Favourite Colour">
         <ColourBlockPicker
@@ -448,7 +489,7 @@ function SignUpForm({
       <Button
         disabled={!canSubmit || loading}
         onClick={handleSubmit}
-        className="btn-pop w-full !py-4 h-auto !rounded-full text-lg !bg-[#7cc242] hover:!bg-[#8fd152] !text-[#1b2e1c]"
+        className={BIG_BUTTON}
       >
         {loading ? "Creating account..." : "Create Account"}
       </Button>
@@ -525,7 +566,7 @@ function ForgotPinForm({
   };
 
   if (!refData) {
-    return <p className="text-center text-[#4e5f50] py-8">Loading...</p>;
+    return <LoadingBlock text="Loading..." />;
   }
 
   return (
@@ -538,7 +579,7 @@ function ForgotPinForm({
               onChange={(e) =>
                 USERNAME_PATTERN.test(e.target.value) && setUsername(e.target.value)
               }
-              className="rounded-xl border-2 border-[#1b2e1c]/15 bg-[#fffdf3] py-3 h-auto"
+              className={`${FIELD} py-3 h-auto`}
             />
           </Field>
           <Field label="Favourite Colour">
@@ -558,7 +599,7 @@ function ForgotPinForm({
           <Button
             onClick={handleVerify}
             disabled={loading}
-            className="btn-pop w-full !py-4 h-auto !rounded-full text-lg !bg-[#7cc242] hover:!bg-[#8fd152] !text-[#1b2e1c]"
+            className={BIG_BUTTON}
           >
             {loading ? "Checking..." : "Verify"}
           </Button>
@@ -573,7 +614,7 @@ function ForgotPinForm({
                 value={newPin}
                 onChange={(e) => PIN_PATTERN.test(e.target.value) && setNewPin(e.target.value)}
                 maxLength={4}
-                className="rounded-xl border-2 border-[#1b2e1c]/15 bg-[#fffdf3] py-3 h-auto text-center tracking-[0.5em]"
+                className={`${FIELD} py-3 h-auto text-center tracking-[0.5em]`}
               />
             </Field>
             <Field label="Confirm PIN">
@@ -585,14 +626,14 @@ function ForgotPinForm({
                   PIN_PATTERN.test(e.target.value) && setConfirmPin(e.target.value)
                 }
                 maxLength={4}
-                className="rounded-xl border-2 border-[#1b2e1c]/15 bg-[#fffdf3] py-3 h-auto text-center tracking-[0.5em]"
+                className={`${FIELD} py-3 h-auto text-center tracking-[0.5em]`}
               />
             </Field>
           </div>
           <Button
             onClick={handleReset}
             disabled={loading}
-            className="btn-pop w-full !py-4 h-auto !rounded-full text-lg !bg-[#7cc242] hover:!bg-[#8fd152] !text-[#1b2e1c]"
+            className={BIG_BUTTON}
           >
             {loading ? "Saving..." : "Set New PIN"}
           </Button>
@@ -615,6 +656,15 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
     <div>
       <Label className="text-sm font-bold text-[#1b2e1c] mb-1.5 block">{label}</Label>
       {children}
+    </div>
+  );
+}
+
+function LoadingBlock({ text }: { text: string }) {
+  return (
+    <div className="flex flex-col items-center gap-3 py-8">
+      <img src={stembotCream} alt="" className="h-16 die-cut bob" />
+      <p className="font-display font-semibold text-[#4e5f50]">{text}</p>
     </div>
   );
 }
