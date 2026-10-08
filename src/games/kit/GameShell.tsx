@@ -4,7 +4,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, Crown, LogOut, Music, Play, RotateCcw, Trophy, Users, Volume2, VolumeX, X } from "lucide-react";
-import { Art, GAME_ART, Sticker } from "./Art";
+import { Art, Sticker } from "./Art";
+import { GAME_ART, GameProp } from "../../components/GameArt";
 import { STEMBOTS } from "../../data/mock";
 import { cn } from "../../components/ui/utils";
 import { isMuted, onMuteChange, primeAudio, setMuted, sfx, startMusic, stopMusic } from "./audio";
@@ -337,7 +338,7 @@ export function GameShell({
     <div className="w-full max-w-6xl mx-auto">
       {/* Header band */}
       <div className={cn("relative rounded-t-3xl px-4 sm:px-6 py-3 flex items-center gap-3 text-white overflow-hidden game-checker", def.gradient)}>
-        {GAME_ART[def.id] ? <Art name={GAME_ART[def.id]} size={40} /> : <span className="text-3xl drop-shadow">{def.icon}</span>}
+        {GAME_ART[def.id] ? <GameProp id={def.id} className="h-11 shrink-0" /> : <span className="text-3xl drop-shadow">{def.icon}</span>}
         <div className="flex-1 min-w-0">
           <p className="text-[10px] font-bold uppercase tracking-widest text-white/80 truncate">{def.lessonTitle}</p>
           <h2 className="game-fun text-xl sm:text-2xl font-bold leading-tight truncate drop-shadow">{def.title}</h2>

@@ -501,12 +501,3 @@ export function Art({ name, size = 28, className, style }: { name: ArtName; size
   const [icon, color] = CHIPS[name as ChipName];
   return <IconChip icon={icon} color={color} size={size * 0.9} className={className} style={style} />;
 }
-
-/** Drawn icon for each game, for the in-game header. Keyed by game id. */
-export const GAME_ART: Record<string, ArtName> = {
-  "mm-sci-sim": "jar",
-  "mm-math-sim": "house",
-  "mi-math-sim": "dice",
-  "sb-sci-sim": "rocket",
-  "sb-math-sim": "comms",
-};
