@@ -87,6 +87,9 @@ router.get("/me/export", (req, res) => {
       "SELECT lesson_id, status, score, last_accessed, completed_at FROM lesson_progress WHERE user_id = ?",
     )
     .all(req.userId);
+  const gameScores = db
+    .prepare("SELECT game_id, best_score, plays, updated_at FROM game_scores WHERE user_id = ?")
+    .all(req.userId);
   const friends = db
     .prepare(
       `SELECT u.username, f.created_at AS friends_since FROM friendships f
@@ -110,6 +113,7 @@ router.get("/me/export", (req, res) => {
     exportedAt: new Date().toISOString(),
     profile,
     progress,
+    gameScores,
     friends,
     messagesSent: messages,
     loginHistory,

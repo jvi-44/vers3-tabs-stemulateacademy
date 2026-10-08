@@ -16,6 +16,7 @@ the partner centres or a lawyer before real classes start.
 | Sign-in sessions (SHA-256 hash of the token only) | Staying signed in | `sessions` |
 | Sign-in attempts (username, success, time) | Spotting misuse | `login_attempts` |
 | Lesson progress, quiz scores, XP, atoms, avatar | Learning features | `lesson_progress`, `users` |
+| Best score per lesson game | High scores in the Games tab | `game_scores` |
 | Friends, friend requests, chats, messages | Social features | `friendships`, `friend_requests`, `conversations`, `messages` |
 
 Other students only ever see a username, avatar and level, never the full name

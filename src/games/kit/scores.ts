@@ -2,6 +2,13 @@
 // Kept in localStorage so they work offline, and synced to the Express API
 // (game_scores table) so they follow the player across devices.
 
+import { getToken } from "../../api/client";
+
+const authHeaders = (): Record<string, string> => {
+  const token = getToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
 const KEY = (userId: string | number | undefined) => `stemulate_game_best_${userId ?? "guest"}`;
 
 type BestMap = Record<string, number>;
@@ -45,8 +52,8 @@ export function recordScore(gameId: string, score: number, userId?: string | num
   if (userId !== undefined) {
     fetch("/api/game-scores", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, gameId, score: s }),
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ gameId, score: s }),
     }).catch(() => {});
   }
   return { best: isNew ? s : prev!, previous: prev ?? null, isNew };
@@ -55,7 +62,7 @@ export function recordScore(gameId: string, score: number, userId?: string | num
 /** Pulls server-side bests into local storage (keeps whichever is higher). */
 export async function syncHighScores(userId: string | number) {
   try {
-    const res = await fetch(`/api/game-scores/${userId}`);
+    const res = await fetch("/api/game-scores", { headers: authHeaders() });
     if (!res.ok) return;
     const { scores } = (await res.json()) as { scores: { game_id: string; best_score: number }[] };
     const map = read(userId);

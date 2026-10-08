@@ -50,6 +50,7 @@ export const deleteUserCompletely = db.transaction((userId) => {
   db.prepare("DELETE FROM friendships WHERE user_a = ? OR user_b = ?").run(userId, userId);
   db.prepare("DELETE FROM sessions WHERE user_id = ?").run(userId);
   db.prepare("DELETE FROM lesson_progress WHERE user_id = ?").run(userId);
+  db.prepare("DELETE FROM game_scores WHERE user_id = ?").run(userId);
   db.prepare("DELETE FROM login_attempts WHERE username = ?").run(user.username);
   db.prepare("UPDATE conversations SET created_by = NULL WHERE created_by = ?").run(userId);
   db.prepare("DELETE FROM users WHERE user_id = ?").run(userId);

@@ -335,11 +335,10 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
-registerGameRoutes(app, db);
-
 app.use("/api/admin", adminRoutes);
 app.use("/api", accountRoutes);
 app.use("/api", socialRoutes);
+registerGameRoutes(app, db);
 
 // In production (`npm run build` then `npm start`) the same server also hosts
 // the built website, so the whole Academy deploys as one service.

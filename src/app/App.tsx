@@ -51,6 +51,8 @@ import type { AuthUser } from "../types-auth";
 import { getMe, logout } from "../api/auth";
 import { getToken } from "../api/client";
 import { getProgress, postProgress, postXP, postAvatar } from "../api/progress";
+import { setGamePlayer } from "../games/kit/player";
+import { syncHighScores } from "../games/kit/scores";
 import { getLeaderboard, sendFriendRequest } from "../api/social";
 import { useColourTheme, THEMES, type ThemeId } from "../lib/theme";
 import { ProfileDetails, PrivacyAndAccount, ThemePicker } from "../components/ProfileSettings";
@@ -69,8 +71,6 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
-import { setGamePlayer } from "../games/kit/player";
-import { syncHighScores } from "../games/kit/scores";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -142,9 +142,10 @@ export default function App() {
   // Lets the lesson games know who is playing (for high scores and live rooms).
   useEffect(() => {
     if (!authUser) return;
-    setGamePlayer({ id: String(authUser.userId), userId: authUser.userId, name: user.username, avatar: user.avatar });
+    // Other players in live games see the username, never the full name.
+    setGamePlayer({ id: String(authUser.userId), userId: authUser.userId, name: authUser.username, avatar: user.avatar });
     syncHighScores(authUser.userId);
-  }, [authUser, user.username, user.avatar]);
+  }, [authUser, user.avatar]);
 
   const applyAuthUser = (u: AuthUser) => {
     setAuthUser(u);
@@ -308,6 +309,7 @@ export default function App() {
 
   const handleAccountDeleted = () => {
     if (authUser) localStorage.removeItem(BEATS_KEY_PREFIX + authUser.userId);
+    if (authUser) localStorage.removeItem(`stemulate_game_best_${authUser.userId}`);
     setAuthUser(null);
     setIsLoggedIn(false);
     setCompletedBeats({});

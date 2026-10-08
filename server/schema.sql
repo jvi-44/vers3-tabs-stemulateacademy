@@ -121,3 +121,13 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 
 CREATE INDEX IF NOT EXISTS idx_messages_convo ON messages(conversation_id, message_id);
+
+-- Best score (0-100) per lesson game, see server/gameRooms.js
+CREATE TABLE IF NOT EXISTS game_scores (
+    user_id     INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    game_id     TEXT    NOT NULL,
+    best_score  INTEGER NOT NULL,
+    plays       INTEGER NOT NULL DEFAULT 1,
+    updated_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (user_id, game_id)
+);
