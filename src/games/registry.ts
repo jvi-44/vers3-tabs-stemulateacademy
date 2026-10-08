@@ -90,10 +90,10 @@ export const GAMES: GameDef[] = [
     bot: "matthew",
     intro: "Emergency! The impostor broke our ship. Each repair is a BODMAS puzzle. Fix all the systems before the sabotage meter fills up!",
     howTo: [
-      "Walk to a broken system and open its task.",
+      "Tap a room (or use the arrow keys) to walk there. The task opens when you arrive.",
       "Solve the BODMAS question: Brackets, Orders, Divide and Multiply, then Add and Subtract.",
       "Wrong answers fill the sabotage meter. Fix everything before it's full!",
-      "Spot the impostor at the end for a bonus.",
+      "At the end, spot the impostor whose working breaks BODMAS for a big bonus.",
     ],
     music: "spaceship",
     gradient: "bg-gradient-to-br from-slate-700 via-red-600 to-rose-500",
