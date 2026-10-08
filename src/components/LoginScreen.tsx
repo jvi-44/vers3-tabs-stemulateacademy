@@ -388,7 +388,7 @@ function SignUpForm({
           <SelectTrigger className={`${FIELD} h-11 [&>span:last-child]:!bg-[#c6ef72] [&>span:last-child]:!text-[#1b2e1c] [&>span:last-child]:!border-[#1b2e1c]`}>
             <SelectValue placeholder="Select your level" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="login-menu">
             {refData.schoolLevels.map((l) => (
               <SelectItem key={l.id} value={String(l.id)}>
                 {l.name}
@@ -403,7 +403,7 @@ function SignUpForm({
           <SelectTrigger className={`${FIELD} h-11 [&>span:last-child]:!bg-[#c6ef72] [&>span:last-child]:!text-[#1b2e1c] [&>span:last-child]:!border-[#1b2e1c]`}>
             <SelectValue placeholder="Select your organisation" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="login-menu">
             {refData.organisations.map((o) => (
               <SelectItem key={o.id} value={String(o.id)}>
                 {o.name}

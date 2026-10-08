@@ -757,7 +757,7 @@ function ConvoAvatar({ convo, size = "md" }: { convo: Conversation; size?: "sm" 
       <div
         className={cn(
           cls,
-          "rounded-2xl bg-pop-3 text-white border-[2.5px] border-ink shadow-[0_2px_0_var(--ink-line)] flex items-center justify-center shrink-0 rotate-[-4deg]",
+          "rounded-2xl bg-pop-3 text-[color:var(--pop-3-ink)] border-[2.5px] border-ink shadow-[0_2px_0_var(--ink-line)] flex items-center justify-center shrink-0 rotate-[-4deg]",
         )}
       >
         <Hash size={size === "sm" ? 17 : 19} strokeWidth={3} />

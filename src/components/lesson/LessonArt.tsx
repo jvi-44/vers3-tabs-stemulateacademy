@@ -110,11 +110,11 @@ export const BEAT_KIND: Record<
   BeatType,
   { label: string; verb: string; Icon: typeof BookOpen; bg: string; fg: string }
 > = {
-  intro: { label: "Story", verb: "Read the story", Icon: BookOpen, bg: "var(--pop-3)", fg: "#fff" },
+  intro: { label: "Story", verb: "Read the story", Icon: BookOpen, bg: "var(--pop-3)", fg: "var(--pop-3-ink)" },
   video: { label: "Watch", verb: "Watch & learn", Icon: Clapperboard, bg: "var(--primary)", fg: "var(--primary-foreground)" },
   quiz: { label: "Quiz", verb: "Quick quiz", Icon: CircleHelp, bg: "var(--pop-2)", fg: "#1b1b12" },
   simulation: { label: "Game", verb: "Play the game", Icon: Gamepad2, bg: "var(--ink)", fg: "#fff" },
-  exit: { label: "Reflect", verb: "Exit card", Icon: PenLine, bg: "var(--card)", fg: "var(--ink)" },
+  exit: { label: "Reflect", verb: "Exit card", Icon: PenLine, bg: "var(--card)", fg: "var(--card-foreground)" },
 };
 
 /** Round, ink-outlined checkpoint icon in the colour of its kind. */
@@ -139,7 +139,7 @@ export function BeatGlyph({
         width: size,
         height: size,
         background: filled ? k.bg : "var(--card)",
-        color: filled ? k.fg : "var(--ink)",
+        color: filled ? k.fg : "var(--card-foreground)",
       }}
     >
       <k.Icon size={Math.round(size * 0.46)} strokeWidth={2.6} />
@@ -158,7 +158,7 @@ export function FinishGlyph({ size = 52, done }: { size?: number; done: boolean 
   return (
     <span
       className="beat-glyph"
-      style={{ width: size, height: size, background: done ? "var(--pop-2)" : "var(--card)", color: "var(--ink)" }}
+      style={{ width: size, height: size, background: done ? "var(--pop-2)" : "var(--card)", color: done ? "#1b1b12" : "var(--card-foreground)" }}
     >
       <Trophy size={Math.round(size * 0.46)} strokeWidth={2.6} />
     </span>
