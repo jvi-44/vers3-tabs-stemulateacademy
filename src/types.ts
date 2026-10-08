@@ -81,16 +81,6 @@ export interface Badge {
   earnedAt?: string;
 }
 
-export interface GalleryPost {
-  id: string;
-  username: string;
-  avatar: string;
-  imageUrl: string;
-  caption: string;
-  likes: number;
-  tags: string[];
-}
-
 export interface LeaderboardEntry {
   id: string;
   username: string;

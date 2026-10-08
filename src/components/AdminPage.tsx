@@ -159,7 +159,7 @@ function PasskeyForm({ onSuccess }: { onSuccess: (token: string) => void }) {
 
 function StatTile({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
   return (
-    <div className="bg-card rounded-3xl border border-border shadow-sm p-4 flex items-center gap-3">
+    <div className="sticker p-4 flex items-center gap-3">
       <div className="w-10 h-10 rounded-2xl bg-primary/15 text-primary flex items-center justify-center shrink-0">{icon}</div>
       <div className="min-w-0">
         <p className="text-xl font-black text-foreground">{value.toLocaleString()}</p>
@@ -233,7 +233,7 @@ function AdminDashboard({ token, onExpired }: { token: string; onExpired: () => 
         </div>
       )}
 
-      <div className="bg-card rounded-3xl border border-border shadow-sm overflow-hidden">
+      <div className="sticker overflow-hidden">
         <div className="p-4 flex flex-col sm:flex-row gap-3 border-b border-border">
           <div className="relative flex-1">
             <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />

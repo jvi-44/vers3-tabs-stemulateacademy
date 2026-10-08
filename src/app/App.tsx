@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Trophy,
   Search,
@@ -18,6 +18,7 @@ import {
   LogOut,
   LogIn,
   UserPlus,
+  Gamepad2,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Toaster, toast } from "sonner";
@@ -28,7 +29,6 @@ import { twMerge } from "tailwind-merge";
 import {
   MOCK_USER,
   MOCK_COURSES,
-  MOCK_GALLERY,
   AVATAR_OPTIONS,
   STEMBOTS,
 } from "../data/mock";
@@ -117,14 +117,12 @@ export default function App() {
   const [userCards, setUserCards] = useState<Record<string, number>>({});
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [completedBeats, setCompletedBeats] = useState<Record<string, boolean>>({});
-  const [submittedExitCards, setSubmittedExitCards] = useState<
-    { id: string; username: string; avatar: string; caption: string; likes: number; tags: string[] }[]
-  >([]);
   const [darkMode, setDarkMode] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showCertificate, setShowCertificate] = useState(false);
   const [colourTheme, setColourTheme] = useColourTheme();
   const [isAdminRoute, setIsAdminRoute] = useState(() => window.location.hash === "#/admin");
+  const mainRef = useRef<HTMLElement>(null);
   const allGameBeatIds = useMemo(() => GAME_LESSONS.flatMap((l) => l.beats.map((b) => b.id)), []);
 
   // ---- Admin page lives at /#/admin ----
@@ -133,6 +131,11 @@ export default function App() {
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
+
+  // Each page starts at the top, not where the last page was scrolled to.
+  useEffect(() => {
+    mainRef.current?.scrollTo(0, 0);
+  }, [currentPage]);
 
   // ---- Dark mode ----
   useEffect(() => {
@@ -202,7 +205,6 @@ export default function App() {
     setUser(MOCK_USER);
     setCompletedBeats({});
     setUserCards({});
-    setSubmittedExitCards([]);
     setCurrentPage("home");
   };
 
@@ -271,21 +273,8 @@ export default function App() {
     handleEarnAtoms(p.atoms);
 
     if (beat.type === "exit" && reflection) {
-      setSubmittedExitCards((prev) => [
-        {
-          id: `exit-${beat.id}-${Date.now()}`,
-          username: user.username,
-          avatar: user.avatar,
-          caption: reflection,
-          likes: 0,
-          tags: [beat.title],
-        },
-        ...prev,
-      ]);
       toast.success(
-        isGuest
-          ? "Your reflection is in the Gallery for now. Create an account to keep it!"
-          : "Your reflection was published to the Gallery! 🎉",
+        isGuest ? "Lovely reflection! Create an account to keep your progress." : "Reflection saved. Great thinking! 🎉",
       );
     }
 
@@ -338,7 +327,6 @@ export default function App() {
       });
       return next;
     });
-    toast.success(`Opened ${pack.name}!`);
     return drawn;
   };
 
@@ -396,41 +384,46 @@ export default function App() {
         darkMode={darkMode}
         onToggleDark={() => setDarkMode((d) => !d)}
         logoutLabel={isGuest ? "Leave guest mode" : "Log Out"}
+        theme={colourTheme}
       />
 
       <div className="flex-1 min-w-0 h-screen flex flex-col overflow-hidden">
-        {/* Top bar — logo, greeting (Singapore time) + progress to next level, XP + Atoms */}
-        <header className="shrink-0 h-[76px] bg-hero px-4 md:px-8 flex items-center justify-between gap-4 shadow-sm">
+        {/* Top bar: greeting and level progress on the left, XP, Atoms and
+            the account menu on the right. Paper-coloured like the website nav. */}
+        <header className="shrink-0 h-[76px] bg-background/90 backdrop-blur border-b-2 border-border px-4 md:px-8 flex items-center justify-between gap-4 relative z-20">
           <div className="flex items-center gap-3 min-w-0">
             <button
-              className="md:hidden p-2 -ml-2 text-white"
+              className="md:hidden p-2 -ml-2 text-foreground"
               onClick={() => setMobileMenuOpen(true)}
               aria-label="Open menu"
             >
               <Menu size={22} />
             </button>
-            <img src={stemulateLogo} alt="" className="w-10 h-10 object-contain hidden sm:block shrink-0 drop-shadow" />
+            <img src={stemulateLogo} alt="" className="w-9 h-9 object-contain md:hidden shrink-0" />
             <div className="min-w-0">
-              <p className="font-black text-white truncate drop-shadow-sm">
-                {getSingaporeGreeting()}, {user.username.split(" ")[0]}! 👋
+              <p className="font-display font-bold text-lg sm:text-xl text-foreground truncate leading-tight">
+                <span className="hidden sm:inline">{getSingaporeGreeting()}, </span>
+                <span className="sm:hidden">Hi, </span>
+                {user.username.split(" ")[0]}!
               </p>
               <div className="flex items-center gap-2 mt-1">
-                <div className="w-28 sm:w-40 h-1.5 bg-white/30 rounded-full overflow-hidden">
-                  <div className="h-full bg-white rounded-full transition-all" style={{ width: `${progressPct * 100}%` }} />
+                <div className="meter w-24 sm:w-40 !h-2.5 !border-[1.5px]">
+                  <span style={{ width: `${progressPct * 100}%` }} />
                 </div>
-                <span className="text-[11px] font-bold text-white/90 whitespace-nowrap">
+                <span className="text-[11px] font-extrabold text-muted-foreground whitespace-nowrap hidden sm:inline">
                   {xpToGo} XP to Level {user.level + 1}
                 </span>
               </div>
             </div>
           </div>
           <div className="flex items-center gap-2 md:gap-3 shrink-0">
-            <div className="flex items-center gap-1.5 bg-white text-amber-600 px-3.5 py-2 rounded-full font-black text-sm shadow-md">
-              <Star size={16} className="fill-amber-500 text-amber-500" />
-              {user.xp.toLocaleString()} XP
+            <div className="chip-ink bg-soft-1 text-sm rotate-[-2deg]" title="Your XP">
+              <Star size={16} className="fill-amber-400 text-amber-500" strokeWidth={2.5} />
+              {user.xp.toLocaleString()}
+              <span className="hidden sm:inline text-xs opacity-70">XP</span>
             </div>
-            <div className="hidden sm:flex items-center gap-1.5 bg-white text-sky-600 px-3.5 py-2 rounded-full font-black text-sm shadow-md">
-              <AtomIcon size={16} />
+            <div className="chip-ink bg-soft-3 text-sm rotate-[2deg] hidden sm:inline-flex" title="Your Atoms">
+              <AtomIcon size={16} className="text-pop-3" />
               {user.atoms.toLocaleString()}
             </div>
             <AccountMenu
@@ -450,24 +443,22 @@ export default function App() {
         </header>
 
         {isGuest && (
-          <div className="shrink-0 bg-accent text-accent-foreground px-4 md:px-8 py-2 flex items-center justify-between gap-3 text-xs sm:text-sm font-semibold">
+          <div className="shrink-0 bg-soft-3 text-foreground border-b-2 border-border px-4 md:px-8 py-2 flex items-center justify-between gap-3 text-xs sm:text-sm font-bold">
             <span className="min-w-0">👀 You're exploring as a guest. Your progress won't be saved.</span>
-            <button
-              onClick={() => leaveGuest("signup")}
-              className="shrink-0 bg-primary text-primary-foreground font-bold px-3 py-1.5 rounded-xl hover:opacity-90"
-            >
+            <button onClick={() => leaveGuest("signup")} className="btn-pop btn-pop-sm btn-primary shrink-0">
               Create account
             </button>
           </div>
         )}
 
-        <main className="flex-1 overflow-y-auto bg-playful p-4 md:p-8 pb-24 md:pb-8">
+        <main ref={mainRef} className="flex-1 overflow-y-auto bg-playful p-4 md:p-8 pb-28 md:pb-10">
           {/* One fixed content width for every page, so screens don't jump
               around in size as you move between tabs. */}
           <div className="max-w-6xl mx-auto w-full min-h-full">
           {currentPage === "home" && (
             <Dashboard
               courses={MOCK_COURSES}
+              firstName={user.username.split(" ")[0]}
               completedBeats={completedBeats}
               onOpenBeat={openBeat}
               gamesModuleComplete={gamesModuleComplete}
@@ -500,7 +491,6 @@ export default function App() {
           {currentPage === "leaderboard" && !isGuest && (
             <Leaderboard myUserId={authUser?.userId ?? 0} />
           )}
-          {currentPage === "gallery" && <Gallery posts={MOCK_GALLERY} reflectionPosts={submittedExitCards} />}
           {currentPage === "games" && (
             <GamesTab
               completedBeats={completedBeats}
@@ -538,7 +528,7 @@ export default function App() {
               animate={{ x: 0 }}
               exit={{ x: -280 }}
               transition={{ type: "tween", duration: 0.25 }}
-              className="fixed top-0 left-0 bottom-0 w-64 bg-sidebar z-50 md:hidden p-5 flex flex-col gap-6"
+              className="fixed top-0 left-0 bottom-0 w-64 bg-sidebar z-50 md:hidden flex flex-col"
             >
               <Sidebar
                 variant="mobile"
@@ -554,6 +544,7 @@ export default function App() {
                 darkMode={darkMode}
                 onToggleDark={() => setDarkMode((d) => !d)}
                 logoutLabel={isGuest ? "Leave guest mode" : "Log Out"}
+                theme={colourTheme}
               />
             </motion.div>
           </>
@@ -575,14 +566,22 @@ export default function App() {
 // Dashboard
 // ---------------------------------------------------------------------------
 
+const COMING_SOON_STYLE: Record<string, { emoji: string; bg: string; tilt: string }> = {
+  sports: { emoji: "⚽", bg: "bg-soft-2", tilt: "-rotate-1" },
+  magic: { emoji: "🪄", bg: "bg-soft-3", tilt: "rotate-1" },
+  content: { emoji: "🎬", bg: "bg-soft-1", tilt: "-rotate-[0.6deg]" },
+};
+
 function Dashboard({
   courses,
+  firstName,
   completedBeats,
   onOpenBeat,
   gamesModuleComplete,
   onShowCertificate,
 }: {
   courses: Course[];
+  firstName: string;
   completedBeats: Record<string, boolean>;
   onOpenBeat: (lessonId: string, beatId: string) => void;
   gamesModuleComplete: boolean;
@@ -624,36 +623,76 @@ function Dashboard({
   const gamesDone = allGameBeats.filter((b) => completedBeats[b.id]).length;
   const gamesPct = Math.round((gamesDone / allGameBeats.length) * 100);
 
+  // Where "Keep going" takes you: the first unfinished activity.
+  const nextLesson = GAME_LESSONS.find((l) => l.beats.some((b) => !completedBeats[b.id])) ?? GAME_LESSONS[0];
+  const nextBeat = firstIncompleteBeat(nextLesson, completedBeats);
+
   return (
-    <div className="space-y-6 w-full">
+    <div className="space-y-7 w-full">
+      {/* Welcome banner: theme colour with its doodles, the four STEMbots
+          as die-cut stickers, and one big button back into the lessons. */}
+      <section className="panel-pop overflow-hidden px-6 py-7 sm:px-9 sm:py-9">
+        <div className="relative z-10 max-w-[30rem]">
+          <span className="kicker kicker-on">STEM x Games</span>
+          <h1 className="font-display !text-[clamp(1.9rem,1.2rem+2.2vw,3rem)] !leading-[1.05] mt-4 mb-3">
+            Ready for a new <span className="mark-pop">why?</span> today, {firstName}?
+          </h1>
+          <p className="font-semibold opacity-90 mb-5">
+            {gamesDone === 0
+              ? "Your first adventure is waiting. Watch, play and earn Atoms for your card albums!"
+              : gamesDone === allGameBeats.length
+                ? "You finished every activity. Replay the games to beat your high scores!"
+                : `You're ${gamesPct}% through. Up next: ${nextBeat.title}.`}
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <button onClick={() => onOpenBeat(nextLesson.id, nextBeat.id)} className="btn-pop text-base">
+              {gamesDone === 0 ? "Start learning" : "Keep going"} <ArrowRight size={18} strokeWidth={2.6} />
+            </button>
+            {gamesModuleComplete && (
+              <button onClick={onShowCertificate} className="btn-pop btn-pop2 text-base">
+                <Award size={18} /> My certificate
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="hidden md:block absolute right-3 lg:right-8 bottom-0 top-6 w-[44%] max-w-[480px] pointer-events-none" aria-hidden="true">
+          {[
+            { src: stembotGreen, cls: "left-[0%] h-[50%] rotate-[-8deg]", delay: "0s" },
+            { src: stembotBlue, cls: "left-[24%] h-[58%] rotate-[4deg]", delay: "-1.2s" },
+            { src: stembotCream, cls: "left-[49%] h-[52%] rotate-[-4deg]", delay: "-2.4s" },
+            { src: stembotRed, cls: "left-[73%] h-[56%] rotate-[7deg]", delay: "-3.6s" },
+          ].map((b, i) => (
+            <img key={i} src={b.src} alt="" className={cn("absolute bottom-[-4%] die-cut bob", b.cls)} style={{ animationDelay: b.delay }} />
+          ))}
+        </div>
+      </section>
+
       <StembotShowcase />
 
       {/* Search + tag filters */}
-      <div className="space-y-4">
+      <section className="sticker p-4 sm:p-5 space-y-4">
         <div className="relative">
-          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} />
+          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} strokeWidth={2.5} />
           <input
             type="text"
             placeholder="Search for topics or lessons..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-14 pr-5 py-4 bg-card border border-border rounded-3xl focus:ring-2 focus:ring-primary/40 outline-none font-semibold shadow-sm"
+            className="w-full pl-14 pr-5 py-3.5 bg-input-background border-2 border-border rounded-full focus:border-primary outline-none font-bold placeholder:text-muted-foreground/70 transition-colors"
           />
         </div>
-        <div className="bg-card rounded-3xl border border-border p-4 shadow-sm">
-          <TagFilterBar selection={tagSelection} onChange={setTagSelection} />
-        </div>
-      </div>
+        <TagFilterBar selection={tagSelection} onChange={setTagSelection} />
+      </section>
 
       {/* Filtered topic results */}
       {activeFilters && (
-        <div className="space-y-2">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+        <div className="space-y-3">
+          <p className="kicker">
             {matches.length} matching topic{matches.length === 1 ? "" : "s"}
           </p>
           {matches.length === 0 && (
-            <p className="text-sm text-muted-foreground bg-card border border-border rounded-2xl p-4">
-              No topics match those filters yet — more modules are on the way!
+            <p className="sticker text-sm font-semibold text-muted-foreground p-5">
+              No topics match those filters yet. More modules are on the way!
             </p>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -661,13 +700,13 @@ function Dashboard({
               <button
                 key={beat.id}
                 onClick={() => onOpenBeat(lessonId, beat.id)}
-                className="text-left bg-card border border-border rounded-2xl p-4 hover:border-primary/50 hover:shadow-md transition-all"
+                className="sticker text-left p-4 hover:-translate-y-1 hover:border-primary transition-all"
               >
-                <p className="text-[10px] font-bold uppercase tracking-wider text-primary">{lessonTitle}</p>
-                <p className="font-bold text-foreground text-sm">{beat.title}</p>
+                <p className="text-[10px] font-extrabold uppercase tracking-wider text-primary">{lessonTitle}</p>
+                <p className="font-display font-semibold text-foreground">{beat.title}</p>
                 <div className="flex flex-wrap gap-1 mt-2">
                   {[...beat.levelTags, ...beat.subjectTags].map((t) => (
-                    <span key={t} className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-accent text-accent-foreground">
+                    <span key={t} className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-soft-1 text-foreground/80">
                       {t}
                     </span>
                   ))}
@@ -680,106 +719,82 @@ function Dashboard({
 
       {!activeFilters && (
         <>
-          {/* Featured module — STEM x Games, the only unlocked one. Banner
-              composites the 4 STEMbot mascots since no dedicated banner
-              artwork was supplied. Lessons expand inline, right here. */}
+          {/* The one open module: STEM x Games. Lessons expand right here. */}
           {gamesCourse && (
-            <div className="rounded-3xl border border-primary/30 shadow-sm bg-card overflow-hidden">
-              <div className="relative h-36 sm:h-44 bg-hero-diagonal flex items-end justify-center gap-2 overflow-hidden">
-                <Sparkles className="absolute top-3 left-4 text-white/70" size={20} />
-                <Sparkles className="absolute top-6 right-8 text-white/50" size={14} />
-                {[stembotGreen, stembotBlue, stembotCream, stembotRed].map((src, i) => (
-                  <img
-                    key={i}
-                    src={src}
-                    alt=""
-                    className="h-28 sm:h-36 object-contain drop-shadow-lg"
-                    style={{ transform: `translateY(${i % 2 === 0 ? 8 : 0}px)` }}
-                  />
-                ))}
-                {gamesModuleComplete && (
-                  <div className="absolute top-3 right-3 flex items-center gap-1.5 bg-white/95 text-emerald-600 text-xs font-black px-3 py-1.5 rounded-full shadow-md">
-                    <Award size={14} /> Badge earned!
-                  </div>
-                )}
-              </div>
-              <div className="p-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
-                  <div>
-                    <h3 className="font-black text-lg text-foreground">{gamesCourse.title}</h3>
-                    <p className="text-xs text-muted-foreground font-medium">
-                      {gamesCourse.modules.length} lessons · {gamesDone}/{allGameBeats.length} activities complete
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
+            <section className="sticker overflow-hidden">
+              <div className="p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-primary text-primary-foreground border-[2.5px] border-ink shadow-[0_4px_0_var(--ink-line)] flex items-center justify-center shrink-0 rotate-[-4deg]">
+                  <Gamepad2 size={28} strokeWidth={2.4} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="font-display text-foreground !text-2xl">{gamesCourse.title}</h2>
                     {gamesModuleComplete && (
-                      <button
-                        onClick={onShowCertificate}
-                        className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl bg-emerald-500 text-white hover:opacity-90"
-                      >
-                        <Award size={14} /> View Certificate
-                      </button>
+                      <span className="chip-ink !text-xs !py-0.5 bg-pop-2 text-[#1b1b12]">
+                        <Award size={13} /> Badge earned
+                      </span>
                     )}
-                    <button
-                      onClick={() => setGamesExpanded((v) => !v)}
-                      className="flex items-center gap-1 text-primary font-bold text-sm px-3 py-2 rounded-xl hover:bg-accent"
-                    >
-                      Explore
-                      {gamesExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                    </button>
+                  </div>
+                  <p className="text-sm text-muted-foreground font-bold">
+                    {gamesCourse.modules.length} lessons · {gamesDone}/{allGameBeats.length} activities done
+                  </p>
+                  <div className="meter mt-2.5 max-w-md">
+                    <span style={{ width: `${gamesPct}%` }} />
                   </div>
                 </div>
-                <div className="w-full h-2 bg-accent rounded-full overflow-hidden">
-                  <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${gamesPct}%` }} />
-                </div>
-
-                <AnimatePresence>
-                  {gamesExpanded && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="pt-5">
-                        <GameLessonExplorer
-                          lessons={GAME_LESSONS}
-                          completedBeats={completedBeats}
-                          onOpenBeat={onOpenBeat}
-                        />
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                <button onClick={() => setGamesExpanded((v) => !v)} className="btn-pop btn-pop-sm self-start sm:self-center">
+                  {gamesExpanded ? "Hide lessons" : "Show lessons"}
+                  {gamesExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                </button>
               </div>
-            </div>
+
+              <AnimatePresence initial={false}>
+                {gamesExpanded && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="px-4 sm:px-6 pb-6 pt-1 border-t-2 border-dashed border-border bg-background/60">
+                      <div className="pt-5">
+                        <GameLessonExplorer lessons={GAME_LESSONS} completedBeats={completedBeats} onOpenBeat={onOpenBeat} />
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </section>
           )}
 
-          {/* Locked modules — banner-style cards, 2 per row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {lockedCourses.map((course) => (
-              <div
-                key={course.id}
-                className="relative rounded-3xl border border-border shadow-sm overflow-hidden bg-card"
-              >
-                <div className={cn("relative h-24 flex items-center justify-center gap-1.5", course.color)}>
-                  {[stembotBlue, stembotRed, stembotGreen].map((src, i) => (
-                    <img key={i} src={src} alt="" className="h-16 object-contain opacity-90" />
-                  ))}
-                </div>
-                <div className="absolute inset-0 bg-card/85 backdrop-blur-[2px] flex flex-col items-center justify-center gap-2">
-                  <div className="w-12 h-12 rounded-2xl bg-accent flex items-center justify-center text-muted-foreground">
-                    <Lock size={22} />
+          {/* Modules on the way */}
+          <section>
+            <div className="flex items-center gap-3 mb-4">
+              <h2 className="font-display text-foreground !text-xl">Coming soon</h2>
+              <span className="kicker kicker-3">New modules</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+              {lockedCourses.map((course) => {
+                const st = COMING_SOON_STYLE[course.id] ?? { emoji: "✨", bg: "bg-soft-1", tilt: "" };
+                return (
+                  <div
+                    key={course.id}
+                    className={cn("relative rounded-[1.6rem] border-2 border-dashed border-foreground/25 p-5 overflow-hidden", st.bg, st.tilt)}
+                  >
+                    <div className="absolute -right-3 -bottom-3 w-20 h-20 motif-icon opacity-30 rotate-12" aria-hidden="true" />
+                    <div className="flex items-center justify-between mb-6">
+                      <span className="text-4xl drop-shadow-sm">{st.emoji}</span>
+                      <span className="chip-ink !text-[11px] !py-0.5">
+                        <Lock size={12} /> Soon
+                      </span>
+                    </div>
+                    <h3 className="font-display text-foreground">{course.title}</h3>
+                    <p className="text-xs text-muted-foreground font-bold">{course.modules.length} modules</p>
                   </div>
-                  <p className="font-black text-foreground">Coming Soon!</p>
-                </div>
-                <div className="p-5 pt-4">
-                  <h3 className="font-bold text-foreground">{course.title}</h3>
-                  <p className="text-xs text-muted-foreground font-medium">{course.modules.length} Modules</p>
-                </div>
-              </div>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          </section>
         </>
       )}
     </div>
@@ -792,9 +807,9 @@ function Dashboard({
 
 function StatsCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-accent/60 px-5 py-3 rounded-2xl text-center">
+    <div className="bg-soft-1 px-5 py-3 rounded-2xl text-center border-2 border-ink shadow-[0_3px_0_var(--ink-line)] odd:rotate-[-1.5deg] even:rotate-[1.5deg]">
       <p className="text-xl font-black text-foreground">{value}</p>
-      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{label}</p>
+      <p className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-wider">{label}</p>
     </div>
   );
 }
@@ -843,14 +858,15 @@ function Profile({
 
   return (
     <div className="w-full space-y-6">
-      <div className="bg-card rounded-3xl p-6 md:p-8 border border-border shadow-sm flex flex-col md:flex-row items-center gap-8">
+      <div className="panel-pop p-6 md:p-8 flex flex-col md:flex-row items-center gap-8 overflow-hidden">
         <div className="relative shrink-0">
-          <div className="w-32 h-32 rounded-full overflow-hidden ring-4 ring-primary/20 bg-muted">
+          <div className="w-36 h-36 rounded-full overflow-hidden border-4 border-ink bg-card shadow-[0_6px_0_var(--ink-line)]">
             <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
           </div>
           <button
             onClick={() => setIsEditingAvatar(!isEditingAvatar)}
-            className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground w-10 h-10 rounded-full flex items-center justify-center font-black border-4 border-card shadow-md hover:opacity-90 transition-all"
+            className="absolute -bottom-1 -right-1 bg-card w-11 h-11 rounded-full flex items-center justify-center border-[2.5px] border-ink shadow-[0_3px_0_var(--ink-line)] hover:-translate-y-0.5 transition-transform"
+            aria-label="Change avatar"
           >
             ✏️
           </button>
@@ -858,24 +874,24 @@ function Profile({
 
         <div className="text-center md:text-left flex-1 w-full">
           <div className="flex flex-col md:flex-row items-center gap-3 mb-1">
-            <h2 className="text-2xl font-black text-foreground truncate max-w-full">{authUser.fullName}</h2>
-            <span className="bg-primary text-primary-foreground px-3 py-1 rounded-full text-xs font-black uppercase">
+            <h1 className="font-display !text-[clamp(1.6rem,1.2rem+1.2vw,2.3rem)] truncate max-w-full">{authUser.fullName}</h1>
+            <span className="kicker kicker-on">
               Level {user.level} · {levelName(user.level)}
             </span>
           </div>
-          <p className="text-muted-foreground font-medium mb-3 truncate">
+          <p className="font-bold opacity-85 mb-3 truncate">
             @{authUser.username}
             {authUser.orgName ? ` · ${authUser.orgName}` : ""}
           </p>
           <div className="max-w-xs mx-auto md:mx-0 mb-6">
-            <div className="w-full h-2.5 bg-accent rounded-full overflow-hidden">
-              <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${(xpIntoLevel / 1000) * 100}%` }} />
+            <div className="meter">
+              <span style={{ width: `${(xpIntoLevel / 1000) * 100}%` }} className="!bg-[#ffe066]" />
             </div>
-            <p className="text-xs font-bold text-muted-foreground mt-1.5">
+            <p className="text-xs font-extrabold opacity-85 mt-1.5">
               {xpToGo} XP to Level {user.level + 1} ({levelName(user.level + 1)})
             </p>
           </div>
-          <div className="flex flex-wrap justify-center md:justify-start gap-3">
+          <div className="flex flex-wrap justify-center md:justify-start gap-3 text-foreground">
             <StatsCard label="Total XP" value={user.xp.toLocaleString()} />
             <StatsCard label="Atoms" value={user.atoms.toLocaleString()} />
             <StatsCard label="Badges" value={String(user.badges.length + (gamesModuleComplete ? 1 : 0))} />
@@ -889,7 +905,7 @@ function Profile({
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="bg-card rounded-3xl p-6 border border-border shadow-sm overflow-hidden"
+            className="sticker p-6 overflow-hidden"
           >
             <p className="font-bold text-foreground mb-4">Choose your avatar</p>
             <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
@@ -917,18 +933,18 @@ function Profile({
 
       <ThemePicker theme={theme} onTheme={onTheme} />
 
-      <div className="bg-card rounded-3xl p-6 border border-border shadow-sm">
-        <p className="font-bold text-foreground mb-4">Badges &amp; Certificates</p>
+      <div className="sticker p-6">
+        <h2 className="font-display text-foreground !text-xl mb-4">Badges &amp; certificates</h2>
         <div className="flex flex-wrap gap-4">
           {user.badges.map((b) => (
             <div key={b.id} className="flex flex-col items-center gap-1 w-20">
-              <div className="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center text-2xl">{b.icon}</div>
+              <div className="w-14 h-14 rounded-2xl bg-soft-1 border-2 border-ink shadow-[0_3px_0_var(--ink-line)] flex items-center justify-center text-2xl">{b.icon}</div>
               <p className="text-[10px] font-bold text-center text-muted-foreground">{b.name}</p>
             </div>
           ))}
           {gamesModuleComplete && (
             <button onClick={onShowCertificate} className="flex flex-col items-center gap-1 w-20">
-              <div className="w-14 h-14 rounded-2xl bg-emerald-100 dark:bg-emerald-500/10 flex items-center justify-center text-emerald-600">
+              <div className="w-14 h-14 rounded-2xl bg-pop-2 border-2 border-ink shadow-[0_3px_0_var(--ink-line)] flex items-center justify-center text-[#1b1b12]">
                 <Award size={24} />
               </div>
               <p className="text-[10px] font-bold text-center text-muted-foreground">STEM x Games</p>
@@ -942,8 +958,8 @@ function Profile({
         </div>
       </div>
 
-      <div className="bg-card rounded-3xl p-6 border border-border shadow-sm">
-        <p className="font-bold text-foreground mb-4">Levels</p>
+      <div className="sticker p-6">
+        <h2 className="font-display text-foreground !text-xl mb-4">Levels</h2>
         <div className="space-y-2">
           {LEVEL_NAMES.map((name, i) => {
             const lvl = i + 1;
@@ -954,13 +970,13 @@ function Profile({
                 key={lvl}
                 className={cn(
                   "flex items-center gap-3 p-2.5 rounded-2xl",
-                  current ? "bg-primary/10 ring-1 ring-primary/40" : "",
+                  current ? "bg-soft-1 border-2 border-ink shadow-[0_3px_0_var(--ink-line)]" : "border-2 border-transparent",
                 )}
               >
                 <div
                   className={cn(
                     "w-8 h-8 rounded-full flex items-center justify-center text-xs font-black shrink-0",
-                    reached ? "bg-primary text-primary-foreground" : "bg-accent text-muted-foreground",
+                    reached ? "bg-primary text-primary-foreground border-2 border-ink" : "bg-muted text-muted-foreground",
                   )}
                 >
                   {lvl}
@@ -1007,51 +1023,107 @@ function Leaderboard({ myUserId }: { myUserId: number }) {
     }
   };
 
+  const podium = entries.slice(0, 3);
+  const rest = entries.slice(3);
+  // Podium order on screen: 2nd, 1st, 3rd.
+  const PODIUM = [
+    { place: 2, h: "h-24", bg: "bg-slate-200", medal: "🥈" },
+    { place: 1, h: "h-32", bg: "bg-amber-300", medal: "🥇" },
+    { place: 3, h: "h-16", bg: "bg-orange-300", medal: "🥉" },
+  ];
+
+  const friendButton = (entry: (typeof entries)[number]) => (
+    <button
+      onClick={() => addFriend(entry.username, entry.userId)}
+      disabled={entry.isFriend || !!requested[entry.userId]}
+      className="btn-pop btn-pop-sm !text-xs !px-2.5 !py-1.5 shrink-0"
+    >
+      {entry.isFriend ? "Friends" : requested[entry.userId] ? "Sent" : "+ Friend"}
+    </button>
+  );
+
   return (
-    <div className="w-full space-y-4">
-      <div className="bg-hero rounded-3xl p-6 text-white shadow-md flex items-center gap-4 overflow-hidden relative">
-        <Trophy size={32} className="shrink-0" />
+    <div className="w-full space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
         <div>
-          <h2 className="text-xl font-black">Leaderboard</h2>
-          <p className="text-white/85 text-sm">Ranked by total XP</p>
+          <span className="kicker">
+            <Trophy size={13} /> Leaderboard
+          </span>
+          <h1 className="font-display text-foreground !text-[clamp(1.8rem,1.3rem+1.5vw,2.6rem)] mt-3 mb-1">Top explorers</h1>
+          <p className="text-muted-foreground font-semibold">Ranked by total XP. Finish lessons and replay games to climb!</p>
         </div>
-        <img src={stembotRed} alt="" className="absolute right-4 -bottom-3 h-20 w-auto drop-shadow-lg hidden sm:block" />
       </div>
-      <div className="bg-card rounded-3xl border border-border shadow-sm divide-y divide-border overflow-hidden">
-        {loading && <p className="p-5 text-sm text-muted-foreground">Loading…</p>}
-        {!loading && entries.length === 0 && (
-          <p className="p-5 text-sm text-muted-foreground">No one on the board yet. Finish a lesson to be first!</p>
-        )}
-        {entries.map((entry, i) => {
-          const isMe = entry.userId === myUserId;
-          return (
-            <div key={entry.userId} className={cn("flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5", isMe && "bg-accent/60")}>
-              <span className={cn("w-7 text-center font-black", i < 3 ? "text-amber-500" : "text-muted-foreground")}>
-                {i + 1}
-              </span>
-              <img src={avatarFor(entry)} className="w-10 h-10 rounded-xl bg-muted" />
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-foreground truncate">
-                  {entry.username} {isMe && <span className="text-muted-foreground font-medium">(you)</span>}
-                </p>
-                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wide">
-                  Level {Math.floor(entry.xp / 1000) + 1}
-                </p>
+
+      {loading && <p className="sticker p-5 text-sm font-semibold text-muted-foreground">Loading…</p>}
+      {!loading && entries.length === 0 && (
+        <p className="sticker p-5 text-sm font-semibold text-muted-foreground">No one on the board yet. Finish a lesson to be first!</p>
+      )}
+
+      {podium.length > 0 && (
+        <section className="panel-pop px-4 pt-8 sm:px-10 overflow-hidden">
+          <div className="flex items-end justify-center gap-3 sm:gap-6 max-w-xl mx-auto">
+            {PODIUM.map(({ place, h, bg, medal }) => {
+              const entry = podium[place - 1];
+              if (!entry) return <div key={place} className="flex-1" />;
+              const isMe = entry.userId === myUserId;
+              return (
+                <div key={place} className="flex-1 flex flex-col items-center min-w-0">
+                  <div className="relative">
+                    <img
+                      src={avatarFor(entry)}
+                      alt=""
+                      className={cn(
+                        "rounded-full bg-card border-[3px] border-ink object-cover shadow-[0_4px_0_var(--ink-line)]",
+                        place === 1 ? "w-20 h-20 sm:w-24 sm:h-24" : "w-14 h-14 sm:w-16 sm:h-16",
+                      )}
+                    />
+                    <span className="absolute -bottom-2 -right-2 text-2xl drop-shadow">{medal}</span>
+                  </div>
+                  <p className="font-display font-bold mt-3 truncate max-w-full text-center">
+                    {entry.username}
+                    {isMe && " (you)"}
+                  </p>
+                  <p className="text-xs font-extrabold opacity-85 mb-2">{entry.xp.toLocaleString()} XP</p>
+                  {!isMe && <div className="mb-3 text-foreground">{friendButton(entry)}</div>}
+                  <div
+                    className={cn(
+                      "w-full rounded-t-2xl border-[2.5px] border-b-0 border-ink flex items-start justify-center pt-2 font-display font-bold text-3xl text-[#1c1a17]",
+                      h,
+                      bg,
+                    )}
+                  >
+                    {place}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {rest.length > 0 && (
+        <div className="sticker divide-y-2 divide-dashed divide-border overflow-hidden">
+          {rest.map((entry, i) => {
+            const isMe = entry.userId === myUserId;
+            return (
+              <div key={entry.userId} className={cn("flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3", isMe && "bg-soft-1")}>
+                <span className="w-8 text-center font-display font-bold text-lg text-muted-foreground">{i + 4}</span>
+                <img src={avatarFor(entry)} className="w-11 h-11 rounded-full bg-soft-1 border-2 border-ink" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-display font-semibold text-foreground truncate">
+                    {entry.username} {isMe && <span className="text-muted-foreground font-medium">(you)</span>}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground uppercase font-extrabold tracking-wide">
+                    Level {Math.floor(entry.xp / 1000) + 1}
+                  </p>
+                </div>
+                <span className="font-display font-bold text-foreground whitespace-nowrap">{entry.xp.toLocaleString()} XP</span>
+                {!isMe && friendButton(entry)}
               </div>
-              <span className="font-black text-foreground whitespace-nowrap">{entry.xp.toLocaleString()} XP</span>
-              {!isMe && (
-                <button
-                  onClick={() => addFriend(entry.username, entry.userId)}
-                  disabled={entry.isFriend || !!requested[entry.userId]}
-                  className="ml-1 shrink-0 text-[10px] font-bold px-2.5 py-1.5 rounded-xl bg-accent text-accent-foreground disabled:opacity-50"
-                >
-                  {entry.isFriend ? "Friends" : requested[entry.userId] ? "Sent" : "+ Friend"}
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -1080,22 +1152,22 @@ function MembersOnly({ page, onSignUp, onSignIn }: { page: Page; onSignUp: () =>
   const text = MEMBERS_ONLY_TEXT[page] ?? MEMBERS_ONLY_TEXT.profile!;
   return (
     <div className="w-full flex justify-center pt-6">
-      <div className="bg-card rounded-3xl border border-border shadow-sm p-8 max-w-md w-full text-center">
-        <div className="flex justify-center -space-x-4 mb-4">
+      <div className="sticker p-8 pt-0 max-w-md w-full text-center mt-14">
+        <div className="flex justify-center -space-x-5 -mt-14 mb-3">
           {[stembotGreen, stembotBlue, stembotRed].map((src, i) => (
-            <img key={i} src={src} alt="" className="h-20 w-20 object-contain drop-shadow" />
+            <img key={i} src={src} alt="" className={cn("h-24 w-24 object-contain die-cut bob", i === 1 && "-translate-y-3")} style={{ animationDelay: `${-i * 1.1}s` }} />
           ))}
         </div>
-        <div className="w-11 h-11 rounded-2xl bg-accent text-muted-foreground flex items-center justify-center mx-auto mb-3">
-          <Lock size={20} />
-        </div>
-        <h2 className="font-black text-foreground mb-2">{text.title}</h2>
-        <p className="text-sm text-muted-foreground mb-5">{text.body}</p>
-        <div className="flex flex-col sm:flex-row gap-2 justify-center">
-          <button onClick={onSignUp} className="px-5 py-2.5 rounded-2xl bg-primary text-primary-foreground font-bold text-sm">
+        <span className="kicker kicker-3">
+          <Lock size={12} /> Members only
+        </span>
+        <h2 className="font-display text-foreground !text-2xl mt-3 mb-2">{text.title}</h2>
+        <p className="text-sm font-semibold text-muted-foreground mb-6">{text.body}</p>
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <button onClick={onSignUp} className="btn-pop btn-primary">
             Create an account
           </button>
-          <button onClick={onSignIn} className="px-5 py-2.5 rounded-2xl bg-accent text-accent-foreground font-bold text-sm">
+          <button onClick={onSignIn} className="btn-pop">
             Sign in
           </button>
         </div>
@@ -1137,7 +1209,7 @@ function AccountMenu({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-white shadow-md bg-white shrink-0"
+          className="w-11 h-11 rounded-full overflow-hidden border-[2.5px] border-ink shadow-[0_3px_0_var(--ink-line)] bg-soft-1 shrink-0 hover:-translate-y-0.5 transition-transform"
           aria-label="Account menu"
         >
           <img src={avatar} alt="" className="w-full h-full object-cover" />
@@ -1189,73 +1261,3 @@ function AccountMenu({
     </DropdownMenu>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Gallery
-// ---------------------------------------------------------------------------
-
-function Gallery({ posts, reflectionPosts }: { posts: any[]; reflectionPosts: any[] }) {
-  const [likes, setLikes] = useState<Record<string, number>>({});
-  const [liked, setLiked] = useState<Record<string, boolean>>({});
-
-  const toggleLike = (id: string, base: number) => {
-    setLiked((prev) => {
-      const next = !prev[id];
-      setLikes((l) => ({ ...l, [id]: (l[id] ?? base) + (next ? 1 : -1) }));
-      return { ...prev, [id]: next };
-    });
-  };
-
-  const allPosts = [...reflectionPosts, ...posts];
-
-  return (
-    <div className="columns-1 sm:columns-2 lg:columns-3 gap-5 space-y-5 w-full">
-      {allPosts.map((post) => {
-        const isReflection = !post.imageUrl;
-        const likeCount = likes[post.id] ?? post.likes;
-        return (
-          <div key={post.id} className="break-inside-avoid bg-card rounded-3xl border border-border shadow-sm overflow-hidden hover:shadow-md transition-all group">
-            {isReflection ? (
-              <div className="p-5 bg-accent/50">
-                <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-2">Exit Card Reflection</p>
-                <p className="text-sm font-medium text-foreground whitespace-pre-line leading-relaxed line-clamp-[12]">{post.caption}</p>
-              </div>
-            ) : (
-              <div className="relative">
-                <img src={post.imageUrl} alt={post.caption} className="w-full h-auto object-cover" />
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-6 text-center">
-                  <p className="text-white font-bold mb-3">{post.caption}</p>
-                </div>
-              </div>
-            )}
-            <div className="p-5 pt-4">
-              <div className="flex items-center gap-3 mb-3">
-                <img src={post.avatar} className="w-9 h-9 rounded-xl bg-muted" />
-                <span className="text-sm font-bold text-foreground">{post.username}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex flex-wrap gap-1.5">
-                  {post.tags.map((tag: string) => (
-                    <span key={tag} className="text-[10px] font-bold bg-accent text-accent-foreground px-2 py-0.5 rounded-lg">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-                <button
-                  onClick={() => toggleLike(post.id, post.likes)}
-                  className={cn(
-                    "flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full transition-all shrink-0",
-                    liked[post.id] ? "bg-rose-500 text-white" : "bg-muted text-muted-foreground hover:bg-rose-100 hover:text-rose-500",
-                  )}
-                >
-                  <Star size={12} className={liked[post.id] ? "fill-white" : ""} /> {likeCount}
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-

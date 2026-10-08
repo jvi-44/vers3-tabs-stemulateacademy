@@ -99,33 +99,33 @@ export function GameLessonExplorer({
         return (
           <div
             key={lesson.id}
-            className="bg-card rounded-3xl border border-border shadow-sm overflow-hidden"
+            className="sticker overflow-hidden"
           >
             <div className="w-full flex items-center gap-4 p-5">
               <button
                 onClick={() => setExpanded(isOpen ? null : lesson.id)}
                 className="flex items-center gap-4 flex-1 min-w-0 text-left"
               >
-                <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-purple-500 to-fuchsia-500 flex items-center justify-center text-white shrink-0 shadow-md">
+                <div className="w-12 h-12 rounded-2xl bg-pop-3 border-[2.5px] border-ink shadow-[0_3px_0_var(--ink-line)] flex items-center justify-center text-white shrink-0 rotate-[-5deg]">
                   <Flag size={20} fill="white" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                     {lesson.flagLabel}
                   </p>
-                  <h4 className="font-bold text-foreground leading-tight truncate">{lesson.title}</h4>
+                  <h4 className="font-display font-semibold text-lg text-foreground leading-tight truncate">{lesson.title}</h4>
                   <p className="text-xs text-muted-foreground truncate">{lesson.blurb}</p>
                 </div>
               </button>
               <div className="hidden sm:flex flex-col items-end gap-1 w-28 shrink-0">
-                <div className="w-full h-1.5 bg-accent rounded-full overflow-hidden">
-                  <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${pct}%` }} />
+                <div className="meter w-full !h-2.5 !border-[1.5px]">
+                  <span style={{ width: `${pct}%` }} />
                 </div>
                 <span className={cn("text-[10px] font-bold", statusColor)}>{status}</span>
               </div>
               <button
                 onClick={() => onOpenBeat(lesson.id, firstIncompleteBeat(lesson, completedBeats).id)}
-                className="hidden md:flex items-center gap-1 text-xs font-bold px-3 py-2 rounded-xl bg-primary text-primary-foreground shrink-0 hover:opacity-90"
+                className="hidden md:inline-flex btn-pop btn-pop-sm btn-primary shrink-0"
               >
                 {doneCount === 0 ? "Start Lesson" : doneCount === lesson.beats.length ? "Review" : "Continue"}
                 <ArrowRight size={13} />
@@ -135,13 +135,13 @@ export function GameLessonExplorer({
               </button>
             </div>
             <div className="px-5 pb-3 sm:hidden flex items-center justify-between gap-3">
-              <div className="flex-1 h-1.5 bg-accent rounded-full overflow-hidden">
-                <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${pct}%` }} />
+              <div className="meter flex-1 !h-2.5 !border-[1.5px]">
+                <span style={{ width: `${pct}%` }} />
               </div>
               <span className={cn("text-[10px] font-bold shrink-0", statusColor)}>{status}</span>
               <button
                 onClick={() => onOpenBeat(lesson.id, firstIncompleteBeat(lesson, completedBeats).id)}
-                className="text-xs font-bold px-3 py-1.5 rounded-xl bg-primary text-primary-foreground shrink-0"
+                className="btn-pop btn-pop-sm btn-primary !text-xs shrink-0"
               >
                 {doneCount === 0 ? "Start" : "Continue"}
               </button>
@@ -165,8 +165,8 @@ export function GameLessonExplorer({
                           key={beat.id}
                           onClick={() => onOpenBeat(lesson.id, beat.id)}
                           className={cn(
-                            "flex items-start gap-3 p-3 mt-2 rounded-2xl transition-all text-left",
-                            highlighted ? "ring-2 ring-primary bg-accent/50" : "hover:bg-accent/40",
+                            "flex items-start gap-3 p-3 mt-2 rounded-2xl transition-all text-left border-2",
+                            highlighted ? "border-ink bg-soft-1 shadow-[0_3px_0_var(--ink-line)]" : "border-transparent hover:bg-card hover:border-border",
                           )}
                         >
                           <div
@@ -226,9 +226,9 @@ export function BeatPlayer({
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col md:flex-row">
+    <div className="min-h-screen bg-playful flex flex-col md:flex-row">
       {/* Left: lesson nav sidebar */}
-      <aside className="w-full md:w-72 shrink-0 bg-card border-r border-border md:h-screen md:sticky md:top-0 overflow-y-auto">
+      <aside className="w-full md:w-72 shrink-0 bg-sidebar border-r-2 border-sidebar-border md:h-screen md:sticky md:top-0 overflow-y-auto">
         <div className="p-6 border-b border-border">
           <button
             onClick={onBack}
@@ -236,10 +236,10 @@ export function BeatPlayer({
           >
             <ArrowLeft size={16} /> Back to Dashboard
           </button>
-          <h2 className="text-lg font-black text-foreground leading-tight">{lesson.title}</h2>
+          <h2 className="font-display !text-xl text-foreground leading-tight">{lesson.title}</h2>
           <div className="mt-3 flex items-center gap-3">
-            <div className="flex-1 h-2 bg-accent rounded-full overflow-hidden">
-              <div className="h-full bg-primary rounded-full" style={{ width: `${pct}%` }} />
+            <div className="meter flex-1">
+              <span style={{ width: `${pct}%` }} />
             </div>
             <span className="text-xs font-bold text-primary">{pct}%</span>
           </div>
@@ -254,8 +254,8 @@ export function BeatPlayer({
                 key={beat.id}
                 onClick={() => onSelectBeat(beat.id)}
                 className={cn(
-                  "w-full flex items-start gap-3 p-3 rounded-2xl text-left transition-all",
-                  active ? "bg-accent shadow-sm" : "hover:bg-accent/50",
+                  "w-full flex items-start gap-3 p-3 rounded-2xl text-left transition-all border-2",
+                  active ? "bg-card border-ink shadow-[0_3px_0_var(--ink-line)]" : "border-transparent hover:bg-card",
                 )}
               >
                 <div
@@ -267,7 +267,7 @@ export function BeatPlayer({
                   {done ? <CheckCircle2 size={16} /> : meta.icon}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className={cn("text-sm font-bold truncate", active ? "text-primary" : "text-foreground")}>
+                  <p className={cn("text-sm font-bold truncate text-foreground")}>
                     {beat.title}
                   </p>
                   <PointsBadges beat={beat} />
@@ -317,14 +317,14 @@ function BeatContent({
     return (
       <div className="space-y-6">
         {comic && <ComicStrip strip={comic} />}
-        <div className="bg-gradient-to-br from-rose-400 to-orange-400 rounded-3xl p-8 text-white shadow-lg">
+        <div className="panel-pop p-8">
           <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-2">Intro Story</p>
           <h2 className="text-2xl font-black mb-3">{beat.title}</h2>
           <p className="leading-relaxed font-medium opacity-95">{beat.description}</p>
         </div>
         <button
           onClick={() => markAndNext()}
-          className="w-full py-4 bg-primary text-primary-foreground rounded-2xl font-bold text-lg shadow-md hover:opacity-90 transition-all"
+          className="btn-pop btn-primary w-full !py-4 text-lg   "
         >
           Continue the Story
         </button>
@@ -346,12 +346,12 @@ function BeatContent({
             </span>
           )}
         </div>
-        <div className="bg-card rounded-3xl p-6 border border-border shadow-sm">
+        <div className="sticker p-6 ">
           <h2 className="text-xl font-black text-foreground mb-1">{beat.title}</h2>
           <p className="text-sm text-muted-foreground mb-4">{beat.description}</p>
           <button
             onClick={() => markAndNext()}
-            className="w-full py-3.5 bg-primary text-primary-foreground rounded-2xl font-bold hover:opacity-90 transition-all shadow-md flex items-center justify-center gap-2"
+            className="btn-pop btn-primary w-full !py-4 text-lg    "
           >
             {done ? "Continue" : (
               <>
@@ -466,14 +466,14 @@ function QuizBeat({
         <button
           onClick={() => setSubmitted(true)}
           disabled={Object.keys(answers).length < questions.length}
-          className="w-full py-4 bg-primary text-primary-foreground rounded-2xl font-bold text-lg shadow-md disabled:opacity-40 transition-all"
+          className="btn-pop btn-primary w-full !py-4 text-lg  disabled:opacity-40 "
         >
           Submit Quiz
         </button>
       ) : (
         <button
           onClick={() => onSubmit(questions.length ? correctCount / questions.length : 1)}
-          className="w-full py-4 bg-primary text-primary-foreground rounded-2xl font-bold text-lg shadow-md transition-all flex items-center justify-center gap-2"
+          className="btn-pop btn-primary w-full !py-4 text-lg   "
         >
           {done ? "Continue" : (
             <>
@@ -515,7 +515,7 @@ function ExitCardBeat({
         <p className="text-muted-foreground text-sm max-w-md mx-auto">{beat.description}</p>
       </div>
 
-      <div className="bg-card rounded-3xl p-6 border border-border shadow-sm space-y-5">
+      <div className="sticker p-6  space-y-5">
         {[
           { label: "3 things I learnt", value: learnt, set: setLearnt, placeholder: "1. ... 2. ... 3. ...", rows: 3 },
           { label: "2 interesting facts or connections", value: facts, set: setFacts, placeholder: "1. ... 2. ...", rows: 2 },
@@ -538,7 +538,7 @@ function ExitCardBeat({
       <button
         onClick={() => onSubmit(`3 things I learnt: ${learnt}\n2 interesting facts: ${facts}\n1 question I still have: ${question}`)}
         disabled={!canSubmit}
-        className="w-full py-4 bg-primary text-primary-foreground rounded-2xl font-bold text-lg shadow-md disabled:opacity-40 transition-all flex items-center justify-center gap-2"
+        className="btn-pop btn-primary w-full !py-4 text-lg  disabled:opacity-40  "
       >
         {done ? "Continue" : (
           <>

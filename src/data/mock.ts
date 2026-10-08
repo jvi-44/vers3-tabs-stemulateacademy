@@ -1,7 +1,6 @@
 import {
   Course,
   User,
-  GalleryPost,
   LeaderboardEntry,
   STEMbot,
   TopicTag,
@@ -340,20 +339,6 @@ export const MOCK_COURSES: Course[] = [
         contents: [],
       },
     ],
-  },
-];
-
-export const MOCK_GALLERY: GalleryPost[] = [
-  {
-    id: "g1",
-    username: "AlexScience",
-    avatar:
-      "https://api.dicebear.com/7.x/avataaars/svg?seed=Alex",
-    imageUrl:
-      "https://images.unsplash.com/photo-1564325724739-bae0bd08bc62?w=500&q=80",
-    caption: "My volcano project erupted! 🌋",
-    likes: 24,
-    tags: ["Science", "Volcano"],
   },
 ];
 
