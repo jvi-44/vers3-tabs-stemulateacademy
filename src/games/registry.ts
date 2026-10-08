@@ -38,6 +38,7 @@ export const GAMES: GameDef[] = [
       "Change the length, width and height to build the room in 3D.",
       "Press BUILD when your numbers match the order.",
       "Fast, correct builds keep your combo going for more points.",
+      "Special order: build 3 rooms with the same floor area. Are their volumes the same?",
     ],
     music: "builder",
     gradient: "bg-gradient-to-br from-sky-500 via-indigo-500 to-violet-500",

@@ -358,7 +358,7 @@ export function GameShell({
 
       <div className="flex flex-col lg:flex-row gap-3 bg-slate-950 rounded-b-3xl p-3">
         {/* Stage: fixed size so every game feels the same */}
-        <div className="relative flex-1 min-w-0 rounded-2xl overflow-hidden bg-slate-900 h-[600px]">
+        <div className="relative flex-none lg:flex-1 min-w-0 rounded-2xl overflow-hidden bg-slate-900 h-[600px]">
           {phase === "intro" && (
             <div className={cn("absolute inset-0 flex flex-col items-center justify-center gap-6 p-6 game-checker", def.gradient)}>
               <BotBubble bot={def.bot} text={def.intro} className="max-w-xl" />
