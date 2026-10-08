@@ -11,6 +11,10 @@ import {
   Menu,
   Award,
   ArrowRight,
+  SlidersHorizontal,
+  Music,
+  VolumeX,
+  ShieldCheck,
   User as UserIcon,
   Palette,
   Moon,
@@ -39,7 +43,10 @@ import { Sidebar, MobileTabBar, type Page } from "../components/Sidebar";
 import { TagFilterBar, EMPTY_SELECTION, hasAnySelection, type TagSelection } from "../components/TagFilterBar";
 import { GameLessonExplorer, BeatPlayer, firstIncompleteBeat } from "../components/GameLessonExplorer";
 import { StembotShowcase } from "../components/StembotShowcase";
-import { Certificate } from "../components/Certificate";
+import { GamesBanner } from "../components/GamesBanner";
+import { BeatGlyph } from "../components/lesson/LessonArt";
+import { Certificate, type CertificateModule } from "../components/Certificate";
+import { CertificateShelf } from "../components/CertificateShelf";
 import { GamesTab } from "../components/GamesTab";
 import { FriendsTab } from "../components/FriendsTab";
 import { CardsHub } from "../components/CardsHub";
@@ -59,6 +66,7 @@ import { getLeaderboard, sendFriendRequest } from "../api/social";
 import { useColourTheme, THEMES, type ThemeId } from "../lib/theme";
 import { ProfileDetails, PrivacyAndAccount, ThemePicker } from "../components/ProfileSettings";
 import { AdminPage } from "../components/AdminPage";
+import { startLobbyMusic, stopLobbyMusic, toggleLobbyMusic, onMusicChange, isLobbyMusicPlaying, musicEnabled, lobbyMusicUnlocked } from "../lib/lobbyMusic";
 import { avatarFor } from "../components/FriendsTab";
 import {
   DropdownMenu,
@@ -119,7 +127,9 @@ export default function App() {
   const [completedBeats, setCompletedBeats] = useState<Record<string, boolean>>({});
   const [darkMode, setDarkMode] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [showCertificate, setShowCertificate] = useState(false);
+  const [certModuleId, setCertModuleId] = useState<string | null>(null);
+  const [musicOn, setMusicOn] = useState(isLobbyMusicPlaying);
+  useEffect(() => onMusicChange(setMusicOn), []);
   const [colourTheme, setColourTheme] = useColourTheme();
   const [isAdminRoute, setIsAdminRoute] = useState(() => window.location.hash === "#/admin");
   const mainRef = useRef<HTMLElement>(null);
@@ -136,6 +146,14 @@ export default function App() {
   useEffect(() => {
     mainRef.current?.scrollTo(0, 0);
   }, [currentPage]);
+
+  // The dashboard tune makes way for lesson videos and game music, then
+  // comes back (if it was playing and hasn't been switched off).
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    if (currentPage === "lesson" || currentPage === "games") stopLobbyMusic();
+    else if (lobbyMusicUnlocked() && musicEnabled()) startLobbyMusic();
+  }, [currentPage, isLoggedIn]);
 
   // ---- Dark mode ----
   useEffect(() => {
@@ -190,7 +208,10 @@ export default function App() {
       });
   };
 
-  const handleLogin = (u: AuthUser) => applyAuthUser(u);
+  const handleLogin = (u: AuthUser) => {
+    startLobbyMusic();
+    applyAuthUser(u);
+  };
 
   // Restore the sign-in after a refresh, using the saved session token.
   useEffect(() => {
@@ -209,6 +230,7 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    stopLobbyMusic();
     if (!isGuest) logout();
     setAuthUser(null);
     setIsGuest(false);
@@ -218,6 +240,7 @@ export default function App() {
   };
 
   const handleGuest = () => {
+    startLobbyMusic();
     resetLocalState();
     setUser({ ...MOCK_USER, username: "Guest", xp: 0, level: 1, atoms: 0, badges: [] });
     setGamePlayer({ id: "guest", name: "Guest", avatar: MOCK_USER.avatar });
@@ -232,24 +255,26 @@ export default function App() {
   };
 
   // ---- Points ----
-  const handleEarnXP = (amount: number) => {
+  // `quiet` skips the toast when the screen already shows the reward
+  // (the lesson player's "Checkpoint cleared!" card).
+  const handleEarnXP = (amount: number, quiet = false) => {
     if (!amount) return 1;
     const newXP = user.xp + amount;
     const newLevel = Math.floor(newXP / 1000) + 1;
     if (newLevel > user.level) {
       confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
       toast.success(`LEVEL UP! You are now Level ${newLevel}!`);
-    } else {
+    } else if (!quiet) {
       toast.success(`+${amount} XP Earned!`);
     }
     setUser((prev) => ({ ...prev, xp: newXP, level: newLevel }));
     return newLevel;
   };
 
-  const handleEarnAtoms = (amount: number) => {
+  const handleEarnAtoms = (amount: number, quiet = false) => {
     if (!amount) return;
     setUser((prev) => ({ ...prev, atoms: prev.atoms + amount }));
-    toast.success(`+${amount} Atoms Earned! ⚛️`);
+    if (!quiet) toast.success(`+${amount} Atoms Earned! ⚛️`);
   };
 
   const handleUpdateAvatar = (avatar: string) => {
@@ -269,8 +294,8 @@ export default function App() {
       const min = (p as any).xpMin ?? 50;
       xp = Math.round(min + (100 - min) * scoreRatio);
     }
-    const newLevel = handleEarnXP(xp);
-    handleEarnAtoms(p.atoms);
+    const newLevel = handleEarnXP(xp, true);
+    handleEarnAtoms(p.atoms, true);
 
     if (beat.type === "exit" && reflection) {
       toast.success(
@@ -370,6 +395,40 @@ export default function App() {
 
   const gamesModuleComplete = allGameBeatIds.length > 0 && allGameBeatIds.every((id) => completedBeats[id]);
 
+  // Certificates: one per module. STEM x Games is the only open module; the
+  // date it was finished is remembered on this device.
+  const doneKey = `stemulate_module_done_${authUser?.userId ?? "guest"}_games`;
+  let gamesDoneAt: string | null = null;
+  if (gamesModuleComplete) {
+    try {
+      gamesDoneAt = localStorage.getItem(doneKey);
+      if (!gamesDoneAt) {
+        gamesDoneAt = new Date().toISOString();
+        localStorage.setItem(doneKey, gamesDoneAt);
+      }
+    } catch {
+      gamesDoneAt = new Date().toISOString();
+    }
+  }
+  const gamesPctAll = allGameBeatIds.length
+    ? Math.round((allGameBeatIds.filter((id) => completedBeats[id]).length / allGameBeatIds.length) * 100)
+    : 0;
+  const certItems: { module: CertificateModule; completedAt: string | null; progressPct: number; comingSoon?: boolean }[] =
+    MOCK_COURSES.map((c) =>
+      c.id === "games"
+        ? {
+            module: { id: "games", name: c.title, emoji: "🎮", lessons: GAME_LESSONS.map((l) => l.title) },
+            completedAt: gamesDoneAt,
+            progressPct: gamesPctAll,
+          }
+        : {
+            module: { id: c.id, name: c.title, emoji: COMING_SOON_STYLE[c.id]?.emoji ?? "✨", lessons: c.modules.map((m) => m.title) },
+            completedAt: null,
+            progressPct: 0,
+            comingSoon: true,
+          },
+    );
+
   return (
     <div className="h-screen w-screen flex overflow-hidden bg-background text-foreground">
       <Toaster position="top-center" />
@@ -390,7 +449,7 @@ export default function App() {
       <div className="flex-1 min-w-0 h-screen flex flex-col overflow-hidden">
         {/* Top bar: greeting and level progress on the left, XP, Atoms and
             the account menu on the right. Paper-coloured like the website nav. */}
-        <header className="shrink-0 h-[76px] bg-background/90 backdrop-blur border-b-2 border-border px-4 md:px-8 flex items-center justify-between gap-4 relative z-20">
+        <header className="theme-bar shrink-0 h-[76px] px-4 md:px-8 flex items-center justify-between gap-4 z-20">
           <div className="flex items-center gap-3 min-w-0">
             <button
               className="md:hidden p-2 -ml-2 text-foreground"
@@ -417,6 +476,17 @@ export default function App() {
             </div>
           </div>
           <div className="flex items-center gap-2 md:gap-3 shrink-0">
+            <button
+              onClick={toggleLobbyMusic}
+              className={cn(
+                "w-10 h-10 rounded-full border-2 border-ink shadow-[0_3px_0_var(--ink-line)] items-center justify-center hidden sm:flex transition-transform hover:-translate-y-0.5",
+                musicOn ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground",
+              )}
+              aria-label={musicOn ? "Turn music off" : "Turn music on"}
+              title={musicOn ? "Music on" : "Music off"}
+            >
+              {musicOn ? <Music size={17} strokeWidth={2.6} className="hover-wiggle" /> : <VolumeX size={17} strokeWidth={2.6} />}
+            </button>
             <div className="chip-ink bg-soft-1 text-sm rotate-[-2deg]" title="Your XP">
               <Star size={16} className="fill-amber-400 text-amber-500" strokeWidth={2.5} />
               {user.xp.toLocaleString()}
@@ -427,6 +497,7 @@ export default function App() {
               {user.atoms.toLocaleString()}
             </div>
             <AccountMenu
+              musicOn={musicOn}
               avatar={user.avatar}
               name={authUser?.username ?? user.username}
               theme={colourTheme}
@@ -462,7 +533,9 @@ export default function App() {
               completedBeats={completedBeats}
               onOpenBeat={openBeat}
               gamesModuleComplete={gamesModuleComplete}
-              onShowCertificate={() => setShowCertificate(true)}
+              onShowCertificate={() => setCertModuleId("games")}
+              avatar={user.avatar}
+              theme={colourTheme}
             />
           )}
           {currentPage === "profile" && authUser && (
@@ -478,7 +551,9 @@ export default function App() {
               user={user}
               onUpdateAvatar={handleUpdateAvatar}
               gamesModuleComplete={gamesModuleComplete}
-              onShowCertificate={() => setShowCertificate(true)}
+              onShowCertificate={() => setCertModuleId("games")}
+              certItems={certItems}
+              onOpenCertificate={setCertModuleId}
             />
           )}
           {isGuest && (currentPage === "leaderboard" || currentPage === "friends" || currentPage === "profile") && (
@@ -551,13 +626,19 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {showCertificate && (
-        <Certificate
-          studentName={user.username}
-          moduleName="STEM x Games"
-          onClose={() => setShowCertificate(false)}
-        />
-      )}
+      {certModuleId && (() => {
+        const item = certItems.find((c) => c.module.id === certModuleId);
+        if (!item) return null;
+        return (
+          <Certificate
+            studentName={user.username}
+            fullName={authUser?.fullName}
+            module={item.module}
+            completedAt={item.completedAt}
+            onClose={() => setCertModuleId(null)}
+          />
+        );
+      })()}
     </div>
   );
 }
@@ -579,6 +660,8 @@ function Dashboard({
   onOpenBeat,
   gamesModuleComplete,
   onShowCertificate,
+  avatar,
+  theme,
 }: {
   courses: Course[];
   firstName: string;
@@ -586,9 +669,12 @@ function Dashboard({
   onOpenBeat: (lessonId: string, beatId: string) => void;
   gamesModuleComplete: boolean;
   onShowCertificate: () => void;
+  avatar: string;
+  theme: ThemeId;
 }) {
   const [gamesExpanded, setGamesExpanded] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [tagSelection, setTagSelection] = useState<TagSelection>(EMPTY_SELECTION());
 
   const activeFilters = hasAnySelection(tagSelection) || searchQuery.trim().length > 0;
@@ -626,62 +712,82 @@ function Dashboard({
   // Where "Keep going" takes you: the first unfinished activity.
   const nextLesson = GAME_LESSONS.find((l) => l.beats.some((b) => !completedBeats[b.id])) ?? GAME_LESSONS[0];
   const nextBeat = firstIncompleteBeat(nextLesson, completedBeats);
+  const themeBot = (THEMES.find((t) => t.id === theme) ?? THEMES[0]).bot;
 
   return (
     <div className="space-y-7 w-full">
-      {/* Welcome banner: theme colour with its doodles, the four STEMbots
-          as die-cut stickers, and one big button back into the lessons. */}
-      <section className="panel-pop overflow-hidden px-6 py-7 sm:px-9 sm:py-9">
-        <div className="relative z-10 max-w-[30rem]">
-          <span className="kicker kicker-on">STEM x Games</span>
-          <h1 className="font-display !text-[clamp(1.9rem,1.2rem+2.2vw,3rem)] !leading-[1.05] mt-4 mb-3">
-            Ready for a new <span className="mark-pop">why?</span> today, {firstName}?
-          </h1>
-          <p className="font-semibold opacity-90 mb-5">
-            {gamesDone === 0
-              ? "Your first adventure is waiting. Watch, play and earn Atoms for your card albums!"
-              : gamesDone === allGameBeats.length
-                ? "You finished every activity. Replay the games to beat your high scores!"
-                : `You're ${gamesPct}% through. Up next: ${nextBeat.title}.`}
-          </p>
-          <div className="flex flex-wrap items-center gap-3">
-            <button onClick={() => onOpenBeat(nextLesson.id, nextBeat.id)} className="btn-pop text-base">
-              {gamesDone === 0 ? "Start learning" : "Keep going"} <ArrowRight size={18} strokeWidth={2.6} />
-            </button>
-            {gamesModuleComplete && (
-              <button onClick={onShowCertificate} className="btn-pop btn-pop2 text-base">
-                <Award size={18} /> My certificate
-              </button>
-            )}
+      {/* Welcome: the theme's STEMbot greets you and points at what's next. */}
+      <section className="sticker !rounded-[2rem] relative overflow-hidden">
+        <div className="absolute inset-y-0 left-0 w-3 bg-primary border-r-[2.5px] border-ink" aria-hidden="true" />
+        <div className="absolute -right-6 -top-6 w-28 h-28 motif-icon opacity-50 rotate-12" aria-hidden="true" />
+        <div className="absolute right-40 bottom-2 w-10 h-10 motif-icon-2 opacity-40 -rotate-12 hidden lg:block" aria-hidden="true" />
+        <div className="relative flex flex-col md:flex-row md:items-center gap-5 pl-8 pr-5 py-6 sm:pr-8">
+          <div className="flex-1 min-w-0">
+            <h1 className="font-display !text-[clamp(1.7rem,1.2rem+1.6vw,2.5rem)] !leading-[1.05]">
+              Ready for a new <span className="mark-pop">why?</span> today, {firstName}?
+            </h1>
+            <p className="font-semibold text-muted-foreground mt-2">
+              {gamesDone === 0
+                ? "Your first adventure is waiting. Watch, play and earn Atoms for your card albums!"
+                : gamesDone === allGameBeats.length
+                  ? "You finished every checkpoint. Replay the games to beat your high scores!"
+                  : `You're ${gamesPct}% through STEM x Games. Keep that streak going!`}
+            </p>
           </div>
+          {/* Up next */}
+          <button
+            onClick={() => onOpenBeat(nextLesson.id, nextBeat.id)}
+            className="group relative flex items-center gap-3 text-left rounded-[1.4rem] border-[2.5px] border-ink bg-soft-1 px-4 py-3 pr-5 shadow-[0_4px_0_var(--ink-line)] hover:-translate-y-0.5 transition-transform md:max-w-[22rem] md:mr-28"
+          >
+            <BeatGlyph beat={nextBeat} size={48} filled />
+            <span className="min-w-0 flex-1">
+              <span className="block text-[10px] font-extrabold uppercase tracking-[0.14em] text-muted-foreground">
+                {gamesDone === 0 ? "Start here" : "Up next"} · {nextLesson.title}
+              </span>
+              <span className="block font-display font-semibold text-lg leading-tight truncate">{nextBeat.title}</span>
+            </span>
+            <span className="w-10 h-10 rounded-full bg-primary border-[2.5px] border-ink flex items-center justify-center shrink-0 group-hover:translate-x-0.5 transition-transform">
+              <ArrowRight size={18} strokeWidth={2.8} />
+            </span>
+          </button>
         </div>
-        <div className="hidden md:block absolute right-3 lg:right-8 bottom-0 top-6 w-[44%] max-w-[480px] pointer-events-none" aria-hidden="true">
-          {[
-            { src: stembotGreen, cls: "left-[0%] h-[50%] rotate-[-8deg]", delay: "0s" },
-            { src: stembotBlue, cls: "left-[24%] h-[58%] rotate-[4deg]", delay: "-1.2s" },
-            { src: stembotCream, cls: "left-[49%] h-[52%] rotate-[-4deg]", delay: "-2.4s" },
-            { src: stembotRed, cls: "left-[73%] h-[56%] rotate-[7deg]", delay: "-3.6s" },
-          ].map((b, i) => (
-            <img key={i} src={b.src} alt="" className={cn("absolute bottom-[-4%] die-cut bob", b.cls)} style={{ animationDelay: b.delay }} />
-          ))}
-        </div>
+        <img
+          src={themeBot}
+          alt=""
+          className="hidden md:block absolute right-4 -bottom-4 h-36 die-cut bob rotate-[-6deg] pointer-events-none"
+        />
       </section>
 
-      <StembotShowcase />
-
-      {/* Search + tag filters */}
-      <section className="sticker p-4 sm:p-5 space-y-4">
-        <div className="relative">
-          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} strokeWidth={2.5} />
-          <input
-            type="text"
-            placeholder="Search for topics or lessons..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-14 pr-5 py-3.5 bg-input-background border-2 border-border rounded-full focus:border-primary outline-none font-bold placeholder:text-muted-foreground/70 transition-colors"
-          />
+      {/* Search + tag filters (filters fold away until you want them) */}
+      <section className="sticker !rounded-[1.8rem] p-3 sm:p-4">
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-muted-foreground" size={20} strokeWidth={2.5} />
+            <input
+              type="text"
+              placeholder="Search for topics or lessons..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-14 pr-5 py-3 bg-input-background border-2 border-ink rounded-full focus:ring-4 focus:ring-primary/30 outline-none font-bold placeholder:text-muted-foreground/70"
+            />
+          </div>
+          <button
+            onClick={() => setFiltersOpen((v) => !v)}
+            className={cn("btn-pop btn-pop-sm shrink-0", (filtersOpen || hasAnySelection(tagSelection)) && "btn-primary")}
+            aria-expanded={filtersOpen}
+          >
+            <SlidersHorizontal size={15} /> <span className="hidden sm:inline">Filters</span>
+          </button>
         </div>
-        <TagFilterBar selection={tagSelection} onChange={setTagSelection} />
+        <AnimatePresence initial={false}>
+          {filtersOpen && (
+            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+              <div className="pt-4 px-1">
+                <TagFilterBar selection={tagSelection} onChange={setTagSelection} />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </section>
 
       {/* Filtered topic results */}
@@ -719,48 +825,30 @@ function Dashboard({
 
       {!activeFilters && (
         <>
-          {/* The one open module: STEM x Games. Lessons expand right here. */}
+          {/* The one open module: STEM x Games, with its lessons right underneath. */}
           {gamesCourse && (
-            <section className="sticker overflow-hidden">
-              <div className="p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-primary text-primary-foreground border-[2.5px] border-ink shadow-[0_4px_0_var(--ink-line)] flex items-center justify-center shrink-0 rotate-[-4deg]">
-                  <Gamepad2 size={28} strokeWidth={2.4} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h2 className="font-display text-foreground !text-2xl">{gamesCourse.title}</h2>
-                    {gamesModuleComplete && (
-                      <span className="chip-ink !text-xs !py-0.5 bg-pop-2 text-[#1b1b12]">
-                        <Award size={13} /> Badge earned
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-sm text-muted-foreground font-bold">
-                    {gamesCourse.modules.length} lessons · {gamesDone}/{allGameBeats.length} activities done
-                  </p>
-                  <div className="meter mt-2.5 max-w-md">
-                    <span style={{ width: `${gamesPct}%` }} />
-                  </div>
-                </div>
-                <button onClick={() => setGamesExpanded((v) => !v)} className="btn-pop btn-pop-sm self-start sm:self-center">
-                  {gamesExpanded ? "Hide lessons" : "Show lessons"}
-                  {gamesExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                </button>
-              </div>
-
+            <section className="space-y-5">
+              <GamesBanner
+                title={gamesCourse.title}
+                lessonCount={GAME_LESSONS.length}
+                done={gamesDone}
+                total={allGameBeats.length}
+                expanded={gamesExpanded}
+                onToggle={() => setGamesExpanded((v) => !v)}
+                onContinue={() => onOpenBeat(nextLesson.id, nextBeat.id)}
+                continueLabel={gamesDone === 0 ? "Start learning" : "Keep going"}
+                moduleComplete={gamesModuleComplete}
+                onCertificate={onShowCertificate}
+              />
               <AnimatePresence initial={false}>
                 {gamesExpanded && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
-                    className="overflow-hidden"
+                    className="overflow-hidden px-0.5 pb-2"
                   >
-                    <div className="px-4 sm:px-6 pb-6 pt-1 border-t-2 border-dashed border-border bg-background/60">
-                      <div className="pt-5">
-                        <GameLessonExplorer lessons={GAME_LESSONS} completedBeats={completedBeats} onOpenBeat={onOpenBeat} />
-                      </div>
-                    </div>
+                    <GameLessonExplorer lessons={GAME_LESSONS} completedBeats={completedBeats} onOpenBeat={onOpenBeat} avatar={avatar} />
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -779,11 +867,12 @@ function Dashboard({
                 return (
                   <div
                     key={course.id}
-                    className={cn("relative rounded-[1.6rem] border-2 border-dashed border-foreground/25 p-5 overflow-hidden", st.bg, st.tilt)}
+                    className={cn("relative rounded-[1.6rem] border-[2.5px] border-ink shadow-[0_5px_0_var(--ink-line)] p-5 overflow-hidden", st.bg, st.tilt)}
                   >
-                    <div className="absolute -right-3 -bottom-3 w-20 h-20 motif-icon opacity-30 rotate-12" aria-hidden="true" />
+                    <div className="absolute -right-3 -bottom-3 w-24 h-24 motif-icon opacity-60 rotate-12" aria-hidden="true" />
+                    <div className="absolute inset-0 bg-[repeating-linear-gradient(-45deg,transparent_0_14px,rgba(0,0,0,.035)_14px_28px)]" aria-hidden="true" />
                     <div className="flex items-center justify-between mb-6">
-                      <span className="text-4xl drop-shadow-sm">{st.emoji}</span>
+                      <span className="w-14 h-14 rounded-2xl bg-card border-[2.5px] border-ink shadow-[0_3px_0_var(--ink-line)] flex items-center justify-center text-3xl rotate-[-6deg]">{st.emoji}</span>
                       <span className="chip-ink !text-[11px] !py-0.5">
                         <Lock size={12} /> Soon
                       </span>
@@ -795,6 +884,8 @@ function Dashboard({
               })}
             </div>
           </section>
+
+          <StembotShowcase />
         </>
       )}
     </div>
@@ -841,6 +932,8 @@ function Profile({
   onUpdateAvatar,
   gamesModuleComplete,
   onShowCertificate,
+  certItems,
+  onOpenCertificate,
 }: {
   authUser: AuthUser;
   onAuthUserChange: (u: AuthUser) => void;
@@ -851,6 +944,8 @@ function Profile({
   onUpdateAvatar: (avatar: string) => void;
   gamesModuleComplete: boolean;
   onShowCertificate: () => void;
+  certItems: React.ComponentProps<typeof CertificateShelf>["modules"];
+  onOpenCertificate: (moduleId: string) => void;
 }) {
   const [isEditingAvatar, setIsEditingAvatar] = useState(false);
   const xpIntoLevel = user.xp % 1000;
@@ -934,28 +1029,27 @@ function Profile({
       <ThemePicker theme={theme} onTheme={onTheme} />
 
       <div className="sticker p-6">
-        <h2 className="font-display text-foreground !text-xl mb-4">Badges &amp; certificates</h2>
-        <div className="flex flex-wrap gap-4">
-          {user.badges.map((b) => (
-            <div key={b.id} className="flex flex-col items-center gap-1 w-20">
-              <div className="w-14 h-14 rounded-2xl bg-soft-1 border-2 border-ink shadow-[0_3px_0_var(--ink-line)] flex items-center justify-center text-2xl">{b.icon}</div>
-              <p className="text-[10px] font-bold text-center text-muted-foreground">{b.name}</p>
-            </div>
-          ))}
-          {gamesModuleComplete && (
-            <button onClick={onShowCertificate} className="flex flex-col items-center gap-1 w-20">
-              <div className="w-14 h-14 rounded-2xl bg-pop-2 border-2 border-ink shadow-[0_3px_0_var(--ink-line)] flex items-center justify-center text-[#1b1b12]">
-                <Award size={24} />
-              </div>
-              <p className="text-[10px] font-bold text-center text-muted-foreground">STEM x Games</p>
-            </button>
-          )}
-          {!gamesModuleComplete && user.badges.length === 0 && (
-            <p className="text-sm text-muted-foreground">
-              Complete a module to earn your first badge and certificate!
-            </p>
-          )}
+        <div className="flex items-center gap-3 mb-1 flex-wrap">
+          <h2 className="font-display text-foreground !text-xl">Certificates</h2>
+          <span className="kicker kicker-3">One per module</span>
         </div>
+        <p className="text-sm font-semibold text-muted-foreground mb-5">
+          Finish every lesson in a module to unlock its certificate. You can pick its colours and STEMbots, then print or download it.
+        </p>
+        <CertificateShelf modules={certItems} onOpen={onOpenCertificate} />
+        {user.badges.length > 0 && (
+          <>
+            <h3 className="font-display text-foreground !text-lg mt-7 mb-3">Badges</h3>
+            <div className="flex flex-wrap gap-4">
+              {user.badges.map((b) => (
+                <div key={b.id} className="flex flex-col items-center gap-1 w-20">
+                  <div className="w-14 h-14 rounded-2xl bg-soft-1 border-2 border-ink shadow-[0_3px_0_var(--ink-line)] flex items-center justify-center text-2xl">{b.icon}</div>
+                  <p className="text-[10px] font-bold text-center text-muted-foreground">{b.name}</p>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       <div className="sticker p-6">
@@ -1023,13 +1117,20 @@ function Leaderboard({ myUserId }: { myUserId: number }) {
     }
   };
 
-  const podium = entries.slice(0, 3);
-  const rest = entries.slice(3);
+  const [view, setView] = useState<"all" | "friends">("all");
+  const ranked = entries.map((e, i) => ({ ...e, rank: i + 1 }));
+  const shown = view === "all" ? ranked : ranked.filter((e) => e.isFriend || e.userId === myUserId);
+  const podium = shown.slice(0, 3);
+  const rest = shown.slice(3);
+  const topXp = Math.max(1, shown[0]?.xp ?? 1);
+  const me = ranked.find((e) => e.userId === myUserId);
+  const above = me && me.rank > 1 ? ranked[me.rank - 2] : null;
+
   // Podium order on screen: 2nd, 1st, 3rd.
   const PODIUM = [
-    { place: 2, h: "h-24", bg: "bg-slate-200", medal: "🥈" },
-    { place: 1, h: "h-32", bg: "bg-amber-300", medal: "🥇" },
-    { place: 3, h: "h-16", bg: "bg-orange-300", medal: "🥉" },
+    { place: 2, h: "h-28 sm:h-32", bg: "var(--soft-3)", medal: "🥈", tilt: "-rotate-2" },
+    { place: 1, h: "h-36 sm:h-44", bg: "var(--pop-2)", medal: "🥇", tilt: "" },
+    { place: 3, h: "h-20 sm:h-24", bg: "var(--soft-1)", medal: "🥉", tilt: "rotate-2" },
   ];
 
   const friendButton = (entry: (typeof entries)[number]) => (
@@ -1044,37 +1145,81 @@ function Leaderboard({ myUserId }: { myUserId: number }) {
 
   return (
     <div className="w-full space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
         <div>
           <span className="kicker">
             <Trophy size={13} /> Leaderboard
           </span>
           <h1 className="font-display text-foreground !text-[clamp(1.8rem,1.3rem+1.5vw,2.6rem)] mt-3 mb-1">Top explorers</h1>
           <p className="text-muted-foreground font-semibold">Ranked by total XP. Finish lessons and replay games to climb!</p>
+          <div className="inline-flex mt-4 p-1 rounded-full border-[2.5px] border-ink bg-card shadow-[0_3px_0_var(--ink-line)]" role="tablist">
+            {(["all", "friends"] as const).map((v) => (
+              <button
+                key={v}
+                role="tab"
+                aria-selected={view === v}
+                onClick={() => setView(v)}
+                className={cn(
+                  "px-4 py-1.5 rounded-full font-display font-semibold text-sm transition-colors",
+                  view === v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {v === "all" ? "Everyone" : "My friends"}
+              </button>
+            ))}
+          </div>
         </div>
+        {me && (
+          <div className="sticker !rounded-[1.6rem] flex items-center gap-4 px-5 py-4 lg:min-w-[22rem] rotate-[-1deg]">
+            <div className="w-16 h-16 rounded-2xl bg-primary text-primary-foreground border-[2.5px] border-ink shadow-[0_3px_0_var(--ink-line)] flex flex-col items-center justify-center shrink-0">
+              <span className="text-[10px] font-extrabold uppercase tracking-widest leading-none">Rank</span>
+              <span className="font-display font-bold text-2xl leading-none mt-0.5">#{me.rank}</span>
+            </div>
+            <div className="min-w-0">
+              <p className="font-display font-bold text-lg leading-tight">You have {me.xp.toLocaleString()} XP</p>
+              <p className="text-sm font-semibold text-muted-foreground">
+                {above
+                  ? `${(above.xp - me.xp + 1).toLocaleString()} XP more to pass ${above.username}!`
+                  : "You're at the very top. Keep it up!"}
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {loading && <p className="sticker p-5 text-sm font-semibold text-muted-foreground">Loading…</p>}
-      {!loading && entries.length === 0 && (
-        <p className="sticker p-5 text-sm font-semibold text-muted-foreground">No one on the board yet. Finish a lesson to be first!</p>
+      {!loading && shown.length === 0 && (
+        <p className="sticker p-5 text-sm font-semibold text-muted-foreground">
+          {view === "friends" ? "Add some friends to race them up the board!" : "No one on the board yet. Finish a lesson to be first!"}
+        </p>
       )}
 
       {podium.length > 0 && (
-        <section className="panel-pop px-4 pt-8 sm:px-10 overflow-hidden">
-          <div className="flex items-end justify-center gap-3 sm:gap-6 max-w-xl mx-auto">
-            {PODIUM.map(({ place, h, bg, medal }) => {
+        <section className="panel-pop px-4 pt-10 sm:px-10 overflow-hidden relative">
+          <div className="absolute inset-x-0 top-0 h-full bg-[radial-gradient(ellipse_at_50%_0%,rgba(255,255,255,.45),transparent_60%)] pointer-events-none" aria-hidden="true" />
+          <img src={stembotGreen} alt="" className="hidden md:block absolute left-4 bottom-0 h-32 die-cut bob rotate-[-8deg]" aria-hidden="true" />
+          <img src={stembotRed} alt="" className="hidden md:block absolute right-4 bottom-0 h-32 die-cut bob rotate-[8deg] [animation-delay:-2s]" aria-hidden="true" />
+          <div className="relative flex items-end justify-center gap-2 sm:gap-5 max-w-2xl mx-auto">
+            {PODIUM.map(({ place, h, bg, medal, tilt }) => {
               const entry = podium[place - 1];
               if (!entry) return <div key={place} className="flex-1" />;
               const isMe = entry.userId === myUserId;
               return (
-                <div key={place} className="flex-1 flex flex-col items-center min-w-0">
+                <motion.div
+                  key={place}
+                  className="flex-1 flex flex-col items-center min-w-0"
+                  initial={{ y: 40, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: place === 1 ? 0.35 : place === 2 ? 0.2 : 0.05, type: "spring", stiffness: 200, damping: 16 }}
+                >
                   <div className="relative">
+                    {place === 1 && <span className="absolute -top-8 left-1/2 -translate-x-1/2 text-4xl rotate-[-8deg] drop-shadow">👑</span>}
                     <img
                       src={avatarFor(entry)}
                       alt=""
                       className={cn(
                         "rounded-full bg-card border-[3px] border-ink object-cover shadow-[0_4px_0_var(--ink-line)]",
-                        place === 1 ? "w-20 h-20 sm:w-24 sm:h-24" : "w-14 h-14 sm:w-16 sm:h-16",
+                        place === 1 ? "w-20 h-20 sm:w-28 sm:h-28" : "w-14 h-14 sm:w-20 sm:h-20",
                       )}
                     />
                     <span className="absolute -bottom-2 -right-2 text-2xl drop-shadow">{medal}</span>
@@ -1083,18 +1228,22 @@ function Leaderboard({ myUserId }: { myUserId: number }) {
                     {entry.username}
                     {isMe && " (you)"}
                   </p>
-                  <p className="text-xs font-extrabold opacity-85 mb-2">{entry.xp.toLocaleString()} XP</p>
+                  <span className="chip-ink !text-xs !py-0.5 !px-2 mt-1 mb-2 text-foreground">{entry.xp.toLocaleString()} XP</span>
                   {!isMe && <div className="mb-3 text-foreground">{friendButton(entry)}</div>}
                   <div
                     className={cn(
-                      "w-full rounded-t-2xl border-[2.5px] border-b-0 border-ink flex items-start justify-center pt-2 font-display font-bold text-3xl text-[#1c1a17]",
+                      "w-full rounded-t-[1.4rem] border-[2.5px] border-b-0 border-ink flex flex-col items-center justify-start pt-3 font-display font-bold text-4xl text-[#1c1a17] shadow-[inset_0_-10px_0_rgba(0,0,0,.08)]",
                       h,
-                      bg,
+                      tilt,
                     )}
+                    style={{ background: bg }}
                   >
                     {place}
+                    <span className="text-[10px] font-body font-extrabold uppercase tracking-widest opacity-70 mt-1">
+                      {place === 1 ? "Champion" : place === 2 ? "Runner-up" : "Third"}
+                    </span>
                   </div>
-                </div>
+                </motion.div>
               );
             })}
           </div>
@@ -1102,24 +1251,45 @@ function Leaderboard({ myUserId }: { myUserId: number }) {
       )}
 
       {rest.length > 0 && (
-        <div className="sticker divide-y-2 divide-dashed divide-border overflow-hidden">
+        <div className="space-y-3">
           {rest.map((entry, i) => {
             const isMe = entry.userId === myUserId;
             return (
-              <div key={entry.userId} className={cn("flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3", isMe && "bg-soft-1")}>
-                <span className="w-8 text-center font-display font-bold text-lg text-muted-foreground">{i + 4}</span>
-                <img src={avatarFor(entry)} className="w-11 h-11 rounded-full bg-soft-1 border-2 border-ink" />
+              <motion.div
+                key={entry.userId}
+                initial={{ x: -16, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: Math.min(i, 10) * 0.04 }}
+                className={cn(
+                  "sticker !rounded-[1.4rem] flex items-center gap-3 sm:gap-4 px-3 sm:px-5 py-3 !shadow-[0_4px_0_var(--ink-line)]",
+                  isMe && "!bg-soft-1 ring-4 ring-primary/40",
+                )}
+              >
+                <span
+                  className={cn(
+                    "w-10 h-10 rounded-xl border-[2.5px] border-ink flex items-center justify-center font-display font-bold text-base shrink-0",
+                    i % 2 ? "rotate-3" : "-rotate-3",
+                    isMe ? "bg-primary text-primary-foreground" : "bg-card",
+                  )}
+                >
+                  {entry.rank}
+                </span>
+                <img src={avatarFor(entry)} alt="" className="w-11 h-11 rounded-full bg-soft-1 border-2 border-ink shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <p className="font-display font-semibold text-foreground truncate">
-                    {entry.username} {isMe && <span className="text-muted-foreground font-medium">(you)</span>}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground uppercase font-extrabold tracking-wide">
-                    Level {Math.floor(entry.xp / 1000) + 1}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-display font-semibold text-foreground truncate">{entry.username}</p>
+                    {isMe && <span className="chip-ink !text-[10px] !py-0 !px-2 bg-pop-2 !text-[#1b1b12]">You</span>}
+                    <span className="hidden sm:inline text-[10px] text-muted-foreground uppercase font-extrabold tracking-wide">
+                      Lv {Math.floor(entry.xp / 1000) + 1}
+                    </span>
+                  </div>
+                  <div className="meter !h-2.5 !border-[1.5px] mt-1.5 max-w-xs">
+                    <span style={{ width: `${Math.round((entry.xp / topXp) * 100)}%` }} />
+                  </div>
                 </div>
                 <span className="font-display font-bold text-foreground whitespace-nowrap">{entry.xp.toLocaleString()} XP</span>
                 {!isMe && friendButton(entry)}
-              </div>
+              </motion.div>
             );
           })}
         </div>
@@ -1192,7 +1362,9 @@ function AccountMenu({
   isGuest,
   onSignUp,
   onSignIn,
+  musicOn,
 }: {
+  musicOn: boolean;
   avatar: string;
   name: string;
   theme: ThemeId;
@@ -1234,7 +1406,7 @@ function AccountMenu({
         )}
         <DropdownMenuSub>
           <DropdownMenuSubTrigger className="gap-2">
-            <Palette size={15} className="text-muted-foreground" /> Colour theme
+            <Palette size={15} /> Colour theme
           </DropdownMenuSubTrigger>
           <DropdownMenuSubContent className="rounded-2xl">
             <DropdownMenuRadioGroup value={theme} onValueChange={(v) => onTheme(v as ThemeId)}>
@@ -1253,7 +1425,13 @@ function AccountMenu({
         <DropdownMenuItem onSelect={(e) => (e.preventDefault(), onToggleDark())}>
           {darkMode ? <Sun size={15} /> : <Moon size={15} />} {darkMode ? "Light mode" : "Dark mode"}
         </DropdownMenuItem>
+        <DropdownMenuItem onSelect={(e) => (e.preventDefault(), toggleLobbyMusic())}>
+          {musicOn ? <VolumeX size={15} /> : <Music size={15} />} {musicOn ? "Music off" : "Music on"}
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => (window.location.hash = "#/admin")}>
+          <ShieldCheck size={15} /> Teacher &amp; admin
+        </DropdownMenuItem>
         <DropdownMenuItem variant="destructive" onSelect={onLogout}>
           <LogOut size={15} /> {isGuest ? "Leave guest mode" : "Log out"}
         </DropdownMenuItem>

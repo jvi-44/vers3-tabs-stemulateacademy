@@ -3,18 +3,12 @@ import { motion, AnimatePresence } from "motion/react";
 import { STEMBOTS } from "../data/mock";
 import type { DialogueLine } from "../data/lessonContent";
 
-const BOT_COLORS: Record<string, string> = {
-  sophia: "bg-emerald-100 border-emerald-300 dark:bg-emerald-900/40 dark:border-emerald-700",
-  timothy: "bg-blue-100 border-blue-300 dark:bg-blue-900/40 dark:border-blue-700",
-  emily: "bg-amber-100 border-amber-300 dark:bg-amber-900/40 dark:border-amber-700",
-  matthew: "bg-rose-100 border-rose-300 dark:bg-rose-900/40 dark:border-rose-700",
-};
-
-const BOT_NAME_COLORS: Record<string, string> = {
-  sophia: "text-emerald-700 dark:text-emerald-400",
-  timothy: "text-blue-700 dark:text-blue-400",
-  emily: "text-amber-700 dark:text-amber-500",
-  matthew: "text-rose-700 dark:text-rose-400",
+// Each STEMbot's own colour, used behind their face and as the name tag.
+const BOT_TINT: Record<string, string> = {
+  sophia: "#bfe89a",
+  timothy: "#a9dcfb",
+  emily: "#fbe7b0",
+  matthew: "#ffb8b8",
 };
 
 const TYPING_SPEED_MS = 18; // ms per character
@@ -85,14 +79,22 @@ export function SpeechBubbles({
               initial={{ opacity: 0, x: -24, y: 8 }}
               animate={{ opacity: 1, x: 0, y: 0 }}
               transition={{ type: "spring", stiffness: 260, damping: 24 }}
-              className="flex items-start gap-3"
+              className="flex items-start gap-4"
             >
-              <div className="w-11 h-11 rounded-full overflow-hidden bg-white border-2 border-border shrink-0 shadow-sm">
+              <div
+                className="w-14 h-14 rounded-full overflow-hidden border-[2.5px] border-ink shrink-0 shadow-[0_3px_0_var(--ink-line)]"
+                style={{ background: BOT_TINT[line.bot] }}
+              >
                 <img src={bot.avatar} alt={bot.name} className="w-full h-full object-contain p-0.5" />
               </div>
-              <div className={`flex-1 rounded-3xl rounded-tl-sm border px-4 py-3 shadow-sm ${BOT_COLORS[line.bot]}`}>
-                <p className={`text-[11px] font-black mb-1 ${BOT_NAME_COLORS[line.bot]}`}>{bot.name}</p>
-                <p className="text-sm text-foreground leading-relaxed">
+              <div className="bubble bubble-left flex-1 px-4 py-3">
+                <span
+                  className="inline-block text-[11px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-full border-2 border-ink mb-1.5 text-[#1b1b12]"
+                  style={{ background: BOT_TINT[line.bot] }}
+                >
+                  {bot.name}
+                </span>
+                <p className="text-[0.98rem] text-foreground leading-relaxed font-semibold">
                   {i < typingIdx ? (
                     line.text
                   ) : i === typingIdx ? (

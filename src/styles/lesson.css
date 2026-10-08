@@ -1,0 +1,609 @@
+/* ---------------------------------------------------------------------------
+   Lesson modules, checkpoint maps and the in-lesson player.
+   Everything takes its colours from the theme tokens in theme.css.
+   --------------------------------------------------------------------------- */
+
+/* Illustrated lesson badge: a tilted, inked tile in the theme colour. */
+.lesson-badge {
+  position: relative;
+  border-radius: 1.4rem;
+  border: 2.5px solid var(--ink-line);
+  box-shadow: 0 4px 0 var(--ink-line);
+  background-color: var(--primary);
+  background-image: var(--motif-on);
+  background-size: 120px 120px;
+}
+
+/* Round checkpoint icon */
+.beat-glyph {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 2.5px solid var(--ink-line);
+  box-shadow: 0 3px 0 var(--ink-line);
+}
+.beat-glyph-check {
+  position: absolute;
+  right: -6px;
+  top: -6px;
+  width: 44%;
+  min-width: 16px;
+  max-width: 24px;
+  aspect-ratio: 1;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--pop-2);
+  color: #1b1b12;
+  border: 2px solid var(--ink-line);
+}
+
+/* ---- Checkpoint map ---------------------------------------------------- */
+.map-paper {
+  background-color: color-mix(in srgb, var(--background) 70%, var(--card));
+  background-image: var(--motif);
+  background-size: 180px 180px;
+  border-radius: 1.6rem;
+  border: 2.5px dashed color-mix(in srgb, var(--ink-line) 35%, transparent);
+}
+.map-road {
+  fill: none;
+  stroke: color-mix(in srgb, var(--primary) 22%, transparent);
+  stroke-width: 26;
+  stroke-linecap: round;
+}
+.map-dots {
+  fill: none;
+  stroke: var(--ink-line);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-dasharray: 0.1 15;
+  opacity: 0.75;
+}
+.map-done-ink {
+  fill: none;
+  stroke: var(--ink-line);
+  stroke-width: 12;
+  stroke-linecap: round;
+}
+.map-done {
+  fill: none;
+  stroke: var(--primary);
+  stroke-width: 7;
+  stroke-linecap: round;
+}
+.map-node {
+  position: absolute;
+  left: 0;
+  top: 0;
+  translate: -50% -50%;
+  border-radius: 999px;
+  transition: transform 0.15s ease;
+  z-index: 2;
+}
+.map-node:hover {
+  transform: scale(1.08) rotate(-4deg);
+}
+.map-node:focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 4px;
+}
+.map-node-num {
+  position: absolute;
+  left: -8px;
+  bottom: -6px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 2px solid var(--ink-line);
+  background: var(--card);
+  color: var(--ink);
+  font: 700 11px/1 var(--font-head);
+}
+.map-node-current::before {
+  content: "";
+  position: absolute;
+  inset: -9px;
+  border-radius: 999px;
+  border: 3px solid var(--primary);
+  animation: map-pulse 1.8s ease-out infinite;
+}
+.map-node-highlight {
+  outline: 3px dashed var(--pop-3);
+  outline-offset: 6px;
+}
+@keyframes map-pulse {
+  0% {
+    transform: scale(0.9);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
+.map-finish {
+  pointer-events: none;
+}
+.map-label {
+  position: absolute;
+  left: 0;
+  top: 38px;
+  translate: -50% 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  text-align: center;
+  pointer-events: none;
+}
+.map-label-kind {
+  font: 800 9px/1 var(--font-body);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 999px;
+  border: 1.5px solid var(--ink-line);
+}
+.map-label-title {
+  font: 600 0.86rem/1.15 var(--font-head);
+  color: var(--foreground);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--background) 85%, transparent);
+  border-radius: 8px;
+  padding: 0 4px;
+}
+.map-label-xp {
+  font: 800 10px/1 var(--font-body);
+  color: var(--muted-foreground);
+}
+.map-pin {
+  position: absolute;
+  left: 0;
+  top: -92px;
+  translate: -50% 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 3;
+  pointer-events: none;
+}
+.map-pin-head {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px 999px 999px 4px;
+  rotate: -45deg;
+  border: 2.5px solid var(--ink-line);
+  background: var(--primary);
+  box-shadow: 0 3px 0 var(--ink-line);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.map-pin-head img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  rotate: 45deg;
+  scale: 1.15;
+}
+.map-pin-tag {
+  margin-top: 4px;
+  font: 700 10px/1 var(--font-head);
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 2px solid var(--ink-line);
+  background: var(--card);
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+/* Progress donut on a lesson card */
+.donut {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.donut svg {
+  rotate: -90deg;
+}
+.donut-track {
+  fill: var(--card);
+  stroke: var(--ink-line);
+  stroke-width: 9;
+}
+.donut-gap {
+  fill: none;
+  stroke: var(--card);
+  stroke-width: 5;
+}
+.donut-fill {
+  fill: none;
+  stroke: var(--primary);
+  stroke-width: 5;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.7s ease;
+}
+
+/* ---- Lesson player ----------------------------------------------------- */
+.player-side {
+  background-color: var(--sidebar);
+  background-image: var(--motif);
+  background-size: 180px 180px;
+  border-right: 2.5px solid var(--ink-line);
+}
+.trail {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.trail-step {
+  position: relative;
+}
+/* Dotted line joining each checkpoint to the next */
+.trail-step:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 30px;
+  top: 46px;
+  height: calc(100% - 36px);
+  border-left: 4px dotted color-mix(in srgb, var(--ink-line) 55%, transparent);
+  z-index: 0;
+}
+.trail-step-done:not(:last-child)::after {
+  border-left: 5px solid var(--primary);
+  box-shadow: -2px 0 0 var(--ink-line), 2px 0 0 var(--ink-line);
+  left: 29px;
+  width: 0;
+}
+.trail-btn {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 10px 7px 10px;
+  border-radius: 1.2rem;
+  border: 2.5px solid transparent;
+  text-align: left;
+  color: var(--foreground);
+  transition:
+    background 0.15s,
+    transform 0.15s;
+}
+.trail-btn:hover {
+  background: color-mix(in srgb, var(--card) 80%, transparent);
+}
+.trail-btn-active {
+  background: var(--card);
+  border-color: var(--ink-line);
+  box-shadow: 0 4px 0 var(--ink-line);
+  transform: rotate(-1deg);
+}
+
+/* Top dots strip used on small screens */
+.dots-strip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.dots-strip button {
+  height: 12px;
+  flex: 1;
+  min-width: 8px;
+  border-radius: 999px;
+  border: 2px solid var(--ink-line);
+  background: var(--card);
+}
+.dots-strip button[data-done="true"] {
+  background: var(--primary);
+}
+.dots-strip button[data-active="true"] {
+  background: var(--pop-3);
+  height: 16px;
+}
+
+/* Stage: the main content card of a checkpoint */
+.stage-head {
+  position: relative;
+  border-radius: 2rem;
+  border: 2.5px solid var(--ink-line);
+  box-shadow: 0 6px 0 var(--ink-line);
+  background-color: var(--primary);
+  background-image: var(--motif-on);
+  background-size: 180px 180px;
+  color: var(--primary-foreground);
+  overflow: visible;
+}
+
+/* Comic-style speech bubble with an ink tail */
+.bubble {
+  position: relative;
+  background: var(--card);
+  color: var(--card-foreground);
+  border: 2.5px solid var(--ink-line);
+  border-radius: 1.4rem;
+  box-shadow: 0 4px 0 var(--ink-line);
+}
+.bubble-left::before,
+.bubble-left::after {
+  content: "";
+  position: absolute;
+  left: -14px;
+  top: 18px;
+  border: 8px solid transparent;
+  border-right: 14px solid var(--ink-line);
+  border-left: 0;
+}
+.bubble-left::after {
+  left: -9.5px;
+  top: 20px;
+  border-width: 6px;
+  border-right: 11px solid var(--card);
+  border-left: 0;
+}
+
+/* TV frame for lesson videos */
+.tv {
+  position: relative;
+  border-radius: 2rem;
+  border: 3px solid var(--ink-line);
+  box-shadow: 0 7px 0 var(--ink-line);
+  background: var(--ink);
+  padding: 14px;
+}
+.tv-screen {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: 1.2rem;
+  overflow: hidden;
+  border: 2.5px solid #000;
+  background-color: var(--primary);
+  background-image: var(--motif-on);
+  background-size: 160px 160px;
+}
+.tv-antenna {
+  position: absolute;
+  top: -34px;
+  width: 4px;
+  height: 40px;
+  background: var(--ink-line);
+  border-radius: 4px;
+  transform-origin: bottom;
+}
+.tv-antenna::before {
+  content: "";
+  position: absolute;
+  top: -7px;
+  left: -5px;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  border: 2.5px solid var(--ink-line);
+  background: var(--pop-3);
+}
+
+/* Quiz answer tiles */
+.answer {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 14px 16px;
+  border-radius: 1.3rem;
+  border: 2.5px solid var(--ink-line);
+  box-shadow: 0 4px 0 var(--ink-line);
+  background: var(--card);
+  color: var(--card-foreground);
+  font: 600 1.05rem/1.25 var(--font-head);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    background 0.15s;
+}
+.answer:hover:not(:disabled) {
+  transform: translateY(-2px) rotate(-0.5deg);
+  box-shadow: 0 6px 0 var(--ink-line);
+}
+.answer:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--ink-line);
+}
+.answer-letter {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 0.8rem;
+  border: 2.5px solid var(--ink-line);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 1rem/1 var(--font-head);
+}
+.answer-right {
+  background: color-mix(in srgb, var(--pop-2) 35%, var(--card));
+}
+.answer-wrong {
+  background: color-mix(in srgb, #ef4b5b 25%, var(--card));
+}
+.answer-dim {
+  opacity: 0.55;
+}
+@keyframes shake {
+  20%,
+  60% {
+    translate: -6px 0;
+  }
+  40%,
+  80% {
+    translate: 6px 0;
+  }
+}
+.shake {
+  animation: shake 0.4s ease;
+}
+
+/* Lined notebook paper for the exit card */
+.paper-lined {
+  background-color: var(--card);
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0 31px,
+    color-mix(in srgb, var(--primary) 35%, transparent) 31px 33px
+  );
+  background-position: 0 10px;
+  line-height: 33px;
+}
+.paper-lined:focus {
+  outline: none;
+}
+
+/* "Checkpoint cleared!" stamp */
+.stamp {
+  font-family: var(--font-head);
+  font-weight: 700;
+  border: 4px solid var(--ink-line);
+  border-radius: 1.6rem;
+  background: var(--card);
+  box-shadow: 0 8px 0 var(--ink-line);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-node-current::before {
+    animation: none;
+  }
+}
+
+/* ---- STEM x Games banner ------------------------------------------------ */
+.games-banner {
+  position: relative;
+  overflow: hidden;
+  border-radius: 2.2rem;
+  border: 3px solid var(--ink-line);
+  box-shadow: 0 7px 0 var(--ink-line);
+  background-color: var(--primary);
+  background-image: var(--motif-on);
+  background-size: 200px 200px;
+  color: var(--primary-foreground);
+}
+.games-banner::before {
+  /* a soft sun / spotlight behind the STEMbots */
+  content: "";
+  position: absolute;
+  right: 12%;
+  top: -30%;
+  width: 60%;
+  aspect-ratio: 1;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0) 65%);
+  pointer-events: none;
+}
+.banner-grass {
+  position: absolute;
+  left: -12px;
+  right: -12px;
+  bottom: -3px;
+  height: 34px;
+  border-top: 3px solid var(--ink-line);
+}
+.banner-tag {
+  position: absolute;
+  left: 50%;
+  translate: -50% 0;
+  align-items: center;
+  gap: 0.3rem;
+  justify-content: center;
+  text-align: center;
+  width: 92%;
+  font: 700 0.72rem/1.1 var(--font-head);
+  padding: 0.35rem 0.5rem;
+  border-radius: 999px;
+  border: 2px solid var(--ink-line);
+  box-shadow: 0 3px 0 var(--ink-line);
+  background: var(--card);
+  color: var(--ink);
+}
+@keyframes banner-float {
+  50% {
+    translate: 0 -10px;
+    rotate: 20deg;
+  }
+}
+.banner-float {
+  position: absolute;
+  font-size: 1.6rem;
+  color: #fff;
+  -webkit-text-stroke: 1.5px var(--ink-line);
+  animation: banner-float 5s ease-in-out infinite;
+}
+@keyframes rocket-hover {
+  50% {
+    translate: 0 -8px;
+  }
+}
+.banner-rocket {
+  animation: rocket-hover 2.4s ease-in-out infinite;
+}
+@keyframes flame {
+  50% {
+    transform: scaleY(1.25);
+  }
+}
+.banner-flame {
+  transform-origin: 60px 80px;
+  animation: flame 0.35s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .banner-float,
+  .banner-rocket,
+  .banner-flame {
+    animation: none;
+  }
+}
+
+/* ---- Theme shell: the colour theme runs through the frame of every page -- */
+.theme-rail {
+  background-color: color-mix(in srgb, var(--primary) 16%, var(--background));
+  background-image: var(--motif-strong);
+  background-size: 180px 180px;
+  border-right: 2.5px solid var(--ink-line);
+}
+.theme-bar {
+  position: relative;
+  background-color: color-mix(in srgb, var(--primary) 9%, var(--background));
+  border-bottom: 2.5px solid var(--ink-line);
+}
+/* Bunting in the theme colours hanging under the top bar */
+.theme-bar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 12px;
+  background:
+    linear-gradient(135deg, var(--primary) 50%, transparent 50%) 0 0 / 24px 12px repeat-x,
+    linear-gradient(225deg, var(--primary) 50%, transparent 50%) 0 0 / 24px 12px repeat-x;
+  -webkit-mask: linear-gradient(#000, #000);
+  filter: drop-shadow(0 2px 0 var(--ink-line));
+  opacity: 0.95;
+  pointer-events: none;
+}
+.dark .theme-rail {
+  background-color: color-mix(in srgb, var(--primary) 10%, var(--background));
+}

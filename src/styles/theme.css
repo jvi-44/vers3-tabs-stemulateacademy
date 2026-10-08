@@ -536,9 +536,9 @@
   .sticker {
     background: var(--card);
     color: var(--card-foreground);
-    border: 2px solid var(--border);
+    border: 2.5px solid var(--ink-line);
     border-radius: 1.75rem;
-    box-shadow: var(--shadow-soft);
+    box-shadow: 0 5px 0 var(--ink-line);
   }
 
   /* An ink-outlined panel with a hard shadow, for things you can press. */

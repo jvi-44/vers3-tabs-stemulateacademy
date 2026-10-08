@@ -1,7 +1,8 @@
 import express from "express";
 import crypto from "crypto";
+import bcrypt from "bcryptjs";
 import db from "../db.js";
-import { deleteUserCompletely } from "../users.js";
+import { deleteUserCompletely, PIN_REGEX } from "../users.js";
 
 // Admin access is a single passkey kept in the ADMIN_PASSKEY environment
 // variable (see .env.example). A correct passkey returns a short-lived admin
@@ -111,12 +112,81 @@ router.get("/users/:id/progress", (req, res) => {
         WHERE user_id = ? ORDER BY last_accessed DESC`,
     )
     .all(req.params.id);
-  res.json({ progress });
+  const games = db
+    .prepare("SELECT game_id, best_score, plays, updated_at FROM game_scores WHERE user_id = ? ORDER BY updated_at DESC")
+    .all(req.params.id);
+  res.json({ progress, games });
 });
 
+// ---- Admin operations on one student ----
+
+function findUser(req, res) {
+  const id = Number(req.params.id);
+  const user = Number.isInteger(id) ? db.prepare("SELECT user_id, username FROM users WHERE user_id = ?").get(id) : null;
+  if (!user) res.status(404).json({ error: "User not found." });
+  return user;
+}
+
+const STAT_LIMITS = { xp: [0, 10_000_000], level: [1, 10_000], atoms: [0, 10_000_000] };
+
+// Change a student's XP, level and/or atoms. Only the fields sent are changed.
+router.patch("/users/:id", (req, res) => {
+  const user = findUser(req, res);
+  if (!user) return;
+  const updates = {};
+  for (const [field, [min, max]] of Object.entries(STAT_LIMITS)) {
+    if (req.body?.[field] === undefined) continue;
+    const value = Number(req.body[field]);
+    if (!Number.isInteger(value) || value < min || value > max) {
+      return res.status(400).json({ error: `${field.toUpperCase()} must be a whole number from ${min} to ${max}.` });
+    }
+    updates[field] = value;
+  }
+  const fields = Object.keys(updates);
+  if (fields.length === 0) return res.status(400).json({ error: "Nothing to change." });
+
+  db.prepare(
+    `UPDATE users SET ${fields.map((f) => `${f} = @${f}`).join(", ")}, updated_at = CURRENT_TIMESTAMP
+      WHERE user_id = @userId`,
+  ).run({ ...updates, userId: user.user_id });
+  const row = db.prepare("SELECT xp, level, atoms FROM users WHERE user_id = ?").get(user.user_id);
+  res.json({ success: true, user: row });
+});
+
+// Wipe a student's lesson progress and lesson-game scores. XP, atoms, friends
+// and chats are left alone.
+router.post("/users/:id/reset-progress", (req, res) => {
+  const user = findUser(req, res);
+  if (!user) return;
+  const reset = db.transaction((userId) => ({
+    lessons: db.prepare("DELETE FROM lesson_progress WHERE user_id = ?").run(userId).changes,
+    games: db.prepare("DELETE FROM game_scores WHERE user_id = ?").run(userId).changes,
+  }));
+  res.json({ success: true, removed: reset(user.user_id) });
+});
+
+// Set a new 4-digit PIN (hashed exactly like sign-up) and sign the student out
+// everywhere, so the old PIN's sessions stop working.
+router.post("/users/:id/reset-pin", async (req, res) => {
+  const user = findUser(req, res);
+  if (!user) return;
+  const pin = String(req.body?.pin ?? "");
+  if (!PIN_REGEX.test(pin)) return res.status(400).json({ error: "PIN must be exactly 4 digits." });
+  const pinHash = await bcrypt.hash(pin, 10);
+  db.prepare("UPDATE users SET pin_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?").run(pinHash, user.user_id);
+  const signedOut = db.prepare("DELETE FROM sessions WHERE user_id = ?").run(user.user_id).changes;
+  res.json({ success: true, signedOut });
+});
+
+// Delete a student and everything tied to them. The admin must type the
+// username back as a last check against deleting the wrong account.
 router.delete("/users/:id", (req, res) => {
-  const ok = deleteUserCompletely(Number(req.params.id));
-  if (!ok) return res.status(404).json({ error: "User not found." });
+  const user = findUser(req, res);
+  if (!user) return;
+  if (String(req.body?.confirm ?? "").toLowerCase() !== user.username.toLowerCase()) {
+    return res.status(400).json({ error: "Type the username exactly to confirm deleting it." });
+  }
+  deleteUserCompletely(user.user_id);
   res.json({ success: true });
 });
 
