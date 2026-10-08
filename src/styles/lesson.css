@@ -103,7 +103,7 @@
   border-radius: 999px;
   border: 2px solid var(--ink-line);
   background: var(--card);
-  color: var(--ink);
+  color: var(--card-foreground);
   font: 700 11px/1 var(--font-head);
 }
 .map-node-current::before {
@@ -204,7 +204,7 @@
   border-radius: 999px;
   border: 2px solid var(--ink-line);
   background: var(--card);
-  color: var(--ink);
+  color: var(--card-foreground);
   white-space: nowrap;
 }
 
@@ -493,67 +493,38 @@
 .games-banner {
   position: relative;
   overflow: hidden;
-  border-radius: 2.2rem;
-  border: 3px solid var(--ink-line);
-  box-shadow: 0 7px 0 var(--ink-line);
+  border-radius: 2rem;
+  border: 2.5px solid var(--ink-line);
+  box-shadow: 0 6px 0 var(--ink-line);
   background-color: var(--primary);
   background-image: var(--motif-on);
   background-size: 200px 200px;
   color: var(--primary-foreground);
 }
-.games-banner::before {
-  /* a soft sun / spotlight behind the STEMbots */
+.game-window {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 1.2rem;
+  border: 2.5px solid var(--ink-line);
+  box-shadow: 0 4px 0 var(--ink-line);
+  transition: transform 0.2s ease;
+}
+.game-window:hover {
+  transform: translateY(-3px) rotate(0deg) !important;
+}
+.game-window::after {
+  /* soft shine across the top of each window */
   content: "";
   position: absolute;
-  right: 12%;
-  top: -30%;
-  width: 60%;
-  aspect-ratio: 1;
-  border-radius: 999px;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0) 65%);
+  inset: 0 0 auto 0;
+  height: 38%;
+  background: linear-gradient(rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0));
   pointer-events: none;
-}
-.banner-grass {
-  position: absolute;
-  left: -12px;
-  right: -12px;
-  bottom: -3px;
-  height: 34px;
-  border-top: 3px solid var(--ink-line);
-}
-.banner-tag {
-  position: absolute;
-  left: 50%;
-  translate: -50% 0;
-  align-items: center;
-  gap: 0.3rem;
-  justify-content: center;
-  text-align: center;
-  width: 92%;
-  font: 700 0.72rem/1.1 var(--font-head);
-  padding: 0.35rem 0.5rem;
-  border-radius: 999px;
-  border: 2px solid var(--ink-line);
-  box-shadow: 0 3px 0 var(--ink-line);
-  background: var(--card);
-  color: var(--ink);
-}
-@keyframes banner-float {
-  50% {
-    translate: 0 -10px;
-    rotate: 20deg;
-  }
-}
-.banner-float {
-  position: absolute;
-  font-size: 1.6rem;
-  color: #fff;
-  -webkit-text-stroke: 1.5px var(--ink-line);
-  animation: banner-float 5s ease-in-out infinite;
 }
 @keyframes rocket-hover {
   50% {
-    translate: 0 -8px;
+    translate: 0 -6px;
   }
 }
 .banner-rocket {
@@ -569,7 +540,6 @@
   animation: flame 0.35s ease-in-out infinite;
 }
 @media (prefers-reduced-motion: reduce) {
-  .banner-float,
   .banner-rocket,
   .banner-flame {
     animation: none;
@@ -588,22 +558,203 @@
   background-color: color-mix(in srgb, var(--primary) 9%, var(--background));
   border-bottom: 2.5px solid var(--ink-line);
 }
-/* Bunting in the theme colours hanging under the top bar */
-.theme-bar::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 100%;
-  height: 12px;
-  background:
-    linear-gradient(135deg, var(--primary) 50%, transparent 50%) 0 0 / 24px 12px repeat-x,
-    linear-gradient(225deg, var(--primary) 50%, transparent 50%) 0 0 / 24px 12px repeat-x;
-  -webkit-mask: linear-gradient(#000, #000);
-  filter: drop-shadow(0 2px 0 var(--ink-line));
-  opacity: 0.95;
-  pointer-events: none;
-}
 .dark .theme-rail {
   background-color: color-mix(in srgb, var(--primary) 10%, var(--background));
+}
+
+/* ---- STEMbot character cards ------------------------------------------- */
+.bot-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  cursor: pointer;
+  text-align: left;
+  background: var(--card);
+  border: 2.5px solid var(--ink-line);
+  border-radius: 1.6rem;
+  box-shadow: 0 5px 0 var(--ink-line);
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+.bot-card:hover,
+.bot-card:focus-visible {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 0 var(--ink-line);
+  outline: none;
+}
+.bot-card-top {
+  position: relative;
+  height: 9.5rem;
+  overflow: hidden;
+  border-bottom: 2.5px solid var(--ink-line);
+  background-color: var(--bot-tint);
+  background-image: radial-gradient(color-mix(in srgb, var(--bot) 35%, transparent) 2px, transparent 2.5px);
+  background-size: 16px 16px;
+}
+.bot-card-stamp {
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  z-index: 2;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  border: 2.5px solid var(--ink-line);
+  background: var(--bot);
+  color: #fff;
+  font: 700 1.1rem/1 var(--font-head);
+  box-shadow: 0 3px 0 var(--ink-line);
+  rotate: -6deg;
+}
+.bot-card-role {
+  position: absolute;
+  right: 10px;
+  top: 12px;
+  z-index: 2;
+  font: 800 9px/1 var(--font-body);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding: 5px 8px;
+  border-radius: 999px;
+  border: 2px solid var(--ink-line);
+  background: #fff;
+  color: #1b1b12;
+}
+.bot-quote {
+  font: 600 0.88rem/1.25 var(--font-head);
+  color: var(--bot);
+}
+.dark .bot-quote {
+  color: color-mix(in srgb, var(--bot) 55%, #fff);
+}
+.voice-bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 12px;
+}
+.voice-bars i {
+  width: 3px;
+  border-radius: 2px;
+  background: currentColor;
+  animation: voice-bar 0.8s ease-in-out infinite;
+}
+.voice-bars i:nth-child(2) {
+  animation-delay: -0.25s;
+}
+.voice-bars i:nth-child(3) {
+  animation-delay: -0.5s;
+}
+@keyframes voice-bar {
+  0%,
+  100% {
+    height: 4px;
+  }
+  50% {
+    height: 12px;
+  }
+}
+.bot-profile {
+  position: relative;
+  width: 100%;
+  max-width: 52rem;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  background: var(--card);
+  border: 3px solid var(--ink-line);
+  border-radius: 2rem;
+  box-shadow: 0 8px 0 var(--ink-line);
+}
+.bot-profile-art {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  min-height: 20rem;
+  padding: 3rem 1rem 3.4rem;
+  border-right: 3px solid var(--ink-line);
+  background-color: var(--bot-tint);
+  background-image: radial-gradient(color-mix(in srgb, var(--bot) 35%, transparent) 2.5px, transparent 3px);
+  background-size: 20px 20px;
+}
+.bot-profile-plate {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  translate: -50% 0;
+  white-space: nowrap;
+  font: 700 0.95rem/1 var(--font-head);
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 2.5px solid var(--ink-line);
+  background: var(--bot);
+  color: #fff;
+  box-shadow: 0 3px 0 var(--ink-line);
+}
+.bot-profile-close {
+  position: absolute;
+  right: 14px;
+  top: 14px;
+  z-index: 3;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 2.5px solid var(--ink-line);
+  background: var(--card);
+  color: var(--card-foreground);
+  box-shadow: 0 3px 0 var(--ink-line);
+}
+@media (max-width: 640px) {
+  .bot-profile {
+    grid-template-columns: 1fr;
+  }
+  .bot-profile-art {
+    min-height: 13rem;
+    border-right: 0;
+    border-bottom: 3px solid var(--ink-line);
+  }
+}
+
+/* Games tab: drawn game pictures instead of emojis */
+.arcade-tile {
+  aspect-ratio: 1;
+  border-radius: 1rem;
+  border: 2.5px solid var(--ink-line);
+  box-shadow: 0 3px 0 var(--ink-line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-image: radial-gradient(rgba(0, 0, 0, 0.08) 1.5px, transparent 1.6px);
+  background-size: 12px 12px;
+}
+.arcade-art {
+  position: relative;
+  height: 9.5rem;
+  overflow: hidden;
+  border-bottom: 2.5px solid var(--ink-line);
+  background-image: radial-gradient(rgba(0, 0, 0, 0.08) 1.5px, transparent 1.6px);
+  background-size: 14px 14px;
+}
+.arcade-host {
+  position: absolute;
+  left: 0.75rem;
+  top: 0.75rem;
+  font-family: var(--font-display, "Fredoka", sans-serif);
+  font-weight: 700;
+  font-size: 0.7rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: #fff;
+  color: #1b1b12;
+  border: 2px solid var(--ink-line);
 }

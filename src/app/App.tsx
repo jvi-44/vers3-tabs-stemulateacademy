@@ -672,7 +672,24 @@ function Dashboard({
   avatar: string;
   theme: ThemeId;
 }) {
-  const [gamesExpanded, setGamesExpanded] = useState(true);
+  // Whether the lessons under the STEM x Games banner are showing (remembered).
+  const [gamesExpanded, setGamesExpandedState] = useState(() => {
+    try {
+      return localStorage.getItem("stemulate_games_open") !== "0";
+    } catch {
+      return true;
+    }
+  });
+  const setGamesExpanded = (fn: (v: boolean) => boolean) =>
+    setGamesExpandedState((v) => {
+      const next = fn(v);
+      try {
+        localStorage.setItem("stemulate_games_open", next ? "1" : "0");
+      } catch {
+        /* storage unavailable */
+      }
+      return next;
+    });
   const [searchQuery, setSearchQuery] = useState("");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [tagSelection, setTagSelection] = useState<TagSelection>(EMPTY_SELECTION());
@@ -712,50 +729,50 @@ function Dashboard({
   // Where "Keep going" takes you: the first unfinished activity.
   const nextLesson = GAME_LESSONS.find((l) => l.beats.some((b) => !completedBeats[b.id])) ?? GAME_LESSONS[0];
   const nextBeat = firstIncompleteBeat(nextLesson, completedBeats);
-  const themeBot = (THEMES.find((t) => t.id === theme) ?? THEMES[0]).bot;
 
   return (
     <div className="space-y-7 w-full">
-      {/* Welcome: the theme's STEMbot greets you and points at what's next. */}
-      <section className="sticker !rounded-[2rem] relative overflow-hidden">
-        <div className="absolute inset-y-0 left-0 w-3 bg-primary border-r-[2.5px] border-ink" aria-hidden="true" />
-        <div className="absolute -right-6 -top-6 w-28 h-28 motif-icon opacity-50 rotate-12" aria-hidden="true" />
-        <div className="absolute right-40 bottom-2 w-10 h-10 motif-icon-2 opacity-40 -rotate-12 hidden lg:block" aria-hidden="true" />
-        <div className="relative flex flex-col md:flex-row md:items-center gap-5 pl-8 pr-5 py-6 sm:pr-8">
-          <div className="flex-1 min-w-0">
-            <h1 className="font-display !text-[clamp(1.7rem,1.2rem+1.6vw,2.5rem)] !leading-[1.05]">
-              Ready for a new <span className="mark-pop">why?</span> today, {firstName}?
-            </h1>
-            <p className="font-semibold text-muted-foreground mt-2">
-              {gamesDone === 0
-                ? "Your first adventure is waiting. Watch, play and earn Atoms for your card albums!"
-                : gamesDone === allGameBeats.length
-                  ? "You finished every checkpoint. Replay the games to beat your high scores!"
-                  : `You're ${gamesPct}% through STEM x Games. Keep that streak going!`}
-            </p>
-          </div>
-          {/* Up next */}
+      {/* Welcome banner: theme colour with its doodles, the four STEMbots
+          as die-cut stickers, and one big button back into the lessons. */}
+      <section className="panel-pop overflow-hidden px-6 py-8 sm:px-10 sm:py-11 min-h-[19rem] sm:min-h-[21rem]">
+        <div className="relative z-10 max-w-[32rem]">
+          <span className="kicker kicker-on">Turning every why? into wow!</span>
+          <h1 className="font-display !text-[clamp(2rem,1.2rem+2.6vw,3.3rem)] !leading-[1.03] mt-4 mb-3">
+            Ready for a new <span className="mark-pop">why?</span> today, {firstName}?
+          </h1>
+          <p className="font-semibold opacity-90 mb-6">
+            {gamesDone === 0
+              ? "Your first adventure is waiting. Watch, play and earn Atoms for your card albums!"
+              : gamesDone === allGameBeats.length
+                ? "You finished every checkpoint. Replay the games to beat your high scores!"
+                : `You're ${gamesPct}% through STEM x Games. Keep that streak going!`}
+          </p>
           <button
             onClick={() => onOpenBeat(nextLesson.id, nextBeat.id)}
-            className="group relative flex items-center gap-3 text-left rounded-[1.4rem] border-[2.5px] border-ink bg-soft-1 px-4 py-3 pr-5 shadow-[0_4px_0_var(--ink-line)] hover:-translate-y-0.5 transition-transform md:max-w-[22rem] md:mr-28"
+            className="group flex items-center gap-3 text-left rounded-[1.4rem] border-[2.5px] border-ink bg-card text-[color:var(--card-foreground)] px-3.5 py-3 pr-4 shadow-[0_4px_0_var(--ink-line)] hover:-translate-y-0.5 transition-transform max-w-[24rem] w-full"
           >
-            <BeatGlyph beat={nextBeat} size={48} filled />
+            <BeatGlyph beat={nextBeat} size={46} filled />
             <span className="min-w-0 flex-1">
               <span className="block text-[10px] font-extrabold uppercase tracking-[0.14em] text-muted-foreground">
                 {gamesDone === 0 ? "Start here" : "Up next"} · {nextLesson.title}
               </span>
               <span className="block font-display font-semibold text-lg leading-tight truncate">{nextBeat.title}</span>
             </span>
-            <span className="w-10 h-10 rounded-full bg-primary border-[2.5px] border-ink flex items-center justify-center shrink-0 group-hover:translate-x-0.5 transition-transform">
+            <span className="w-10 h-10 rounded-full bg-primary text-primary-foreground border-[2.5px] border-ink flex items-center justify-center shrink-0 group-hover:translate-x-0.5 transition-transform">
               <ArrowRight size={18} strokeWidth={2.8} />
             </span>
           </button>
         </div>
-        <img
-          src={themeBot}
-          alt=""
-          className="hidden md:block absolute right-4 -bottom-4 h-36 die-cut bob rotate-[-6deg] pointer-events-none"
-        />
+        <div className="hidden md:block absolute right-3 lg:right-8 bottom-0 top-6 w-[46%] max-w-[500px] pointer-events-none" aria-hidden="true">
+          {[
+            { src: stembotGreen, cls: "left-[0%] h-[50%] rotate-[-8deg]", delay: "0s" },
+            { src: stembotBlue, cls: "left-[24%] h-[58%] rotate-[4deg]", delay: "-1.2s" },
+            { src: stembotCream, cls: "left-[49%] h-[52%] rotate-[-4deg]", delay: "-2.4s" },
+            { src: stembotRed, cls: "left-[73%] h-[56%] rotate-[7deg]", delay: "-3.6s" },
+          ].map((b, i) => (
+            <img key={i} src={b.src} alt="" className={cn("absolute bottom-[-4%] die-cut bob", b.cls)} style={{ animationDelay: b.delay }} />
+          ))}
+        </div>
       </section>
 
       {/* Search + tag filters (filters fold away until you want them) */}
@@ -1128,9 +1145,9 @@ function Leaderboard({ myUserId }: { myUserId: number }) {
 
   // Podium order on screen: 2nd, 1st, 3rd.
   const PODIUM = [
-    { place: 2, h: "h-28 sm:h-32", bg: "var(--soft-3)", medal: "🥈", tilt: "-rotate-2" },
-    { place: 1, h: "h-36 sm:h-44", bg: "var(--pop-2)", medal: "🥇", tilt: "" },
-    { place: 3, h: "h-20 sm:h-24", bg: "var(--soft-1)", medal: "🥉", tilt: "rotate-2" },
+    { place: 2, h: "h-28 sm:h-32", bg: "var(--soft-3)", fg: "var(--foreground)", medal: "🥈", tilt: "-rotate-2" },
+    { place: 1, h: "h-36 sm:h-44", bg: "var(--pop-2)", fg: "#1c1a17", medal: "🥇", tilt: "" },
+    { place: 3, h: "h-20 sm:h-24", bg: "var(--soft-1)", fg: "var(--foreground)", medal: "🥉", tilt: "rotate-2" },
   ];
 
   const friendButton = (entry: (typeof entries)[number]) => (
@@ -1200,7 +1217,7 @@ function Leaderboard({ myUserId }: { myUserId: number }) {
           <img src={stembotGreen} alt="" className="hidden md:block absolute left-4 bottom-0 h-32 die-cut bob rotate-[-8deg]" aria-hidden="true" />
           <img src={stembotRed} alt="" className="hidden md:block absolute right-4 bottom-0 h-32 die-cut bob rotate-[8deg] [animation-delay:-2s]" aria-hidden="true" />
           <div className="relative flex items-end justify-center gap-2 sm:gap-5 max-w-2xl mx-auto">
-            {PODIUM.map(({ place, h, bg, medal, tilt }) => {
+            {PODIUM.map(({ place, h, bg, fg, medal, tilt }) => {
               const entry = podium[place - 1];
               if (!entry) return <div key={place} className="flex-1" />;
               const isMe = entry.userId === myUserId;
@@ -1232,11 +1249,11 @@ function Leaderboard({ myUserId }: { myUserId: number }) {
                   {!isMe && <div className="mb-3 text-foreground">{friendButton(entry)}</div>}
                   <div
                     className={cn(
-                      "w-full rounded-t-[1.4rem] border-[2.5px] border-b-0 border-ink flex flex-col items-center justify-start pt-3 font-display font-bold text-4xl text-[#1c1a17] shadow-[inset_0_-10px_0_rgba(0,0,0,.08)]",
+                      "w-full rounded-t-[1.4rem] border-[2.5px] border-b-0 border-ink flex flex-col items-center justify-start pt-3 font-display font-bold text-4xl shadow-[inset_0_-10px_0_rgba(0,0,0,.08)]",
                       h,
                       tilt,
                     )}
-                    style={{ background: bg }}
+                    style={{ background: bg, color: fg }}
                   >
                     {place}
                     <span className="text-[10px] font-body font-extrabold uppercase tracking-widest opacity-70 mt-1">

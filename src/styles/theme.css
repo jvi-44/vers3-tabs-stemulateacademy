@@ -58,6 +58,7 @@
   /* Extra "pop" colours for stickers and chips, plus pale versions. */
   --pop-2: #7cc242;
   --pop-3: #7c4dff;
+  --pop-3-ink: #ffffff;
   --soft-1: #fff4bf;
   --soft-2: #eaf8d8;
   --soft-3: #efe7ff;
@@ -97,6 +98,7 @@
   --sidebar-ring: #12a4e6;
   --pop-2: #ffb020;
   --pop-3: #14b8a6;
+  --pop-3-ink: #0b2537;
   --soft-1: #dff2fd;
   --soft-2: #fff1c7;
   --soft-3: #d2f7f1;
@@ -133,6 +135,7 @@
   --sidebar-ring: #4caf2a;
   --pop-2: #c6ef72;
   --pop-3: #f59e0b;
+  --pop-3-ink: #1b2e1c;
   --soft-1: #e4f6d4;
   --soft-2: #f1fbcf;
   --soft-3: #fff1c7;
@@ -169,6 +172,7 @@
   --sidebar-ring: #e8345a;
   --pop-2: #ff9a3c;
   --pop-3: #f472b6;
+  --pop-3-ink: #3a0d1a;
   --soft-1: #ffe4e6;
   --soft-2: #ffead5;
   --soft-3: #fde4f2;
@@ -205,6 +209,7 @@
   --sidebar-ring: #7c4dff;
   --pop-2: #ff5fa8;
   --pop-3: #22c7e8;
+  --pop-3-ink: #1e1240;
   --soft-1: #ede7ff;
   --soft-2: #ffe1f0;
   --soft-3: #d4f6fd;
@@ -608,7 +613,7 @@
   }
   .btn-pop3 {
     background: var(--pop-3);
-    color: #ffffff;
+    color: var(--pop-3-ink);
   }
 
   /* Small tilted label above a heading, like the website. */
@@ -656,7 +661,7 @@
     padding: 0 0.22em 0.04em;
     border-radius: 0.3em;
     background: var(--pop-3);
-    color: #fff;
+    color: var(--pop-3-ink);
     box-shadow: 0 0 0 4px #fff;
     transform: rotate(-3deg);
   }

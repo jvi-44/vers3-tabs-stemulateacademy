@@ -678,3 +678,15 @@
     color: var(--soft-2-ink);
   }
 }
+
+/* The login page keeps the website's light forest palette in every theme and
+   in dark mode, so its dropdown lists do too (they render in a portal). */
+.login-menu {
+  --popover: #fffdf3;
+  --popover-foreground: #1b2e1c;
+  --primary: #7cc242;
+  --primary-foreground: #1b2e1c;
+  --ink-line: #1b2e1c;
+  --soft-1: #eaf7dc;
+  --muted-foreground: #4e5f50;
+}
