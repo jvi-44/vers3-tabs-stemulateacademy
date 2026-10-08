@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import confetti from "canvas-confetti";
-import { ArrowLeft, RotateCcw, Sparkles, X } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, RotateCcw, Sparkles, X } from "lucide-react";
 import { PHENOMENA_CARDS, FIGURE_CARDS, ALBUM_PACKS, RARITY_STYLE, type CollectibleCard, type Rarity } from "../data/cardData";
 import { cn } from "./ui/utils";
 import stemulateLogo from "../assets/stemulate_logo.png";
@@ -441,9 +441,9 @@ function CollectionCard({ card, count, number, onClick }: { card: CollectibleCar
   const owned = count > 0;
   if (!owned) {
     return (
-      <div className="sleeve flex flex-col items-center justify-center text-muted-foreground/50">
-        <span className="font-display font-bold text-2xl">?</span>
-        <span className="text-[10px] font-black tracking-widest">#{String(number).padStart(2, "0")}</span>
+      <div className="sleeve flex flex-col items-center justify-center gap-1.5">
+        <span className="sleeve-mark">?</span>
+        <span className="chip-ink !text-[10px] !py-0.5 !px-2 !shadow-none">#{String(number).padStart(2, "0")}</span>
       </div>
     );
   }
@@ -528,7 +528,12 @@ export function CardsHub({
   const [view, setView] = useState<"covers" | AlbumKey>("covers");
   const [opening, setOpening] = useState<{ packId: string; name: string; cards: CollectibleCard[] } | null>(null);
   const [viewingCard, setViewingCard] = useState<CollectibleCard | null>(null);
-  const [rarityFilter, setRarityFilter] = useState<Rarity | "all">("all");
+  const [rarityFilter, setRarityFilterState] = useState<Rarity | "all">("all");
+  const [page, setPage] = useState(0);
+  const setRarityFilter = (r: Rarity | "all") => {
+    setRarityFilterState(r);
+    setPage(0);
+  };
 
   const ownedIn = (key: AlbumKey) => ALBUMS[key].cards.filter((c) => (ownedCounts[c.id] ?? 0) > 0).length;
 
@@ -570,6 +575,10 @@ export function CardsHub({
   const packs = ALBUM_PACKS[view];
   const owned = ownedIn(view);
   const shown = album.cards.map((c, i) => ({ card: c, number: i + 1 })).filter(({ card }) => rarityFilter === "all" || card.rarity === rarityFilter);
+  // The album shows one page of 8 pockets (4 x 2) at a time, like a real binder.
+  const PER_PAGE = 8;
+  const pageCount = Math.max(1, Math.ceil(shown.length / PER_PAGE));
+  const pageCards = shown.slice(page * PER_PAGE, page * PER_PAGE + PER_PAGE);
 
   return (
     <div className="w-full space-y-7">
@@ -644,11 +653,42 @@ export function CardsHub({
             })}
           </div>
         </div>
-        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-5">
-          {shown.map(({ card, number }) => (
-            <CollectionCard key={card.id} card={card} number={number} count={ownedCounts[card.id] ?? 0} onClick={() => setViewingCard(card)} />
-          ))}
-        </div>
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={`${rarityFilter}-${page}`}
+            initial={{ rotateY: -14, opacity: 0, x: 24 }}
+            animate={{ rotateY: 0, opacity: 1, x: 0 }}
+            exit={{ rotateY: 14, opacity: 0, x: -24 }}
+            transition={{ duration: 0.28 }}
+            className="album-page"
+          >
+            {pageCards.map(({ card, number }) => (
+              <div key={card.id} className="album-slot">
+                <CollectionCard card={card} number={number} count={ownedCounts[card.id] ?? 0} onClick={() => setViewingCard(card)} />
+              </div>
+            ))}
+          </motion.div>
+        </AnimatePresence>
+        {pageCount > 1 && (
+          <div className="flex items-center justify-center gap-4 mt-6">
+            <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0} className="btn-pop btn-pop-sm !px-3" aria-label="Previous page">
+              <ChevronLeft size={18} />
+            </button>
+            <div className="flex items-center gap-2">
+              {Array.from({ length: pageCount }, (_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setPage(i)}
+                  aria-label={`Page ${i + 1}`}
+                  className={cn("h-3.5 rounded-full border-2 border-ink transition-all", i === page ? "w-8 bg-primary" : "w-3.5 bg-card")}
+                />
+              ))}
+            </div>
+            <button onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))} disabled={page >= pageCount - 1} className="btn-pop btn-pop-sm !px-3" aria-label="Next page">
+              <ChevronRight size={18} />
+            </button>
+          </div>
+        )}
       </section>
 
       <AnimatePresence>

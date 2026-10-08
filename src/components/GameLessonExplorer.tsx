@@ -608,6 +608,7 @@ function VideoBeat({
 
 const LETTERS = ["A", "B", "C", "D", "E"];
 const LETTER_BG = ["var(--primary)", "var(--pop-2)", "var(--pop-3)", "var(--soft-1)", "var(--soft-2)"];
+const LETTER_FG = ["var(--primary-foreground)", "#1b1b12", "var(--pop-3-ink)", "var(--foreground)", "var(--foreground)"];
 
 function QuizBeat({
   beat,
@@ -746,7 +747,7 @@ function QuizBeat({
               const state = !answered ? "" : isRight ? "answer-right" : oi === picked ? "answer-wrong" : "answer-dim";
               return (
                 <button key={oi} disabled={answered} onClick={() => pick(oi)} className={cn("answer", state)}>
-                  <span className="answer-letter" style={{ background: LETTER_BG[oi % LETTER_BG.length], color: "var(--ink)" }}>
+                  <span className="answer-letter" style={{ background: LETTER_BG[oi % LETTER_BG.length], color: LETTER_FG[oi % LETTER_FG.length] }}>
                     {answered && isRight ? "✓" : answered && oi === picked ? "✗" : LETTERS[oi]}
                   </span>
                   <span>{opt}</span>
@@ -811,7 +812,7 @@ function ExitCardBeat({
             <label className="flex items-center gap-3 mb-2">
               <span
                 className="w-11 h-11 rounded-2xl border-[2.5px] border-ink shadow-[0_3px_0_var(--ink-line)] flex items-center justify-center font-display font-bold text-2xl shrink-0"
-                style={{ background: bg, color: n === 1 ? "#fff" : "var(--ink)" }}
+                style={{ background: bg, color: n === 3 ? "var(--primary-foreground)" : n === 1 ? "var(--pop-3-ink)" : "#1b1b12" }}
               >
                 {n}
               </span>

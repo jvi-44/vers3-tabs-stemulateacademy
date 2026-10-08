@@ -411,18 +411,53 @@
   position: relative;
   aspect-ratio: 621 / 874;
   border-radius: 14px;
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.5), transparent 40%),
-    var(--muted);
-  border: 2px dashed color-mix(in srgb, var(--foreground) 22%, transparent);
+  background-color: color-mix(in srgb, var(--primary) 10%, var(--card));
+  background-image: var(--motif);
+  background-size: 120px 120px;
+  border: 2.5px dashed color-mix(in srgb, var(--ink-line) 45%, transparent);
+  box-shadow: inset 0 0 0 5px var(--card);
+}
+.sleeve-mark {
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 2.5px dashed color-mix(in srgb, var(--ink-line) 45%, transparent);
+  font: 700 1.3rem/1 var(--font-head);
+  color: color-mix(in srgb, var(--ink-line) 55%, transparent);
+  background: var(--card);
+}
+/* One album page: 4 x 2 pockets, any short last row sits in the middle. */
+.album-page {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1.25rem;
+  max-width: 820px;
+  margin: 0 auto;
+  perspective: 1200px;
+}
+.album-slot {
+  width: calc((100% - 3 * 1.25rem) / 4);
+}
+@media (max-width: 640px) {
+  .album-page {
+    gap: 0.85rem;
+  }
+  .album-slot {
+    width: calc((100% - 0.85rem) / 2);
+  }
 }
 .binder {
   background-color: var(--card);
   background-image:
-    radial-gradient(circle at 18px 50%, var(--background) 7px, color-mix(in srgb, var(--foreground) 25%, transparent) 7.5px 8.5px, transparent 9px);
-  background-size: 36px 120px;
-  background-repeat: repeat-y;
-  padding-left: 2.6rem;
+    radial-gradient(circle at 18px 50%, var(--card) 6px, var(--ink-line) 6.5px 8.5px, transparent 9px),
+    linear-gradient(90deg, color-mix(in srgb, var(--primary) 18%, var(--card)) 0 36px, transparent 36px);
+  background-size: 36px 90px, 100% 100%;
+  background-repeat: repeat-y, no-repeat;
+  padding-left: 3.2rem !important;
 }
 
 @media (prefers-reduced-motion: reduce) {

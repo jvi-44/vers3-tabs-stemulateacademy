@@ -98,7 +98,7 @@ export function AskStembots({
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: 60, opacity: 0 }}
             onClick={onToggle}
-            className="fixed right-0 bottom-6 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-40 flex flex-col items-center gap-2 bg-pop-3 text-white pl-2 pr-1.5 py-2 md:pl-2.5 md:pr-2 md:py-4 rounded-l-[1.4rem] border-[2.5px] border-r-0 border-ink shadow-[-4px_4px_0_var(--ink-line)] hover:pr-3 transition-all"
+            className="fixed right-0 bottom-6 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-40 flex flex-col items-center gap-2 bg-pop-3 text-[color:var(--pop-3-ink)] pl-2 pr-1.5 py-2 md:pl-2.5 md:pr-2 md:py-4 rounded-l-[1.4rem] border-[2.5px] border-r-0 border-ink shadow-[-4px_4px_0_var(--ink-line)] hover:pr-3 transition-all"
           >
             <span className="w-9 h-9 rounded-full bg-card border-2 border-ink overflow-hidden">
               <img src={bot.avatar} alt="" className="w-full h-full object-contain" />
@@ -122,7 +122,7 @@ export function AskStembots({
             style={{ minWidth: 0 }}
           >
             {/* Header */}
-            <div className="flex items-center gap-3 px-4 py-4 border-b-[2.5px] border-ink shrink-0 bg-pop-3 text-white">
+            <div className="flex items-center gap-3 px-4 py-4 border-b-[2.5px] border-ink shrink-0 bg-pop-3 text-[color:var(--pop-3-ink)]">
               <div className="w-11 h-11 rounded-full overflow-hidden bg-white border-2 border-ink shrink-0">
                 <img src={bot.avatar} alt={bot.name} className="w-full h-full object-contain p-0.5" />
               </div>
@@ -130,7 +130,7 @@ export function AskStembots({
                 <p className="font-display font-bold text-lg leading-none">Ask {bot.name}</p>
                 <p className="text-[11px] font-bold opacity-85 mt-1 truncate">Stuck? Ask anything about this lesson.</p>
               </div>
-              <button onClick={onToggle} className="shrink-0 w-9 h-9 rounded-full bg-card text-[color:var(--ink)] border-2 border-ink flex items-center justify-center" aria-label="Close">
+              <button onClick={onToggle} className="shrink-0 w-9 h-9 rounded-full bg-card text-[color:var(--card-foreground)] border-2 border-ink flex items-center justify-center" aria-label="Close">
                 <X size={16} />
               </button>
             </div>
