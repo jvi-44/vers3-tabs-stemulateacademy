@@ -74,7 +74,7 @@ export const GAMES: GameDef[] = [
     howTo: [
       "Add ENGINES until the green thrust bar is bigger than the red weight bar.",
       "Add FUEL TANKS until there's enough fuel to reach the planet.",
-      "Press LAUNCH, then tap LEFT and RIGHT to dodge asteroids and grab ⭐ stars.",
+      "Press LAUNCH, then tap LEFT and RIGHT to dodge asteroids and grab stars.",
       "Answer the space question at the end. Three missions: Earth orbit, the Moon and Mars!",
     ],
     music: "space",

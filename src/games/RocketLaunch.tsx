@@ -8,6 +8,7 @@
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, Check, ChevronLeft, ChevronRight, Minus, Plus, Rocket, Timer, X } from "lucide-react";
+import { Sticker, type StickerName } from "./kit/Art";
 import { cn } from "../components/ui/utils";
 import { STEMBOTS } from "../data/mock";
 import { sfx } from "./kit/audio";
@@ -37,16 +38,16 @@ const minEngines = (t: number) => {
 interface Mission {
   name: string;
   short: string;
-  emoji: string;
+  art: StickerName;
   tanks: number;
   planet: BlockColors;
   space: string;
 }
 
 const MISSIONS: Mission[] = [
-  { name: "Orbit the Earth", short: "Earth orbit", emoji: "🌍", tanks: 2, planet: { top: "#3b82f6", side: "#22c55e", side2: "#1d4ed8" }, space: "linear-gradient(#0b1033, #1e1b4b 60%, #312e81)" },
-  { name: "Fly to the Moon", short: "the Moon", emoji: "🌕", tanks: 3, planet: { top: "#e5e7eb", side: "#cbd5e1", side2: "#94a3b8" }, space: "linear-gradient(#020617, #0f172a 60%, #1e293b)" },
-  { name: "Fly to Mars", short: "Mars", emoji: "🔴", tanks: 4, planet: { top: "#f97316", side: "#ea580c", side2: "#c2410c" }, space: "linear-gradient(#1c0a1e, #3b0d2e 60%, #6b1d2a)" },
+  { name: "Orbit the Earth", short: "Earth orbit", art: "earth", tanks: 2, planet: { top: "#3b82f6", side: "#22c55e", side2: "#1d4ed8" }, space: "linear-gradient(#0b1033, #1e1b4b 60%, #312e81)" },
+  { name: "Fly to the Moon", short: "the Moon", art: "moon", tanks: 3, planet: { top: "#e5e7eb", side: "#cbd5e1", side2: "#94a3b8" }, space: "linear-gradient(#020617, #0f172a 60%, #1e293b)" },
+  { name: "Fly to Mars", short: "Mars", art: "mars", tanks: 4, planet: { top: "#f97316", side: "#ea580c", side2: "#c2410c" }, space: "linear-gradient(#1c0a1e, #3b0d2e 60%, #6b1d2a)" },
 ];
 
 interface Question {
@@ -401,15 +402,15 @@ export function RocketLaunch({ seed, reportProgress, finish }: GameProps) {
     if (!started) return `Mission ${mi + 1}: ${mission.name}!`;
     switch (step) {
       case "build":
-        return `Build a rocket that can reach ${mission.short} ${mission.emoji}. Make both checks green, then LAUNCH!`;
+        return `Build a rocket that can reach ${mission.short}. Make both checks green, then LAUNCH!`;
       case "launch":
         return result === "ok" ? "3... 2... 1... LIFT-OFF!" : "Launching...";
       case "fly":
-        return "Tap ◀ ▶ to dodge the asteroids and grab the ⭐ energy stars!";
+        return "Tap ◀ ▶ to dodge the asteroids and grab the energy stars!";
       case "quiz":
         return `You reached ${mission.short}! One quick question:`;
       case "done":
-        return `Mission ${mi + 1} complete! 🎉`;
+        return `Mission ${mi + 1} complete!`;
     }
   })();
 
@@ -435,7 +436,7 @@ export function RocketLaunch({ seed, reportProgress, finish }: GameProps) {
         <div key={`${mi}-${step}`} className="flex-1 min-w-0 bg-white/95 rounded-2xl game-panel px-2 sm:px-3 py-2 flex items-center gap-2 sm:gap-3 game-bounce-in">
           <div className="relative shrink-0 rounded-2xl p-1 bg-violet-500">
             <img src={emily.avatar} alt={emily.name} className="w-10 h-10 sm:w-14 sm:h-14 object-contain drop-shadow" />
-            <span className="absolute -bottom-1 -right-1 text-lg">{mission.emoji}</span>
+            <Sticker name={mission.art} size={24} className="absolute -bottom-1.5 -right-1.5" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="game-pixel text-[8px] sm:text-[9px] text-slate-500 truncate">
@@ -508,15 +509,17 @@ export function RocketLaunch({ seed, reportProgress, finish }: GameProps) {
           <>
             <div className="absolute left-2 top-2 z-10 bg-slate-900/80 text-white rounded-2xl game-panel px-3 py-2">
               <p className="game-pixel text-[8px] text-amber-300">ENERGY STARS</p>
-              <p className="game-pixel text-lg text-yellow-300">⭐ {flyStars}</p>
+              <p className="game-pixel text-lg text-yellow-300 flex items-center gap-1.5">
+                <Sticker name="star" size={22} /> {flyStars}
+              </p>
               {flyHits > 0 && <p className="game-fun font-bold text-xs text-rose-300 mt-0.5">Bumps: {flyHits}</p>}
             </div>
             <div className="absolute right-3 top-3 bottom-3 z-10 w-9 bg-slate-900/70 rounded-full game-panel flex flex-col items-center justify-between py-2">
-              <span className="text-xl">{mission.emoji}</span>
+              <Sticker name={mission.art} size={26} />
               <div className="relative flex-1 w-2 my-2 bg-white/20 rounded-full">
                 <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-amber-400 to-lime-300 rounded-full" style={{ height: `${Math.min(100, (flyT / FLY_SECONDS) * 100)}%` }} />
               </div>
-              <span className="text-lg">🚀</span>
+              <Sticker name="rocket" size={24} />
             </div>
           </>
         )}
@@ -543,7 +546,7 @@ export function RocketLaunch({ seed, reportProgress, finish }: GameProps) {
         {step === "done" && (
           <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
             <div className="bg-violet-600 text-white rounded-3xl game-panel px-6 py-4 text-center game-bounce-in">
-              <p className="text-5xl">{mission.emoji}</p>
+              <Sticker name={mission.art} size={64} className="mx-auto" />
               <p className="game-pixel text-[11px] mt-2">MISSION {mi + 1} COMPLETE!</p>
             </div>
           </div>
@@ -554,8 +557,8 @@ export function RocketLaunch({ seed, reportProgress, finish }: GameProps) {
       <div className="relative z-10 bg-slate-900/90 text-white px-2 sm:px-3 py-2 min-h-[104px] flex items-center justify-center">
         {(step === "build" || step === "launch") && (
           <div className="w-full grid grid-cols-[1fr_1fr_auto] gap-2 sm:gap-4 items-center max-w-3xl">
-            <Stepper label="Engines" emoji="🔥" value={engines} max={MAX_ENGINES} color="#f97316" disabled={!canPlay || step !== "build"} onChange={(d) => change("e", d)} />
-            <Stepper label="Fuel tanks" emoji="⛽" value={tanks} max={MAX_TANKS} color="#0ea5e9" disabled={!canPlay || step !== "build"} onChange={(d) => change("t", d)} />
+            <Stepper label="Engines" art="flame" value={engines} max={MAX_ENGINES} color="#f97316" disabled={!canPlay || step !== "build"} onChange={(d) => change("e", d)} />
+            <Stepper label="Fuel tanks" art="fuel" value={tanks} max={MAX_TANKS} color="#0ea5e9" disabled={!canPlay || step !== "build"} onChange={(d) => change("t", d)} />
             <button
               onClick={launch}
               disabled={!canPlay || step !== "build"}
@@ -603,7 +606,7 @@ export function RocketLaunch({ seed, reportProgress, finish }: GameProps) {
             {answer !== null && <p className="text-center text-[12px] sm:text-[13px] text-sky-100 mt-1.5 game-bounce-in">{question.explain}</p>}
           </div>
         )}
-        {(step === "done" || allDone) && <p className="game-fun font-bold text-lg">{allDone ? "🎉 All missions done!" : "Next mission coming up..."}</p>}
+        {(step === "done" || allDone) && <p className="game-fun font-bold text-lg">{allDone ? "All missions done!" : "Next mission coming up..."}</p>}
       </div>
     </div>
   );
@@ -696,7 +699,11 @@ function PadScene({
             </div>
           ))}
       </VoxelWorld>
-      <span className="absolute left-1/2 -translate-x-1/2 bottom-1 game-pixel text-[9px] text-slate-700/70">TARGET: {mission.short.toUpperCase()}</span>
+      {/* The mission's destination, floating in the sky */}
+      <div className="absolute right-[7%] bottom-[8%] flex flex-col items-center pointer-events-none" style={{ animation: "game-float 5s ease-in-out infinite" }}>
+        <Sticker name={mission.art} size={56} />
+        <span className="game-pixel text-[9px] text-slate-700/80 mt-1 bg-white/70 rounded-full px-2 py-0.5">TARGET: {mission.short.toUpperCase()}</span>
+      </div>
     </div>
   );
 }
@@ -814,10 +821,10 @@ function CheckRow({ ok, text }: { ok: boolean; text: string }) {
 
 function FuelRoute({ tanks, mission }: { tanks: number; mission: Mission }) {
   const stops = [
-    { label: "Earth orbit", emoji: "🌍", need: 2 },
-    { label: "Moon", emoji: "🌕", need: 3 },
-    { label: "Mars", emoji: "🔴", need: 4 },
-  ];
+    { label: "Earth orbit", art: "earth", need: 2 },
+    { label: "Moon", art: "moon", need: 3 },
+    { label: "Mars", art: "mars", need: 4 },
+  ] as const;
   return (
     <div className="mt-1.5">
       <p className="text-[10px] font-bold text-slate-500 mb-0.5">FUEL TANKS REACH:</p>
@@ -831,7 +838,7 @@ function FuelRoute({ tanks, mission }: { tanks: number; mission: Mission }) {
               s.need === mission.tanks && "ring-2 ring-amber-400",
             )}
           >
-            <p className="text-sm leading-none">{s.emoji}</p>
+            <Sticker name={s.art} size={20} className="mx-auto" />
             <p className="text-[9px] font-bold text-slate-600">{s.need} tanks</p>
           </div>
         ))}
@@ -842,7 +849,7 @@ function FuelRoute({ tanks, mission }: { tanks: number; mission: Mission }) {
 
 function Stepper({
   label,
-  emoji,
+  art,
   value,
   max,
   color,
@@ -850,7 +857,7 @@ function Stepper({
   onChange,
 }: {
   label: string;
-  emoji: string;
+  art: StickerName;
   value: number;
   max: number;
   color: string;
@@ -864,8 +871,10 @@ function Stepper({
       </button>
       <div className="text-center min-w-0">
         <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wide text-white/70">{label}</p>
-        <p className="text-lg sm:text-xl leading-none mt-0.5 whitespace-nowrap">
-          {Array.from({ length: value }, () => emoji).join("")}
+        <p className="flex justify-center -space-x-1.5 mt-0.5 h-7">
+          {Array.from({ length: value }, (_, i) => (
+            <Sticker key={i} name={art} size={28} className="game-bounce-in" />
+          ))}
         </p>
         <p className="game-pixel text-[11px] mt-0.5" style={{ color }}>
           {value}
