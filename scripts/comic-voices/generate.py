@@ -27,15 +27,16 @@ import numpy as np
 import soundfile as sf
 from kokoro_onnx import Kokoro
 
-# speaker -> (Kokoro voice, speed). Bots match the lesson videos.
+# speaker -> (Kokoro voice, speed, pitch shift in semitones). The four bots use
+# exactly the lesson-video settings, so they sound the same everywhere.
 VOICES = {
-    "sophia": ("af_heart", 1.08),     # Science, girl, warm and bubbly
-    "emily": ("af_bella", 1.08),      # Engineering, girl, bright and energetic
-    "timothy": ("am_puck", 1.08),     # Technology, boy, upbeat
-    "matthew": ("am_michael", 1.05),  # Math, boy, friendly and steady
-    "host": ("am_fenrir", 1.12),      # game-show host
-    "mission": ("bf_emma", 1.05),     # Mission Control
-    "system": ("am_onyx", 0.95),      # ship computer (robot filter added below)
+    "sophia": ("af_heart", 1.08, 1.0),     # Science, girl, warm and bubbly
+    "emily": ("af_bella", 1.10, 2.0),      # Engineering, girl, bright and energetic
+    "timothy": ("am_puck", 1.10, 1.5),     # Technology, boy, upbeat
+    "matthew": ("am_michael", 1.06, 0.0),  # Math, boy, friendly and steady
+    "host": ("am_fenrir", 1.12, 0.0),      # game-show host
+    "mission": ("bf_emma", 1.05, 0.0),     # Mission Control
+    "system": ("am_onyx", 0.95, 0.0),      # ship computer (robot filter added below)
 }
 CHORUS = ["sophia", "emily", "timothy", "matthew"]  # "all" = everyone at once
 
@@ -71,15 +72,35 @@ def speakable(text: str) -> str:
 
 
 def render(kokoro: Kokoro, speaker: str, text: str):
-    voice, speed = VOICES[speaker]
+    voice, speed, _ = VOICES[speaker]
     samples, sr = kokoro.create(speakable(text), voice=voice, speed=speed, lang="en-us")
     return samples, sr
 
 
-def to_mp3(samples, sr, dest: Path, robot: bool = False):
+def pitch_filter(speaker: str) -> list[str]:
+    """Raise the pitch while keeping formants, so it sounds younger, not chipmunky."""
+    semitones = VOICES.get(speaker, (None, None, 0.0))[2]
+    if not semitones:
+        return []
+    return [f"rubberband=pitch={2 ** (semitones / 12):.5f}:formant=preserved"]
+
+
+def shift(samples, sr, speaker: str):
+    """Apply a speaker's pitch shift in memory (used before mixing the chorus)."""
+    filters = pitch_filter(speaker)
+    if not filters:
+        return samples
+    with tempfile.NamedTemporaryFile(suffix=".wav") as src, tempfile.NamedTemporaryFile(suffix=".wav") as dst:
+        sf.write(src.name, samples, sr)
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", src.name, "-af", filters[0], dst.name], check=True)
+        out, _ = sf.read(dst.name, dtype="float32")
+        return out
+
+
+def to_mp3(samples, sr, dest: Path, robot: bool = False, pre: list[str] | None = None):
     with tempfile.NamedTemporaryFile(suffix=".wav") as tmp:
         sf.write(tmp.name, samples, sr)
-        filters = ["loudnorm=I=-16:TP=-1.5"]
+        filters = (pre or []) + ["loudnorm=I=-16:TP=-1.5"]
         if robot:
             filters.insert(0, "flanger=delay=2:depth=2:speed=0.6,aecho=0.8:0.7:12:0.35")
         subprocess.run(
@@ -106,7 +127,10 @@ def main():
         if dest.exists() and not args.force:
             continue
         if speaker == "all":
-            parts = [render(kokoro, s, text) for s in CHORUS]
+            parts = []
+            for s in CHORUS:
+                raw, sr = render(kokoro, s, text)
+                parts.append((shift(raw, sr, s), sr))
             sr = parts[0][1]
             n = max(len(p[0]) for p in parts)
             # Tiny offsets so the chorus sounds like four friends, not one echo.
@@ -117,7 +141,7 @@ def main():
             samples = mix / len(parts) * 1.6
         else:
             samples, sr = render(kokoro, speaker, text)
-        to_mp3(samples, sr, dest, robot=speaker == "system")
+        to_mp3(samples, sr, dest, robot=speaker == "system", pre=pitch_filter(speaker))
         print(f"recorded {key}: {text[:50]}")
 
     # Drop recordings of lines that no longer exist.
