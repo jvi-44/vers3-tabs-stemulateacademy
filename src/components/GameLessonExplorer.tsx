@@ -18,6 +18,8 @@ import { cn } from "./ui/utils";
 import type { GameLesson, LessonBeat } from "../data/lessonContent";
 import { pointsFor } from "../data/lessonContent";
 import { SpeechBubbles } from "./SpeechBubble";
+import { ComicStrip } from "./comic/ComicStrip";
+import { COMIC_STRIPS } from "../data/comicStrips";
 import { AskStembots } from "./AskStembots";
 
 function AtomIcon({ size = 14, className = "" }: { size?: number; className?: string }) {
@@ -279,7 +281,8 @@ export function BeatPlayer({
       <main className="flex-1 min-w-0 p-6 md:p-10 pb-24 md:pb-10 overflow-x-hidden">
         <div className="max-w-2xl mx-auto space-y-5">
           {/* Dialogue / speech bubbles */}
-          {activeBeat.dialogue && activeBeat.dialogue.length > 0 && (
+          {/* Intro beats with a comic tell the story in panels instead */}
+          {activeBeat.dialogue && activeBeat.dialogue.length > 0 && !COMIC_STRIPS[activeBeat.id] && (
             <SpeechBubbles lines={activeBeat.dialogue} />
           )}
           <BeatContent beat={activeBeat} done={!!completedBeats[activeBeat.id]} onComplete={onComplete} onNext={goNext} />
@@ -309,8 +312,10 @@ function BeatContent({
   };
 
   if (beat.type === "intro") {
+    const comic = COMIC_STRIPS[beat.id];
     return (
       <div className="space-y-6">
+        {comic && <ComicStrip strip={comic} />}
         <div className="bg-gradient-to-br from-rose-400 to-orange-400 rounded-3xl p-8 text-white shadow-lg">
           <p className="text-[10px] font-bold uppercase tracking-widest opacity-80 mb-2">Intro Story</p>
           <h2 className="text-2xl font-black mb-3">{beat.title}</h2>
