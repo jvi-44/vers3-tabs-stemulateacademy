@@ -69,6 +69,8 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
+import { setGamePlayer } from "../games/kit/player";
+import { syncHighScores } from "../games/kit/scores";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -137,6 +139,13 @@ export default function App() {
   }, [darkMode]);
 
   // ---- Auth ----
+  // Lets the lesson games know who is playing (for high scores and live rooms).
+  useEffect(() => {
+    if (!authUser) return;
+    setGamePlayer({ id: String(authUser.userId), userId: authUser.userId, name: user.username, avatar: user.avatar });
+    syncHighScores(authUser.userId);
+  }, [authUser, user.username, user.avatar]);
+
   const applyAuthUser = (u: AuthUser) => {
     setAuthUser(u);
     setUser((prev) => ({

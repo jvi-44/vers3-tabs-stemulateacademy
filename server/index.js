@@ -7,6 +7,7 @@ import cors from "cors";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import db from "./db.js";
+import { registerGameRoutes } from "./gameRooms.js";
 import { createSession } from "./sessions.js";
 import { publicUser, PIN_REGEX, USERNAME_REGEX, usernameTaken } from "./users.js";
 import accountRoutes from "./routes/account.js";
@@ -333,6 +334,8 @@ app.post("/api/chat", async (req, res) => {
     res.status(500).json({ error: "Internal error", reply: null });
   }
 });
+
+registerGameRoutes(app, db);
 
 app.use("/api/admin", adminRoutes);
 app.use("/api", accountRoutes);
