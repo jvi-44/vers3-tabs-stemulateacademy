@@ -1,15 +1,33 @@
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
 import express from "express";
 import cors from "cors";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import db from "./db.js";
+import { createSession } from "./sessions.js";
+import { publicUser, PIN_REGEX, USERNAME_REGEX, usernameTaken } from "./users.js";
+import accountRoutes from "./routes/account.js";
+import socialRoutes from "./routes/social.js";
+import adminRoutes from "./routes/admin.js";
+
+// Load secrets (API keys, ADMIN_PASSKEY, ...) from the .env file in the
+// project root. That file is gitignored, so keys stay on your own computer.
+// Copy .env.example to .env to get started.
+const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
+try {
+  process.loadEnvFile(path.join(ROOT, ".env"));
+} catch {
+  // No .env file: fine, the AI helper and admin page just stay switched off.
+}
+
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const PIN_REGEX = /^\d{4}$/;
-const USERNAME_REGEX = /^[A-Za-z0-9_]+$/;
 
 // In-memory store for short-lived PIN-reset tokens (username -> {token, expiresAt}).
 // Fine for a small deployment; swap for Redis if you scale this up.
@@ -30,20 +48,6 @@ function consumeResetToken(username, token) {
   const valid = entry.token === token && entry.expiresAt > Date.now();
   resetTokens.delete(username);
   return valid;
-}
-
-function publicUser(row) {
-  return {
-    userId: row.user_id,
-    fullName: row.full_name,
-    username: row.username,
-    schoolLevelId: row.school_level_id,
-    orgId: row.org_id,
-    xp: row.xp,
-    level: row.level,
-    atoms: row.atoms,
-    avatar: row.avatar,
-  };
 }
 
 // ---------------------------------------------------------
@@ -105,7 +109,7 @@ app.post("/api/signup", async (req, res) => {
   }
   if (!username || !USERNAME_REGEX.test(username)) {
     return res.status(400).json({
-      error: "Username can only contain letters, numbers, and underscores.",
+      error: "Usernames are 3–20 letters, numbers or underscores.",
     });
   }
   if (!pin || !PIN_REGEX.test(pin)) {
@@ -115,10 +119,7 @@ app.post("/api/signup", async (req, res) => {
     return res.status(400).json({ error: "Please complete all fields." });
   }
 
-  const existing = db
-    .prepare("SELECT user_id FROM users WHERE username = ?")
-    .get(username);
-  if (existing) {
+  if (usernameTaken(username)) {
     return res.status(409).json({ error: "That username is already taken." });
   }
 
@@ -144,7 +145,7 @@ app.post("/api/signup", async (req, res) => {
       .prepare("SELECT * FROM users WHERE user_id = ?")
       .get(info.lastInsertRowid);
 
-    res.status(201).json({ user: publicUser(user) });
+    res.status(201).json({ user: publicUser(user), token: createSession(user.user_id) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Something went wrong creating the account." });
@@ -166,7 +167,7 @@ app.post("/api/login", async (req, res) => {
     return res.status(400).json({ error: "Enter your username and PIN." });
   }
 
-  const user = db.prepare("SELECT * FROM users WHERE username = ?").get(username);
+  const user = db.prepare("SELECT * FROM users WHERE username = ? COLLATE NOCASE").get(username);
   if (!user) {
     logAttempt(false);
     return res.status(401).json({ error: "Incorrect username or PIN." });
@@ -179,7 +180,7 @@ app.post("/api/login", async (req, res) => {
   }
 
   logAttempt(true);
-  res.json({ user: publicUser(user) });
+  res.json({ user: publicUser(user), token: createSession(user.user_id) });
 });
 
 // ---------------------------------------------------------
@@ -332,6 +333,18 @@ app.post("/api/chat", async (req, res) => {
     res.status(500).json({ error: "Internal error", reply: null });
   }
 });
+
+app.use("/api/admin", adminRoutes);
+app.use("/api", accountRoutes);
+app.use("/api", socialRoutes);
+
+// In production (`npm run build` then `npm start`) the same server also hosts
+// the built website, so the whole Academy deploys as one service.
+const DIST = path.join(ROOT, "dist");
+if (fs.existsSync(DIST)) {
+  app.use(express.static(DIST));
+  app.get(/^(?!\/api\/).*/, (req, res) => res.sendFile(path.join(DIST, "index.html")));
+}
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {

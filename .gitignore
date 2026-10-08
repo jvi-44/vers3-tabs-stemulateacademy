@@ -2,10 +2,9 @@ node_modules/
 dist/
 
 # SQLite database files (generated at runtime)
-server/stemulate.db
-server/stemulate.db-shm
-server/stemulate.db-wal
+server/stemulate.db*
 
-# Local env
+# Local env — API keys live here, on your own computer only. Never commit them.
 .env
-.env.local
+.env.*
+!.env.example

@@ -36,7 +36,7 @@ export function GamesTab({
   });
 
   return (
-    <div className="max-w-5xl mx-auto space-y-5">
+    <div className="w-full space-y-5">
       <div>
         <h2 className="text-xl font-black text-foreground flex items-center gap-2">
           <Gamepad2 className="text-primary" /> Games

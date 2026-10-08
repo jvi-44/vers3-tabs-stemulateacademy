@@ -39,6 +39,11 @@
   --sidebar-accent-foreground: #92400e;
   --sidebar-border: #fde68a;
   --sidebar-ring: #f59e0b;
+  /* Header and banner gradient. Each colour theme below swaps these. */
+  --hero-from: #84cc16;
+  --hero-via: #a3e635;
+  --hero-to: #facc15;
+  --pattern: rgba(245, 158, 11, 0.12);
 }
 
 .dark {
@@ -78,6 +83,229 @@
   --sidebar-accent-foreground: #fde68a;
   --sidebar-border: rgba(245, 158, 11, 0.18);
   --sidebar-ring: #f59e0b;
+  --hero-from: #4d7c0f;
+  --hero-via: #3f6212;
+  --hero-to: #854d0e;
+  --pattern: rgba(245, 158, 11, 0.07);
+}
+
+/* ---------------------------------------------------------------------------
+   Colour themes. Picked in Profile > Theme (or the avatar menu) and saved per
+   device. "sunshine" is the default above; each theme below swaps the main
+   colours and works in both light and dark mode. Each is named after the
+   STEMbot whose colour it uses.
+   --------------------------------------------------------------------------- */
+
+/* Ocean: Timothy's blue */
+[data-theme="ocean"] {
+  --background: #f5fbff;
+  --primary: #0ea5e9;
+  --secondary: #e0f2fe;
+  --secondary-foreground: #075985;
+  --muted: #e0f2fe;
+  --muted-foreground: #0c4a6e;
+  --accent: #bae6fd;
+  --accent-foreground: #0c4a6e;
+  --border: rgba(14, 165, 233, 0.22);
+  --ring: #0ea5e9;
+  --input-background: #f0f9ff;
+  --switch-background: #bae6fd;
+  --sidebar: #f0f9ff;
+  --sidebar-primary: #0ea5e9;
+  --sidebar-accent: #e0f2fe;
+  --sidebar-accent-foreground: #075985;
+  --sidebar-border: #bae6fd;
+  --sidebar-ring: #0ea5e9;
+  --hero-from: #0ea5e9;
+  --hero-via: #38bdf8;
+  --hero-to: #22d3ee;
+  --pattern: rgba(14, 165, 233, 0.12);
+}
+
+/* Forest: Sophia's green */
+[data-theme="forest"] {
+  --background: #f6fdf7;
+  --primary: #16a34a;
+  --secondary: #dcfce7;
+  --secondary-foreground: #166534;
+  --muted: #dcfce7;
+  --muted-foreground: #14532d;
+  --accent: #bbf7d0;
+  --accent-foreground: #14532d;
+  --border: rgba(22, 163, 74, 0.22);
+  --ring: #16a34a;
+  --input-background: #f0fdf4;
+  --switch-background: #bbf7d0;
+  --sidebar: #f0fdf4;
+  --sidebar-primary: #16a34a;
+  --sidebar-accent: #dcfce7;
+  --sidebar-accent-foreground: #166534;
+  --sidebar-border: #bbf7d0;
+  --sidebar-ring: #16a34a;
+  --hero-from: #16a34a;
+  --hero-via: #4ade80;
+  --hero-to: #a3e635;
+  --pattern: rgba(22, 163, 74, 0.12);
+}
+
+/* Berry: Matthew's red */
+[data-theme="berry"] {
+  --background: #fff7f8;
+  --primary: #e11d48;
+  --secondary: #ffe4e6;
+  --secondary-foreground: #9f1239;
+  --muted: #ffe4e6;
+  --muted-foreground: #881337;
+  --accent: #fecdd3;
+  --accent-foreground: #881337;
+  --border: rgba(225, 29, 72, 0.2);
+  --ring: #e11d48;
+  --input-background: #fff1f2;
+  --switch-background: #fecdd3;
+  --sidebar: #fff1f2;
+  --sidebar-primary: #e11d48;
+  --sidebar-accent: #ffe4e6;
+  --sidebar-accent-foreground: #9f1239;
+  --sidebar-border: #fecdd3;
+  --sidebar-ring: #e11d48;
+  --hero-from: #e11d48;
+  --hero-via: #f472b6;
+  --hero-to: #fb923c;
+  --pattern: rgba(225, 29, 72, 0.1);
+}
+
+/* Galaxy: a purple space theme */
+[data-theme="galaxy"] {
+  --background: #faf7ff;
+  --primary: #8b5cf6;
+  --secondary: #ede9fe;
+  --secondary-foreground: #5b21b6;
+  --muted: #ede9fe;
+  --muted-foreground: #4c1d95;
+  --accent: #ddd6fe;
+  --accent-foreground: #4c1d95;
+  --border: rgba(139, 92, 246, 0.22);
+  --ring: #8b5cf6;
+  --input-background: #f5f3ff;
+  --switch-background: #ddd6fe;
+  --sidebar: #f5f3ff;
+  --sidebar-primary: #8b5cf6;
+  --sidebar-accent: #ede9fe;
+  --sidebar-accent-foreground: #5b21b6;
+  --sidebar-border: #ddd6fe;
+  --sidebar-ring: #8b5cf6;
+  --hero-from: #7c3aed;
+  --hero-via: #a855f7;
+  --hero-to: #ec4899;
+  --pattern: rgba(139, 92, 246, 0.12);
+}
+
+.dark[data-theme="ocean"] {
+  --background: #0b1620;
+  --card: #10202d;
+  --popover: #10202d;
+  --primary: #38bdf8;
+  --primary-foreground: #04131d;
+  --secondary: #12293a;
+  --secondary-foreground: #7dd3fc;
+  --muted: #0f2231;
+  --muted-foreground: #8fbcd6;
+  --accent: #16344a;
+  --accent-foreground: #bae6fd;
+  --border: rgba(56, 189, 248, 0.18);
+  --ring: #38bdf8;
+  --input: #12293a;
+  --input-background: #0f2231;
+  --sidebar: #0d1b26;
+  --sidebar-primary: #38bdf8;
+  --sidebar-accent: #12293a;
+  --sidebar-accent-foreground: #bae6fd;
+  --sidebar-border: rgba(56, 189, 248, 0.18);
+  --hero-from: #075985;
+  --hero-via: #0369a1;
+  --hero-to: #155e75;
+  --pattern: rgba(56, 189, 248, 0.07);
+}
+
+.dark[data-theme="forest"] {
+  --background: #0c160f;
+  --card: #122016;
+  --popover: #122016;
+  --primary: #4ade80;
+  --primary-foreground: #05140a;
+  --secondary: #15301d;
+  --secondary-foreground: #86efac;
+  --muted: #11261a;
+  --muted-foreground: #93c9a5;
+  --accent: #1a3a24;
+  --accent-foreground: #bbf7d0;
+  --border: rgba(74, 222, 128, 0.18);
+  --ring: #4ade80;
+  --input: #15301d;
+  --input-background: #11261a;
+  --sidebar: #0e1b12;
+  --sidebar-primary: #4ade80;
+  --sidebar-accent: #15301d;
+  --sidebar-accent-foreground: #bbf7d0;
+  --sidebar-border: rgba(74, 222, 128, 0.18);
+  --hero-from: #166534;
+  --hero-via: #15803d;
+  --hero-to: #3f6212;
+  --pattern: rgba(74, 222, 128, 0.07);
+}
+
+.dark[data-theme="berry"] {
+  --background: #1a0d11;
+  --card: #241218;
+  --popover: #241218;
+  --primary: #fb7185;
+  --primary-foreground: #1f060c;
+  --secondary: #3a1520;
+  --secondary-foreground: #fda4af;
+  --muted: #2c121a;
+  --muted-foreground: #d6a0ab;
+  --accent: #451a26;
+  --accent-foreground: #fecdd3;
+  --border: rgba(251, 113, 133, 0.18);
+  --ring: #fb7185;
+  --input: #3a1520;
+  --input-background: #2c121a;
+  --sidebar: #1e0f14;
+  --sidebar-primary: #fb7185;
+  --sidebar-accent: #3a1520;
+  --sidebar-accent-foreground: #fecdd3;
+  --sidebar-border: rgba(251, 113, 133, 0.18);
+  --hero-from: #9f1239;
+  --hero-via: #9d174d;
+  --hero-to: #9a3412;
+  --pattern: rgba(251, 113, 133, 0.07);
+}
+
+.dark[data-theme="galaxy"] {
+  --background: #120d1f;
+  --card: #1a1330;
+  --popover: #1a1330;
+  --primary: #a78bfa;
+  --primary-foreground: #0f0820;
+  --secondary: #261a45;
+  --secondary-foreground: #c4b5fd;
+  --muted: #1f1638;
+  --muted-foreground: #b3a6d9;
+  --accent: #2e2054;
+  --accent-foreground: #ddd6fe;
+  --border: rgba(167, 139, 250, 0.2);
+  --ring: #a78bfa;
+  --input: #261a45;
+  --input-background: #1f1638;
+  --sidebar: #150f26;
+  --sidebar-primary: #a78bfa;
+  --sidebar-accent: #261a45;
+  --sidebar-accent-foreground: #ddd6fe;
+  --sidebar-border: rgba(167, 139, 250, 0.2);
+  --hero-from: #5b21b6;
+  --hero-via: #6b21a8;
+  --hero-to: #9d174d;
+  --pattern: rgba(167, 139, 250, 0.08);
 }
 
 @theme inline {
@@ -135,18 +363,33 @@
   * These are in @layer base, so Tailwind utility classes (like text-sm, text-lg) automatically override them.
   */
 
+  /* Text scales gently with the screen but is capped at both ends, so it is
+     never tiny on a phone or oversized on a large monitor or tablet. Every
+     rem-based size (Tailwind's text-sm, text-xl, ...) follows this. */
   html {
-    font-size: var(--font-size);
+    font-size: clamp(14px, 13px + 0.3vw, var(--font-size));
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    overflow-wrap: anywhere;
   }
 
   h1 {
-    font-size: var(--text-2xl);
+    font-size: clamp(1.25rem, 1rem + 1vw, var(--text-2xl));
     font-weight: var(--font-weight-medium);
     line-height: 1.5;
   }
 
   h2 {
-    font-size: var(--text-xl);
+    font-size: clamp(1.125rem, 1rem + 0.6vw, var(--text-xl));
     font-weight: var(--font-weight-medium);
     line-height: 1.5;
   }
@@ -211,4 +454,24 @@
   to {
     stroke-dashoffset: var(--ring-offset);
   }
+}
+
+/* Header / banner gradient that follows the colour theme */
+.bg-hero {
+  background-image: linear-gradient(90deg, var(--hero-from), var(--hero-via), var(--hero-to));
+}
+
+.bg-hero-diagonal {
+  background-image: linear-gradient(135deg, var(--hero-via), var(--hero-to), var(--hero-from));
+}
+
+/* Playful background: a soft scatter of big and small dots in the theme
+   colour, behind every page. */
+.bg-playful {
+  background-color: var(--background);
+  background-image:
+    radial-gradient(circle at 14px 14px, var(--pattern) 3px, transparent 3.5px),
+    radial-gradient(circle at 54px 50px, var(--pattern) 6px, transparent 6.5px),
+    radial-gradient(circle at 30px 64px, var(--pattern) 2px, transparent 2.5px);
+  background-size: 80px 80px;
 }

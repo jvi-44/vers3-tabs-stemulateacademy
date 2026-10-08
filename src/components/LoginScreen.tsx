@@ -343,7 +343,8 @@ function SignUpForm({
           onChange={(e) =>
             USERNAME_PATTERN.test(e.target.value) && setUsername(e.target.value)
           }
-          placeholder="Letters, numbers, underscore only"
+          placeholder="3–20 letters, numbers or _"
+          maxLength={20}
           className="rounded-xl border-2 border-lime-200 bg-lime-50/50 py-3 h-auto"
         />
       </Field>

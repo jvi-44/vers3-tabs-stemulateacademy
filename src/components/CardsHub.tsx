@@ -101,7 +101,7 @@ export function CardsHub({
 
   if (view === "covers") {
     return (
-      <div className="max-w-5xl mx-auto space-y-6">
+      <div className="w-full space-y-6">
         <div className="flex items-center justify-between bg-card border border-border rounded-3xl p-5 shadow-sm">
           <div>
             <h2 className="text-xl font-black text-foreground">Card Albums</h2>
@@ -148,7 +148,7 @@ export function CardsHub({
   const packs = ALBUM_PACKS[view];
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="w-full space-y-6">
       <button onClick={() => setView("covers")} className="text-sm font-bold text-primary hover:underline">
         ← Back to Albums
       </button>

@@ -2,19 +2,7 @@
 // for the routes and SQL_EXPLAINED.md (project root) for a walkthrough of how
 // this all persists to disk.
 
-const BASE_URL = "/api";
-
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    headers: { "Content-Type": "application/json" },
-    ...options,
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.error || "Something went wrong. Please try again.");
-  }
-  return data as T;
-}
+import { request } from "./client";
 
 export interface ProgressRow {
   lesson_id: string;
