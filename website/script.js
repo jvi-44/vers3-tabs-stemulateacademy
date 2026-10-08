@@ -5,7 +5,12 @@
 // ─── Set this to the live STEMulate Academy address once it's deployed. ───
 // Every "Enter STEMulate Academy" button on the site uses it. While it's
 // empty, those buttons go to the Academy section on the home page instead.
-const ACADEMY_URL = "";
+// When you open the website on your own computer (localhost), the buttons
+// go to the Academy app running locally with `npm run dev:all`.
+const LIVE_ACADEMY_URL = "";
+const LOCAL_ACADEMY_URL = "http://localhost:5173";
+const isLocal = ["localhost", "127.0.0.1"].includes(location.hostname) || location.protocol === "file:";
+const ACADEMY_URL = LIVE_ACADEMY_URL || (isLocal ? LOCAL_ACADEMY_URL : "");
 
 document.documentElement.classList.add("js");
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;

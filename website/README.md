@@ -9,7 +9,7 @@ A static site (plain HTML, CSS and JS, no build step) with four pages:
 | `impact.html` | Headline numbers, growth, evaluation metrics, partners, testimonials |
 | `about.html` | Our story, values, and the EXCO by batch |
 
-Preview locally with `python3 -m http.server` from this folder.
+Preview locally with `python3 -m http.server 8000` from this folder, then open http://localhost:8000. Start the Academy app too (`npm run dev:all` from the repo root) and the "Enter STEMulate Academy" buttons open it.
 
 ## Updating content
 
@@ -22,5 +22,5 @@ Preview locally with `python3 -m http.server` from this folder.
   the `m-initial` span with `<img class="m-photo-img" src="assets/team/name.jpg" alt="">`.
 - **Workshop slides** live in `assets/slides/<workshop>/`, named by slide number
   in the original deck.
-- **Academy link:** set `ACADEMY_URL` at the top of `script.js`.
+- **Academy link:** set `LIVE_ACADEMY_URL` at the top of `script.js` once the Academy is deployed. Opened locally, the buttons already go to the Academy app at http://localhost:5173.
 - Slogan options are in `SLOGANS.md`.
