@@ -55,7 +55,7 @@ export const GAMES: GameDef[] = [
     howTo: [
       "Roll the dice and move around the board.",
       "To buy a place, work out the real price with 9% GST or a sale discount.",
-      "Wrong answers cost you money, so think carefully!",
+      "Wrong answers cost a $5 oops fee, but bonus questions earn cash!",
       "After 8 rounds, the richest player wins.",
     ],
     music: "gameshow",

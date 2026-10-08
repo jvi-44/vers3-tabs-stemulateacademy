@@ -25,6 +25,7 @@ function makeCode() {
 function publicRoom(room) {
   return {
     code: room.code,
+    version: room.version,
     gameId: room.gameId,
     hostId: room.hostId,
     status: room.status,
@@ -53,6 +54,7 @@ function broadcast(room, event, data) {
 }
 
 function broadcastRoom(room) {
+  room.version++;
   broadcast(room, "room", publicRoom(room));
 }
 
@@ -146,6 +148,7 @@ export function registerGameRoutes(app, db) {
       players: [{ ...p, ready: true, score: 0, progress: 0, done: false, connected: false }],
       clients: new Set(),
       touchedAt: Date.now(),
+      version: 0,
     };
     rooms.set(code, room);
     res.json({ room: publicRoom(room) });

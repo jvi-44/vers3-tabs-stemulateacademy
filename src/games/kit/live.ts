@@ -16,6 +16,8 @@ export interface LivePlayer {
 
 export interface LiveRoom {
   code: string;
+  /** Goes up on every change, so an older snapshot never replaces a newer one. */
+  version: number;
   gameId: string;
   hostId: string;
   status: "lobby" | "playing" | "finished";
@@ -65,6 +67,10 @@ export function useLiveRoom(code: string | null, me: PlayerIdentity) {
   const [room, setRoom] = useState<LiveRoom | null>(null);
   const [error, setError] = useState<string | null>(null);
   const relayHandlers = useRef(new Set<RelayHandler>());
+  // Snapshots arrive both from the event stream and from action replies, in any order.
+  const accept = useCallback((next: LiveRoom) => {
+    setRoom((prev) => (prev && prev.code === next.code && prev.version > next.version ? prev : next));
+  }, []);
 
   useEffect(() => {
     if (!code) {
@@ -72,7 +78,7 @@ export function useLiveRoom(code: string | null, me: PlayerIdentity) {
       return;
     }
     const es = new EventSource(`/api/game-rooms/${code}/events?playerId=${encodeURIComponent(me.id)}`);
-    es.addEventListener("room", (e) => setRoom(JSON.parse((e as MessageEvent).data)));
+    es.addEventListener("room", (e) => accept(JSON.parse((e as MessageEvent).data)));
     es.addEventListener("relay", (e) => {
       const { from, data } = JSON.parse((e as MessageEvent).data);
       relayHandlers.current.forEach((h) => h(from, data));
@@ -80,14 +86,14 @@ export function useLiveRoom(code: string | null, me: PlayerIdentity) {
     es.onerror = () => setError("Connection to the game server dropped. Trying again…");
     es.onopen = () => setError(null);
     return () => es.close();
-  }, [code, me.id]);
+  }, [code, me.id, accept]);
 
   const act = useCallback(
     (type: string, payload?: unknown) => {
       if (!code) return Promise.resolve(null);
       return post<{ room?: LiveRoom }>(`/game-rooms/${code}/action`, { playerId: me.id, type, payload })
         .then((r) => {
-          if (r.room) setRoom(r.room);
+          if (r.room) accept(r.room);
           return r.room ?? null;
         })
         .catch((e: Error) => {
@@ -95,7 +101,7 @@ export function useLiveRoom(code: string | null, me: PlayerIdentity) {
           return null;
         });
     },
-    [code, me.id],
+    [code, me.id, accept],
   );
 
   const onRelay = useCallback((h: RelayHandler) => {
