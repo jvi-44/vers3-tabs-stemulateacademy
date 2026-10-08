@@ -34,10 +34,15 @@ const USERNAME_PATTERN = /^[A-Za-z0-9_]*$/;
 
 export function LoginScreen({
   onLogin,
+  onGuest,
+  initialView = "signin",
 }: {
   onLogin: (user: AuthUser) => void;
+  /** Look around without an account. Nothing is saved. */
+  onGuest: () => void;
+  initialView?: "signin" | "signup";
 }) {
-  const [view, setView] = useState<View>("signin");
+  const [view, setView] = useState<View>(initialView);
   const [refData, setRefData] = useState<ReferenceData | null>(null);
 
   useEffect(() => {
@@ -112,6 +117,19 @@ export function LoginScreen({
             </motion.div>
           )}
         </AnimatePresence>
+
+        <div className="mt-6 pt-5 border-t border-lime-100 text-center">
+          <button
+            onClick={onGuest}
+            className="w-full py-3 rounded-xl border-2 border-dashed border-lime-300 text-lime-700 font-bold hover:bg-lime-50 transition-colors"
+          >
+            Just looking? Continue as guest
+          </button>
+          <p className="text-xs text-slate-400 mt-2">
+            Guests can explore lessons and games, but progress isn't saved and the leaderboard and chat are
+            for members only.
+          </p>
+        </div>
       </motion.div>
     </div>
   );

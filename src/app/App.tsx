@@ -16,6 +16,8 @@ import {
   Moon,
   Sun,
   LogOut,
+  LogIn,
+  UserPlus,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Toaster, toast } from "sonner";
@@ -107,6 +109,10 @@ export default function App() {
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [selectedBeatId, setSelectedBeatId] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  // Guest mode: look around without an account. Nothing is sent to or saved
+  // on the server, and members-only pages (leaderboard, chat) stay locked.
+  const [isGuest, setIsGuest] = useState(false);
+  const [loginView, setLoginView] = useState<"signin" | "signup">("signin");
   const [user, setUser] = useState<UserType>(MOCK_USER);
   const [userCards, setUserCards] = useState<Record<string, number>>({});
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
@@ -148,6 +154,7 @@ export default function App() {
   }, [authUser, user.avatar]);
 
   const applyAuthUser = (u: AuthUser) => {
+    setIsGuest(false);
     setAuthUser(u);
     setUser((prev) => ({
       ...prev,
@@ -191,11 +198,35 @@ export default function App() {
       .catch(() => {});
   }, []);
 
-  const handleLogout = () => {
-    logout();
-    setAuthUser(null);
-    setIsLoggedIn(false);
+  const resetLocalState = () => {
+    setUser(MOCK_USER);
+    setCompletedBeats({});
+    setUserCards({});
+    setSubmittedExitCards([]);
     setCurrentPage("home");
+  };
+
+  const handleLogout = () => {
+    if (!isGuest) logout();
+    setAuthUser(null);
+    setIsGuest(false);
+    setIsLoggedIn(false);
+    setLoginView("signin");
+    resetLocalState();
+  };
+
+  const handleGuest = () => {
+    resetLocalState();
+    setUser({ ...MOCK_USER, username: "Guest", xp: 0, level: 1, atoms: 0, badges: [] });
+    setGamePlayer({ id: "guest", name: "Guest", avatar: MOCK_USER.avatar });
+    setIsGuest(true);
+    setIsLoggedIn(true);
+  };
+
+  // From guest mode back to the sign-in / sign-up screen.
+  const leaveGuest = (view: "signin" | "signup") => {
+    handleLogout();
+    setLoginView(view);
   };
 
   // ---- Points ----
@@ -251,7 +282,11 @@ export default function App() {
         },
         ...prev,
       ]);
-      toast.success("Your reflection was published to the Gallery! 🎉");
+      toast.success(
+        isGuest
+          ? "Your reflection is in the Gallery for now. Create an account to keep it!"
+          : "Your reflection was published to the Gallery! 🎉",
+      );
     }
 
     setCompletedBeats((prev) => {
@@ -320,7 +355,8 @@ export default function App() {
 
   if (isAdminRoute) return <AdminPage onExit={() => (window.location.hash = "")} />;
 
-  if (!isLoggedIn) return <LoginScreen onLogin={handleLogin} />;
+  if (!isLoggedIn)
+    return <LoginScreen key={loginView} onLogin={handleLogin} onGuest={handleGuest} initialView={loginView} />;
 
   const activeLesson = GAME_LESSONS.find((l) => l.id === selectedLessonId);
 
@@ -359,6 +395,7 @@ export default function App() {
         onLogout={handleLogout}
         darkMode={darkMode}
         onToggleDark={() => setDarkMode((d) => !d)}
+        logoutLabel={isGuest ? "Leave guest mode" : "Log Out"}
       />
 
       <div className="flex-1 min-w-0 h-screen flex flex-col overflow-hidden">
@@ -405,9 +442,24 @@ export default function App() {
               onToggleDark={() => setDarkMode((d) => !d)}
               onProfile={() => setCurrentPage("profile")}
               onLogout={handleLogout}
+              isGuest={isGuest}
+              onSignUp={() => leaveGuest("signup")}
+              onSignIn={() => leaveGuest("signin")}
             />
           </div>
         </header>
+
+        {isGuest && (
+          <div className="shrink-0 bg-accent text-accent-foreground px-4 md:px-8 py-2 flex items-center justify-between gap-3 text-xs sm:text-sm font-semibold">
+            <span className="min-w-0">👀 You're exploring as a guest. Your progress won't be saved.</span>
+            <button
+              onClick={() => leaveGuest("signup")}
+              className="shrink-0 bg-primary text-primary-foreground font-bold px-3 py-1.5 rounded-xl hover:opacity-90"
+            >
+              Create account
+            </button>
+          </div>
+        )}
 
         <main className="flex-1 overflow-y-auto bg-playful p-4 md:p-8 pb-24 md:pb-8">
           {/* One fixed content width for every page, so screens don't jump
@@ -438,7 +490,14 @@ export default function App() {
               onShowCertificate={() => setShowCertificate(true)}
             />
           )}
-          {currentPage === "leaderboard" && (
+          {isGuest && (currentPage === "leaderboard" || currentPage === "friends" || currentPage === "profile") && (
+            <MembersOnly
+              page={currentPage}
+              onSignUp={() => leaveGuest("signup")}
+              onSignIn={() => leaveGuest("signin")}
+            />
+          )}
+          {currentPage === "leaderboard" && !isGuest && (
             <Leaderboard myUserId={authUser?.userId ?? 0} />
           )}
           {currentPage === "gallery" && <Gallery posts={MOCK_GALLERY} reflectionPosts={submittedExitCards} />}
@@ -450,6 +509,7 @@ export default function App() {
                 handleEarnXP(xp);
                 handleEarnAtoms(atoms);
               }}
+              isGuest={isGuest}
             />
           )}
           {currentPage === "friends" && authUser && <FriendsTab myUserId={authUser.userId} />}
@@ -493,6 +553,7 @@ export default function App() {
                 onLogout={handleLogout}
                 darkMode={darkMode}
                 onToggleDark={() => setDarkMode((d) => !d)}
+                logoutLabel={isGuest ? "Leave guest mode" : "Log Out"}
               />
             </motion.div>
           </>
@@ -996,6 +1057,54 @@ function Leaderboard({ myUserId }: { myUserId: number }) {
 }
 
 // ---------------------------------------------------------------------------
+// Members-only pages, shown to guests instead of the leaderboard, chat and
+// profile (they hold other students' data or need an account to save).
+// ---------------------------------------------------------------------------
+
+const MEMBERS_ONLY_TEXT: Partial<Record<Page, { title: string; body: string }>> = {
+  leaderboard: {
+    title: "The leaderboard is for members",
+    body: "Create a free account to earn XP, climb the leaderboard and see how you rank against other explorers.",
+  },
+  friends: {
+    title: "Friends and chat are for members",
+    body: "To keep everyone safe, only students with an account can add friends and chat.",
+  },
+  profile: {
+    title: "Make it yours with an account",
+    body: "Pick an avatar, collect badges and keep your progress by creating a free account.",
+  },
+};
+
+function MembersOnly({ page, onSignUp, onSignIn }: { page: Page; onSignUp: () => void; onSignIn: () => void }) {
+  const text = MEMBERS_ONLY_TEXT[page] ?? MEMBERS_ONLY_TEXT.profile!;
+  return (
+    <div className="w-full flex justify-center pt-6">
+      <div className="bg-card rounded-3xl border border-border shadow-sm p-8 max-w-md w-full text-center">
+        <div className="flex justify-center -space-x-4 mb-4">
+          {[stembotGreen, stembotBlue, stembotRed].map((src, i) => (
+            <img key={i} src={src} alt="" className="h-20 w-20 object-contain drop-shadow" />
+          ))}
+        </div>
+        <div className="w-11 h-11 rounded-2xl bg-accent text-muted-foreground flex items-center justify-center mx-auto mb-3">
+          <Lock size={20} />
+        </div>
+        <h2 className="font-black text-foreground mb-2">{text.title}</h2>
+        <p className="text-sm text-muted-foreground mb-5">{text.body}</p>
+        <div className="flex flex-col sm:flex-row gap-2 justify-center">
+          <button onClick={onSignUp} className="px-5 py-2.5 rounded-2xl bg-primary text-primary-foreground font-bold text-sm">
+            Create an account
+          </button>
+          <button onClick={onSignIn} className="px-5 py-2.5 rounded-2xl bg-accent text-accent-foreground font-bold text-sm">
+            Sign in
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Account menu (avatar drop-down in the top bar)
 // ---------------------------------------------------------------------------
 
@@ -1008,6 +1117,9 @@ function AccountMenu({
   onToggleDark,
   onProfile,
   onLogout,
+  isGuest,
+  onSignUp,
+  onSignIn,
 }: {
   avatar: string;
   name: string;
@@ -1017,6 +1129,9 @@ function AccountMenu({
   onToggleDark: () => void;
   onProfile: () => void;
   onLogout: () => void;
+  isGuest: boolean;
+  onSignUp: () => void;
+  onSignIn: () => void;
 }) {
   return (
     <DropdownMenu>
@@ -1029,11 +1144,22 @@ function AccountMenu({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56 rounded-2xl">
-        <DropdownMenuLabel className="truncate">@{name}</DropdownMenuLabel>
+        <DropdownMenuLabel className="truncate">{isGuest ? "Guest" : `@${name}`}</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={onProfile}>
-          <UserIcon size={15} /> View profile
-        </DropdownMenuItem>
+        {isGuest ? (
+          <>
+            <DropdownMenuItem onSelect={onSignUp}>
+              <UserPlus size={15} /> Create an account
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={onSignIn}>
+              <LogIn size={15} /> Sign in
+            </DropdownMenuItem>
+          </>
+        ) : (
+          <DropdownMenuItem onSelect={onProfile}>
+            <UserIcon size={15} /> View profile
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSub>
           <DropdownMenuSubTrigger className="gap-2">
             <Palette size={15} className="text-muted-foreground" /> Colour theme
@@ -1057,7 +1183,7 @@ function AccountMenu({
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem variant="destructive" onSelect={onLogout}>
-          <LogOut size={15} /> Log out
+          <LogOut size={15} /> {isGuest ? "Leave guest mode" : "Log out"}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

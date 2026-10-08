@@ -13,7 +13,11 @@ const KEY = (userId: string | number | undefined) => `stemulate_game_best_${user
 
 type BestMap = Record<string, number>;
 
+// Guests (no userId) keep scores in memory only, so nothing is saved for them.
+let guestBests: BestMap = {};
+
 function read(userId?: string | number): BestMap {
+  if (userId === undefined) return { ...guestBests };
   try {
     return JSON.parse(localStorage.getItem(KEY(userId)) || "{}");
   } catch {
@@ -22,6 +26,11 @@ function read(userId?: string | number): BestMap {
 }
 
 function write(userId: string | number | undefined, map: BestMap) {
+  if (userId === undefined) {
+    guestBests = map;
+    window.dispatchEvent(new CustomEvent("stemulate-highscores"));
+    return;
+  }
   try {
     localStorage.setItem(KEY(userId), JSON.stringify(map));
   } catch {

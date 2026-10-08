@@ -56,6 +56,14 @@ or centre (see `otherUser()` in `server/users.js`).
 7. **Accountability.** Appoint a Data Protection Officer and write down these
    policies.
 
+## Guest mode
+
+"Continue as guest" on the sign-in screen lets anyone look around without an
+account. Guests send nothing to the server and nothing is stored: XP, lesson
+progress and game scores live only in the open tab and vanish on refresh. The
+leaderboard, friends, chat and live games stay locked for guests, because they
+show other students' usernames.
+
 ## If users come from outside Singapore
 
 - **EU/UK (GDPR, UK Children's Code):** explicit right to erasure (Art. 17)

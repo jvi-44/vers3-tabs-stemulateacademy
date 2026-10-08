@@ -21,10 +21,13 @@ export function GamesTab({
   completedBeats,
   onOpenBeat,
   onReplay,
+  isGuest = false,
 }: {
   completedBeats: Record<string, boolean>;
   onOpenBeat: (lessonId: string, beatId: string) => void;
   onReplay: (amountXp: number, amountAtoms: number) => void;
+  /** Guests play solo only: live rooms show other players' names. */
+  isGuest?: boolean;
 }) {
   const player = useGamePlayer();
   const [session, setSession] = useState<Session | null>(null);
@@ -47,11 +50,11 @@ export function GamesTab({
       .then((rooms) => setOpenRooms(rooms.filter((r) => !r.players.some((p) => p.id === player.id))))
       .catch(() => setOpenRooms([]));
   useEffect(() => {
-    if (session) return;
+    if (session || isGuest) return;
     refreshRooms();
     const id = setInterval(refreshRooms, 4000);
     return () => clearInterval(id);
-  }, [session]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [session, isGuest]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const unlocked = (def: GameDef) => !!completedBeats[def.id];
   const lessonIdFor = (def: GameDef) =>
@@ -128,6 +131,14 @@ export function GamesTab({
       </div>
 
       {/* Join a live game */}
+      {isGuest ? (
+        <div className="rounded-3xl bg-accent/60 border border-border p-4 flex items-center gap-3">
+          <Lock size={18} className="text-muted-foreground shrink-0" />
+          <p className="text-sm font-semibold text-foreground">
+            Live games with friends are for members. Create a free account to play live.
+          </p>
+        </div>
+      ) : (
       <div className="rounded-3xl bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 p-4 text-white shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center gap-3">
           <div className="flex items-center gap-2 flex-1">
@@ -183,6 +194,7 @@ export function GamesTab({
           </div>
         )}
       </div>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {GAMES.map((def) => {
@@ -234,7 +246,8 @@ export function GamesTab({
                     <Play size={14} fill="currentColor" /> Solo
                   </button>
                   <button
-                    disabled={!isUnlocked || busy}
+                    disabled={!isUnlocked || busy || isGuest}
+                    title={isGuest ? "Live play is for members" : undefined}
                     onClick={() => startLive(def)}
                     className="game-btn bg-violet-500 text-white py-2 text-sm flex items-center justify-center gap-1.5"
                   >
