@@ -1,0 +1,127 @@
+/* Admin page extras. Everything else comes from theme.css building blocks
+   (.sticker, .panel-pop, .btn-pop, .chip-ink, .meter ...). */
+
+/* In the components layer so Tailwind utilities on the same element win.
+   Restating Tailwind's layer order first keeps it right even if this file
+   happens to load before the main stylesheet. */
+@layer theme, base, components, utilities;
+
+@layer components {
+
+/* An ink-outlined sticker card: the .sticker shape with the hard ink edge. */
+.admin-card {
+  background: var(--card);
+  color: var(--card-foreground);
+  border: 2.5px solid var(--ink-line);
+  border-radius: 1.75rem;
+  box-shadow: 0 5px 0 var(--ink-line);
+}
+
+/* Chunky text field with an ink outline. */
+.ink-input {
+  width: 100%;
+  background: var(--input-background);
+  color: var(--foreground);
+  border: 2.5px solid var(--ink-line);
+  border-radius: 999px;
+  padding: 0.7rem 1.1rem;
+  font-weight: 700;
+  outline: none;
+  box-shadow: inset 0 3px 0 rgba(0, 0, 0, 0.05);
+  transition: box-shadow 0.15s ease;
+}
+.ink-input::placeholder {
+  color: var(--muted-foreground);
+  opacity: 0.75;
+  font-weight: 600;
+}
+.ink-input:focus-visible {
+  box-shadow:
+    inset 0 3px 0 rgba(0, 0, 0, 0.05),
+    0 0 0 4px color-mix(in srgb, var(--primary) 40%, transparent);
+}
+select.ink-input {
+  appearance: none;
+  padding-right: 2.4rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23746550' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.95rem center;
+  cursor: pointer;
+}
+/* Hide number spinners: the fields are typed into. */
+.ink-input[type="number"]::-webkit-outer-spin-button,
+.ink-input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.ink-input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* The big 4-digit PIN field. */
+.pin-input {
+  font-family: var(--font-head);
+  font-size: 2rem;
+  letter-spacing: 0.6em;
+  text-align: center;
+  padding-left: 1.6rem;
+  border-radius: 1.25rem;
+}
+
+/* Danger button: same chunky shape, red fill. */
+.btn-danger {
+  background: var(--destructive);
+  color: #fff;
+}
+
+/* Rows of the student table. */
+.admin-row {
+  transition: background-color 0.15s ease;
+}
+.admin-row:hover,
+.admin-row[data-active="true"] {
+  background: color-mix(in srgb, var(--soft-1) 70%, transparent);
+}
+
+/* Little speech bubble beside the STEMbot on the passkey gate. */
+.admin-bubble {
+  position: relative;
+  background: var(--card);
+  color: var(--foreground);
+  border: 2.5px solid var(--ink-line);
+  border-radius: 1.4rem;
+  box-shadow: 0 4px 0 var(--ink-line);
+}
+.admin-bubble::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -11px;
+  width: 18px;
+  height: 18px;
+  translate: -50% 0;
+  rotate: 45deg;
+  background: var(--card);
+  border-right: 2.5px solid var(--ink-line);
+  border-bottom: 2.5px solid var(--ink-line);
+}
+
+}
+
+@keyframes admin-shake {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  20%,
+  60% {
+    translate: -8px 0;
+  }
+  40%,
+  80% {
+    translate: 8px 0;
+  }
+}
+.admin-shake {
+  animation: admin-shake 0.4s ease;
+}
