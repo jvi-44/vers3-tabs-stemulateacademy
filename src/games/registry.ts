@@ -73,8 +73,8 @@ export const GAMES: GameDef[] = [
     intro: "Our ship needs to reach orbit! Pick the right fuel and cargo, then control the thrust to balance the forces and stop in the orbit zone.",
     howTo: [
       "Choose fuel and cargo before launch. More mass needs more force!",
-      "Hold the THRUST button to push up against gravity.",
-      "Stop inside the green orbit zone without running out of fuel.",
+      "Hold THRUST (or Space) to push up against gravity. Let go and gravity slows you down.",
+      "Stop inside the green orbit zone and hold steady there for 2 seconds, without running out of fuel.",
       "Each planet has different gravity. Land all missions for top marks.",
     ],
     music: "space",

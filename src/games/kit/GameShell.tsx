@@ -190,7 +190,7 @@ export function GameShell({
       id: `bot-${b}`,
       name: STEMBOTS[b].name,
       avatar: STEMBOTS[b].avatar,
-      target: Math.round(42 + rnd() * 50),
+      target: Math.round(35 + rnd() * 45),
       pace: 0.85 + rnd() * 0.3,
     }));
   }, [seed, def.bot]);
