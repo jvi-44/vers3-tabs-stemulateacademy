@@ -308,14 +308,15 @@ export function FriendsTab({ myUserId }: { myUserId: number }) {
     <div className="w-full h-full flex flex-col">
       <div className="mb-4 shrink-0 flex items-end justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="text-xl font-black text-foreground flex items-center gap-2">
-            <Users className="text-primary" /> Friends
-          </h2>
-          <p className="text-sm text-muted-foreground line-clamp-2">
+          <span className="kicker">
+            <Users size={13} /> Friends
+          </span>
+          <h1 className="font-display text-foreground !text-[clamp(1.6rem,1.2rem+1.2vw,2.3rem)] mt-2.5 mb-0.5">Chat with your crew</h1>
+          <p className="text-sm font-semibold text-muted-foreground line-clamp-2">
             Chat with friends one-on-one or in groups. Messages arrive live.
           </p>
         </div>
-        <img src={stembotBlue} alt="" className="h-14 w-auto shrink-0 drop-shadow hidden sm:block -mb-1" />
+        <img src={stembotBlue} alt="" className="h-20 w-auto shrink-0 die-cut bob rotate-[8deg] hidden sm:block -mb-3 relative z-10" />
       </div>
 
       {offline && (
@@ -325,7 +326,7 @@ export function FriendsTab({ myUserId }: { myUserId: number }) {
       )}
 
       {/* Fixed-height chat area, the same size on every visit and every chat */}
-      <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] bg-card border border-border rounded-3xl shadow-sm overflow-hidden h-[calc(100dvh-17rem)] md:h-[calc(100dvh-14rem)] min-h-[440px] max-h-[760px]">
+      <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] sticker overflow-hidden h-[calc(100dvh-17rem)] md:h-[calc(100dvh-14rem)] min-h-[440px] max-h-[760px]">
         {/* ---------------- List panel ---------------- */}
         <div
           className={cn(

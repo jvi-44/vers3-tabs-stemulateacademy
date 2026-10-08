@@ -115,31 +115,35 @@ export function GamesTab({
     <div className="w-full space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-xl font-black text-foreground flex items-center gap-2">
-            <Gamepad2 className="text-primary" /> Games Arcade
-          </h2>
-          <p className="text-sm text-muted-foreground max-w-xl">
+          <span className="kicker">
+            <Gamepad2 size={13} /> Games arcade
+          </span>
+          <h1 className="font-display text-foreground !text-[clamp(1.8rem,1.3rem+1.5vw,2.6rem)] mt-3 mb-1">Play, replay, beat your best</h1>
+          <p className="text-sm font-semibold text-muted-foreground max-w-xl">
             Play each game in its lesson first, then come back to beat your high score, alone against the STEMbots or live with 2 to 4
             friends. Every replay earns {REPLAY_XP} XP + {REPLAY_ATOMS} Atoms, and a new high score adds {NEW_BEST_BONUS_XP} XP.
           </p>
         </div>
-        <div className="flex items-center gap-2 bg-card border border-border rounded-2xl px-4 py-2 shadow-sm">
-          <Star size={18} className="fill-amber-400 text-amber-400" />
-          <span className="font-black text-foreground">{totalStars}</span>
-          <span className="text-xs font-bold text-muted-foreground">/ {GAMES.length * 3} stars</span>
+        <div className="chip-ink bg-soft-1 text-base rotate-[2deg]">
+          <Star size={18} className="fill-amber-400 text-amber-500" />
+          {totalStars}
+          <span className="text-xs opacity-70">/ {GAMES.length * 3} stars</span>
         </div>
       </div>
 
       {/* Join a live game */}
       {isGuest ? (
-        <div className="rounded-3xl bg-accent/60 border border-border p-4 flex items-center gap-3">
+        <div className="rounded-[1.6rem] bg-soft-3 border-2 border-dashed border-foreground/20 p-4 flex items-center gap-3">
           <Lock size={18} className="text-muted-foreground shrink-0" />
           <p className="text-sm font-semibold text-foreground">
             Live games with friends are for members. Create a free account to play live.
           </p>
         </div>
       ) : (
-      <div className="rounded-3xl bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 p-4 text-white shadow-sm">
+      <div
+        className="rounded-[1.75rem] p-4 sm:p-5 text-white border-[2.5px] border-ink shadow-[0_5px_0_var(--ink-line)]"
+        style={{ backgroundColor: "#7c4dff", backgroundImage: "var(--motif-on)", backgroundSize: "200px 200px" }}
+      >
         <div className="flex flex-col md:flex-row md:items-center gap-3">
           <div className="flex items-center gap-2 flex-1">
             <Users size={20} />
@@ -205,13 +209,13 @@ export function GamesTab({
           return (
             <div
               key={def.id}
-              className="group relative rounded-3xl border border-border shadow-sm bg-card overflow-hidden transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg"
+              className="group relative sticker overflow-hidden transition-transform duration-300 hover:-translate-y-1 hover:rotate-[-0.6deg]"
             >
               <div className={cn("relative h-32 flex items-center justify-center overflow-hidden game-checker", def.gradient)}>
                 <span className="text-6xl drop-shadow-[0_6px_0_rgba(0,0,0,0.25)] transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-6">
                   {def.icon}
                 </span>
-                <img src={bot.avatar} alt={bot.name} className="absolute right-2 bottom-0 w-16 h-16 object-contain drop-shadow-lg game-float" />
+                <img src={bot.avatar} alt={bot.name} className="absolute right-2 bottom-0 w-16 h-16 object-contain die-cut game-float" />
                 {score !== undefined && (
                   <span className="absolute left-3 top-3 flex items-center gap-1 bg-black/30 text-yellow-200 rounded-xl px-2 py-1 text-xs font-black">
                     <Trophy size={12} /> {score}/100
@@ -219,7 +223,7 @@ export function GamesTab({
                 )}
               </div>
               <div className="p-4">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-primary">{def.lessonTitle}</p>
+                <p className="text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground">{def.lessonTitle}</p>
                 <h3 className="font-black text-foreground leading-tight">{def.title}</h3>
                 <p className="text-xs text-muted-foreground mt-1 min-h-[2rem]">{def.tagline}</p>
                 <div className="flex items-center justify-between mt-3">
@@ -230,8 +234,8 @@ export function GamesTab({
                   </div>
                   <span className="text-[11px] font-bold text-muted-foreground">Best: {score ?? "--"}/100</span>
                 </div>
-                <div className="h-2 bg-accent rounded-full overflow-hidden mt-1.5">
-                  <div className="h-full bg-gradient-to-r from-lime-400 to-amber-400 rounded-full" style={{ width: `${score ?? 0}%` }} />
+                <div className="meter mt-1.5 !h-2.5 !border-[1.5px]">
+                  <span style={{ width: `${score ?? 0}%` }} />
                 </div>
                 <div className="grid grid-cols-2 gap-2 mt-4">
                   <button
@@ -257,9 +261,9 @@ export function GamesTab({
               </div>
 
               {!isUnlocked && (
-                <div className="absolute inset-0 bg-card/85 backdrop-blur-[2px] flex flex-col items-center justify-center gap-2 p-4 text-center">
-                  <div className="w-12 h-12 rounded-2xl bg-accent flex items-center justify-center text-muted-foreground">
-                    <Lock size={22} />
+                <div className="absolute inset-0 bg-card/80 backdrop-blur-[3px] flex flex-col items-center justify-center gap-2 p-4 text-center">
+                  <div className="w-12 h-12 rounded-2xl bg-soft-1 border-[2.5px] border-ink shadow-[0_3px_0_var(--ink-line)] flex items-center justify-center text-foreground rotate-[-6deg]">
+                    <Lock size={22} strokeWidth={2.5} />
                   </div>
                   <p className="text-sm font-black text-foreground">{def.title}</p>
                   <p className="text-xs font-bold text-muted-foreground">Play it first in the "{def.lessonTitle}" lesson to unlock it here.</p>

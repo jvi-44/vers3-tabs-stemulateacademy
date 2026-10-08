@@ -16,6 +16,10 @@ import {
 import { StembotPattern } from "./StembotPattern";
 import { ColourBlockPicker, SubjectBlockPicker } from "./RecoveryPicker";
 import stemulateLogo from "../assets/stemulate_logo.png";
+import stembotBlue from "../assets/stembot_blue.png";
+import stembotRed from "../assets/stembot_red.png";
+import stembotGreen from "../assets/stembot_green.png";
+import stembotCream from "../assets/stembot_cream.png";
 import {
   fetchReferenceData,
   login as apiLogin,
@@ -52,18 +56,39 @@ export function LoginScreen({
   }, []);
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center p-4 bg-gradient-to-br from-lime-100 via-yellow-50 to-lime-200">
-      {/* Fills the entire viewport (not just one side) and slowly, continuously
-          auto-scrolls sideways in a seamless loop. */}
-      <StembotPattern className="opacity-25" />
-      <div className="fixed inset-0 bg-gradient-to-br from-lime-100/40 via-yellow-50/30 to-lime-200/40 pointer-events-none" />
-      <div className="fixed inset-0 bg-gradient-to-t from-white/50 via-transparent to-white/30 pointer-events-none" />
+    <div className="min-h-screen relative flex items-center justify-center p-4 py-10 bg-[#fffbea] text-[#1b2e1c] overflow-hidden">
+      {/* Same drifting STEMbot pattern as the website's hero */}
+      <StembotPattern className="opacity-[0.22]" />
+      <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(60%_70%_at_50%_50%,rgba(255,251,234,0.92)_30%,rgba(255,251,234,0.35)_80%)]" />
 
+      <div className="relative z-10 w-full max-w-5xl grid lg:grid-cols-[1.1fr_1fr] gap-10 items-center">
+        {/* Website-style welcome, desktop only */}
+        <div className="hidden lg:block">
+          <span className="kicker !bg-[#c6ef72] !text-[#1e4a24]">Project STEMulate</span>
+          <h1 className="font-display !text-[3.6rem] !leading-[1.02] mt-5 mb-5">
+            Learn, play and <span className="mark-pop !bg-[#7c4dff]">collect</span> with the{" "}
+            <span className="mark-pop mark-pop-2 !bg-[#c6ef72]">STEMbots!</span>
+          </h1>
+          <p className="text-lg font-semibold text-[#4e5f50] max-w-md mb-8">
+            Story lessons, Minecraft-style games and card albums to fill, made for curious primary schoolers.
+          </p>
+          <div className="flex items-end gap-1">
+            {[stembotGreen, stembotBlue, stembotCream, stembotRed].map((src, i) => (
+              <img
+                key={i}
+                src={src}
+                alt=""
+                className="h-28 die-cut bob"
+                style={{ animationDelay: `${-i * 1.2}s`, rotate: `${[-8, 5, -4, 9][i]}deg` }}
+              />
+            ))}
+          </div>
+        </div>
 
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="relative z-10 bg-white/95 backdrop-blur rounded-3xl p-8 md:p-10 w-full max-w-md shadow-2xl border-2 border-lime-200"
+        className="relative bg-white rounded-[2rem] p-8 md:p-10 w-full max-w-md mx-auto border-[3px] border-[#1b2e1c] shadow-[0_8px_0_#1b2e1c]"
       >
         <div className="text-center mb-6">
           <img
@@ -71,8 +96,10 @@ export function LoginScreen({
             alt="STEMulate Academy"
             className="w-20 h-20 object-contain mx-auto mb-3"
           />
-          <h2 className="text-3xl font-bold text-slate-900">STEMulate Academy</h2>
-          <p className="text-slate-500">Your STEM journey awaits!</p>
+          <h2 className="font-display !text-3xl text-[#1b2e1c]">
+            STEMulate <span className="text-[#4f9a26]">Academy</span>
+          </h2>
+          <p className="text-[#4e5f50] font-semibold">Your STEM adventure awaits!</p>
         </div>
 
         <AnimatePresence mode="wait">
@@ -118,19 +145,20 @@ export function LoginScreen({
           )}
         </AnimatePresence>
 
-        <div className="mt-6 pt-5 border-t border-lime-100 text-center">
+        <div className="mt-6 pt-5 border-t-2 border-dashed border-[#1b2e1c]/10 text-center">
           <button
             onClick={onGuest}
-            className="w-full py-3 rounded-xl border-2 border-dashed border-lime-300 text-lime-700 font-bold hover:bg-lime-50 transition-colors"
+            className="w-full py-3 rounded-full border-2 border-dashed border-[#7c4dff]/50 text-[#5a2fd8] font-display font-semibold hover:bg-[#efe7ff] transition-colors"
           >
             Just looking? Continue as guest
           </button>
-          <p className="text-xs text-slate-400 mt-2">
+          <p className="text-xs text-[#4e5f50]/80 mt-2">
             Guests can explore lessons and games, but progress isn't saved and the leaderboard and chat are
             for members only.
           </p>
         </div>
       </motion.div>
+      </div>
     </div>
   );
 }
@@ -171,7 +199,7 @@ function SignInForm({
   return (
     <div className="space-y-6">
       <div>
-        <Label className="text-sm font-bold text-slate-600 mb-2 block">
+        <Label className="text-sm font-bold text-[#1b2e1c] mb-2 block">
           Username
         </Label>
         <Input
@@ -180,13 +208,13 @@ function SignInForm({
             USERNAME_PATTERN.test(e.target.value) && setUsername(e.target.value)
           }
           placeholder="Enter your username"
-          className="w-full px-4 py-4 h-auto rounded-2xl border-2 border-lime-200 focus-visible:border-lime-500 font-bold bg-lime-50/50"
+          className="w-full px-4 py-4 h-auto rounded-2xl border-2 border-[#1b2e1c]/15 focus-visible:border-[#7cc242] font-bold bg-[#fffdf3]"
           onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
         />
       </div>
 
       <div>
-        <Label className="text-sm font-bold text-slate-600 mb-2 block">
+        <Label className="text-sm font-bold text-[#1b2e1c] mb-2 block">
           4-Digit PIN
         </Label>
         <Input
@@ -196,14 +224,14 @@ function SignInForm({
           onChange={(e) => PIN_PATTERN.test(e.target.value) && setPin(e.target.value)}
           placeholder="••••"
           maxLength={4}
-          className="w-full px-4 py-4 h-auto rounded-2xl border-2 border-lime-200 focus-visible:border-lime-500 font-bold text-center text-2xl tracking-[1em] bg-lime-50/50"
+          className="w-full px-4 py-4 h-auto rounded-2xl border-2 border-[#1b2e1c]/15 focus-visible:border-[#7cc242] font-bold text-center text-2xl tracking-[1em] bg-[#fffdf3]"
           onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
         />
       </div>
 
       <button
         onClick={onForgot}
-        className="text-sm text-lime-700 font-bold hover:underline block"
+        className="text-sm text-[#5a2fd8] font-bold hover:underline block"
         type="button"
       >
         Forgot your PIN?
@@ -212,17 +240,17 @@ function SignInForm({
       <Button
         disabled={!username.trim() || pin.length !== 4 || loading}
         onClick={handleSubmit}
-        className="w-full py-4 h-auto bg-gradient-to-r from-lime-500 to-yellow-500 text-white rounded-2xl font-bold text-lg hover:from-lime-600 hover:to-yellow-600 shadow-lg disabled:opacity-50"
+        className="btn-pop w-full !py-4 h-auto !rounded-full text-lg !bg-[#7cc242] hover:!bg-[#8fd152] !text-[#1b2e1c]"
       >
         {loading ? "Signing in..." : "Sign In"}
       </Button>
 
-      <p className="text-center text-sm text-slate-500">
+      <p className="text-center text-sm text-[#4e5f50]">
         Don't have an account?{" "}
         <button
           type="button"
           onClick={onSwitch}
-          className="text-lime-700 font-bold hover:underline"
+          className="text-[#5a2fd8] font-bold hover:underline"
         >
           Create One
         </button>
@@ -302,7 +330,7 @@ function SignUpForm({
   };
 
   if (!refData) {
-    return <p className="text-center text-slate-500 py-8">Loading form...</p>;
+    return <p className="text-center text-[#4e5f50] py-8">Loading form...</p>;
   }
 
   return (
@@ -312,13 +340,13 @@ function SignUpForm({
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
           placeholder="Your full name"
-          className="rounded-xl border-2 border-lime-200 bg-lime-50/50 py-3 h-auto"
+          className="rounded-xl border-2 border-[#1b2e1c]/15 bg-[#fffdf3] py-3 h-auto"
         />
       </Field>
 
       <Field label="Primary School Level">
         <Select value={schoolLevelId} onValueChange={setSchoolLevelId}>
-          <SelectTrigger className="rounded-xl border-2 border-lime-200 bg-lime-50/50 h-11">
+          <SelectTrigger className="rounded-xl border-2 border-[#1b2e1c]/15 bg-[#fffdf3] h-11">
             <SelectValue placeholder="Select your level" />
           </SelectTrigger>
           <SelectContent>
@@ -333,7 +361,7 @@ function SignUpForm({
 
       <Field label="Organisation / Centre">
         <Select value={orgId} onValueChange={setOrgId}>
-          <SelectTrigger className="rounded-xl border-2 border-lime-200 bg-lime-50/50 h-11">
+          <SelectTrigger className="rounded-xl border-2 border-[#1b2e1c]/15 bg-[#fffdf3] h-11">
             <SelectValue placeholder="Select your organisation" />
           </SelectTrigger>
           <SelectContent>
@@ -350,7 +378,7 @@ function SignUpForm({
             value={customOrgName}
             onChange={(e) => setCustomOrgName(e.target.value)}
             placeholder="Type your organisation's name"
-            className="rounded-xl border-2 border-lime-200 bg-lime-50/50 py-3 h-auto mt-2"
+            className="rounded-xl border-2 border-[#1b2e1c]/15 bg-[#fffdf3] py-3 h-auto mt-2"
           />
         )}
       </Field>
@@ -363,7 +391,7 @@ function SignUpForm({
           }
           placeholder="3–20 letters, numbers or _"
           maxLength={20}
-          className="rounded-xl border-2 border-lime-200 bg-lime-50/50 py-3 h-auto"
+          className="rounded-xl border-2 border-[#1b2e1c]/15 bg-[#fffdf3] py-3 h-auto"
         />
       </Field>
 
@@ -376,7 +404,7 @@ function SignUpForm({
             onChange={(e) => PIN_PATTERN.test(e.target.value) && setPin(e.target.value)}
             maxLength={4}
             placeholder="••••"
-            className="rounded-xl border-2 border-lime-200 bg-lime-50/50 py-3 h-auto text-center tracking-[0.5em]"
+            className="rounded-xl border-2 border-[#1b2e1c]/15 bg-[#fffdf3] py-3 h-auto text-center tracking-[0.5em]"
           />
         </Field>
         <Field label="Confirm PIN">
@@ -389,15 +417,15 @@ function SignUpForm({
             }
             maxLength={4}
             placeholder="••••"
-            className="rounded-xl border-2 border-lime-200 bg-lime-50/50 py-3 h-auto text-center tracking-[0.5em]"
+            className="rounded-xl border-2 border-[#1b2e1c]/15 bg-[#fffdf3] py-3 h-auto text-center tracking-[0.5em]"
           />
         </Field>
       </div>
 
-      <p className="text-xs font-bold text-slate-500 uppercase tracking-wide pt-2">
+      <p className="text-xs font-bold text-[#4e5f50] uppercase tracking-wide pt-2">
         Recovery Questions
       </p>
-      <p className="text-xs text-slate-400 -mt-3">
+      <p className="text-xs text-[#4e5f50]/80 -mt-3">
         Used to reset your PIN if you forget it.
       </p>
 
@@ -420,17 +448,17 @@ function SignUpForm({
       <Button
         disabled={!canSubmit || loading}
         onClick={handleSubmit}
-        className="w-full py-4 h-auto bg-gradient-to-r from-lime-500 to-yellow-500 text-white rounded-2xl font-bold text-lg hover:from-lime-600 hover:to-yellow-600 shadow-lg disabled:opacity-50 mt-2"
+        className="btn-pop w-full !py-4 h-auto !rounded-full text-lg !bg-[#7cc242] hover:!bg-[#8fd152] !text-[#1b2e1c]"
       >
         {loading ? "Creating account..." : "Create Account"}
       </Button>
 
-      <p className="text-center text-sm text-slate-500">
+      <p className="text-center text-sm text-[#4e5f50]">
         Already have an account?{" "}
         <button
           type="button"
           onClick={onSwitch}
-          className="text-lime-700 font-bold hover:underline"
+          className="text-[#5a2fd8] font-bold hover:underline"
         >
           Sign In
         </button>
@@ -497,7 +525,7 @@ function ForgotPinForm({
   };
 
   if (!refData) {
-    return <p className="text-center text-slate-500 py-8">Loading...</p>;
+    return <p className="text-center text-[#4e5f50] py-8">Loading...</p>;
   }
 
   return (
@@ -510,7 +538,7 @@ function ForgotPinForm({
               onChange={(e) =>
                 USERNAME_PATTERN.test(e.target.value) && setUsername(e.target.value)
               }
-              className="rounded-xl border-2 border-lime-200 bg-lime-50/50 py-3 h-auto"
+              className="rounded-xl border-2 border-[#1b2e1c]/15 bg-[#fffdf3] py-3 h-auto"
             />
           </Field>
           <Field label="Favourite Colour">
@@ -530,7 +558,7 @@ function ForgotPinForm({
           <Button
             onClick={handleVerify}
             disabled={loading}
-            className="w-full py-4 h-auto bg-gradient-to-r from-lime-500 to-yellow-500 text-white rounded-2xl font-bold text-lg shadow-lg"
+            className="btn-pop w-full !py-4 h-auto !rounded-full text-lg !bg-[#7cc242] hover:!bg-[#8fd152] !text-[#1b2e1c]"
           >
             {loading ? "Checking..." : "Verify"}
           </Button>
@@ -545,7 +573,7 @@ function ForgotPinForm({
                 value={newPin}
                 onChange={(e) => PIN_PATTERN.test(e.target.value) && setNewPin(e.target.value)}
                 maxLength={4}
-                className="rounded-xl border-2 border-lime-200 bg-lime-50/50 py-3 h-auto text-center tracking-[0.5em]"
+                className="rounded-xl border-2 border-[#1b2e1c]/15 bg-[#fffdf3] py-3 h-auto text-center tracking-[0.5em]"
               />
             </Field>
             <Field label="Confirm PIN">
@@ -557,14 +585,14 @@ function ForgotPinForm({
                   PIN_PATTERN.test(e.target.value) && setConfirmPin(e.target.value)
                 }
                 maxLength={4}
-                className="rounded-xl border-2 border-lime-200 bg-lime-50/50 py-3 h-auto text-center tracking-[0.5em]"
+                className="rounded-xl border-2 border-[#1b2e1c]/15 bg-[#fffdf3] py-3 h-auto text-center tracking-[0.5em]"
               />
             </Field>
           </div>
           <Button
             onClick={handleReset}
             disabled={loading}
-            className="w-full py-4 h-auto bg-gradient-to-r from-lime-500 to-yellow-500 text-white rounded-2xl font-bold text-lg shadow-lg"
+            className="btn-pop w-full !py-4 h-auto !rounded-full text-lg !bg-[#7cc242] hover:!bg-[#8fd152] !text-[#1b2e1c]"
           >
             {loading ? "Saving..." : "Set New PIN"}
           </Button>
@@ -574,7 +602,7 @@ function ForgotPinForm({
       <button
         type="button"
         onClick={onDone}
-        className="text-sm text-slate-500 font-bold hover:underline block text-center w-full"
+        className="text-sm text-[#4e5f50] font-bold hover:underline block text-center w-full"
       >
         Back to Sign In
       </button>
@@ -585,7 +613,7 @@ function ForgotPinForm({
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <Label className="text-sm font-bold text-slate-600 mb-1.5 block">{label}</Label>
+      <Label className="text-sm font-bold text-[#1b2e1c] mb-1.5 block">{label}</Label>
       {children}
     </div>
   );

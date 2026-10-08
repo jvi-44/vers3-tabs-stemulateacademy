@@ -1,0 +1,436 @@
+/* ---------------------------------------------------------------------------
+   Cards: 3D album books, foil card packs, the pack-opening show and the
+   collectible cards themselves (tilt, holo shine, flip).
+   --------------------------------------------------------------------------- */
+
+/* ---------- Album books ---------- */
+.book-scene {
+  perspective: 1600px;
+  display: block;
+  width: 100%;
+  padding: 1.5rem 2.5rem 2.5rem 1.5rem;
+  cursor: pointer;
+  background: none;
+  border: 0;
+}
+.book {
+  --t: 30px; /* thickness */
+  position: relative;
+  aspect-ratio: 4 / 5;
+  transform-style: preserve-3d;
+  transform: rotateX(10deg) rotateY(-26deg) rotateZ(1.5deg);
+  transition: transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.book-scene:hover .book,
+.book-scene:focus-visible .book {
+  transform: rotateX(5deg) rotateY(-12deg) rotateZ(0deg) translateY(-10px);
+}
+.book > div {
+  position: absolute;
+}
+.book-shadow {
+  inset: 6% -4% -8% 4%;
+  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.35), transparent);
+  transform: translateZ(calc(var(--t) / -2 - 1px)) translateY(8%);
+  filter: blur(10px);
+}
+.book-back {
+  inset: 0;
+  border-radius: 10px 22px 22px 10px;
+  background: var(--book-dark);
+  transform: translateZ(calc(var(--t) / -2));
+}
+.book-spine {
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--t);
+  transform-origin: left center;
+  transform: translateZ(calc(var(--t) / -2)) rotateY(-90deg);
+  background:
+    repeating-linear-gradient(180deg, transparent 0 18%, rgba(0, 0, 0, 0.18) 18% 19%, transparent 19% 21%),
+    linear-gradient(90deg, var(--book-dark), var(--book) 50%, var(--book-dark));
+  border-radius: 6px;
+}
+.book-edge {
+  top: 2.2%;
+  bottom: 2.2%;
+  right: 2.5%;
+  width: calc(var(--t) - 4px);
+  transform-origin: right center;
+  transform: translateZ(calc(var(--t) / -2 + 2px)) rotateY(90deg);
+  background:
+    repeating-linear-gradient(90deg, #fffdf4 0 2px, #ece4cc 2px 3px),
+    #fffdf4;
+}
+.book-edge-bottom {
+  left: 2%;
+  right: 2.5%;
+  bottom: 2.2%;
+  height: calc(var(--t) - 4px);
+  transform-origin: center bottom;
+  transform: translateZ(calc(var(--t) / -2 + 2px)) rotateX(90deg);
+  background: repeating-linear-gradient(180deg, #fffdf4 0 2px, #ece4cc 2px 3px);
+}
+.book-page {
+  top: 2.2%;
+  bottom: 2.2%;
+  left: 1%;
+  right: 2.5%;
+  transform: translateZ(calc(var(--t) / 2 - 3px));
+  border-radius: 4px 14px 14px 4px;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.12), transparent 12%),
+    #fffaf0;
+  overflow: hidden;
+}
+.book-cover {
+  inset: 0;
+  transform-origin: left center;
+  transform: translateZ(calc(var(--t) / 2));
+  transition: transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+  border-radius: 8px 22px 22px 8px;
+  background-color: var(--book);
+  background-image:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.28) 0 4%, rgba(255, 255, 255, 0.22) 4.5% 5.2%, rgba(0, 0, 0, 0.12) 5.6% 9%, transparent 12%),
+    radial-gradient(rgba(255, 255, 255, 0.09) 1px, transparent 1.4px),
+    linear-gradient(160deg, rgba(255, 255, 255, 0.18), transparent 45%, rgba(0, 0, 0, 0.18));
+  background-size:
+    100% 100%,
+    7px 7px,
+    100% 100%;
+  box-shadow:
+    inset 0 0 0 3px rgba(0, 0, 0, 0.12),
+    inset -3px -4px 0 rgba(0, 0, 0, 0.12);
+  color: #fff;
+  overflow: hidden;
+  backface-visibility: hidden;
+}
+.book-scene:hover .book-cover,
+.book-scene:focus-visible .book-cover {
+  transform: translateZ(calc(var(--t) / 2)) rotateY(-34deg);
+}
+/* Stitched frame inside the cover */
+.book-cover::before {
+  content: "";
+  position: absolute;
+  inset: 12px 12px 12px 26px;
+  border: 2px dashed rgba(255, 255, 255, 0.5);
+  border-radius: 14px;
+  pointer-events: none;
+}
+/* Gold corner caps */
+.book-corner {
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  background: linear-gradient(135deg, #fff3b0, #f6c445 45%, #b07d12);
+  box-shadow: inset 0 0 0 1.5px rgba(0, 0, 0, 0.2);
+}
+.book-corner.tr {
+  top: 0;
+  right: 0;
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
+  border-top-right-radius: 22px;
+}
+.book-corner.br {
+  bottom: 0;
+  right: 0;
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+  border-bottom-right-radius: 22px;
+}
+.book-ribbon {
+  bottom: -9%;
+  left: 62%;
+  width: 18px;
+  height: 18%;
+  transform: translateZ(calc(var(--t) / 2 - 6px));
+  background: linear-gradient(90deg, #c81e3a, #ef4462 50%, #c81e3a);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 82%, 0 100%);
+}
+
+/* ---------- Foil packs ---------- */
+.pack-scene {
+  perspective: 900px;
+}
+.pack {
+  --rx: 0deg;
+  --ry: 0deg;
+  --mx: 50%;
+  --my: 35%;
+  position: relative;
+  aspect-ratio: 5 / 7;
+  transform-style: preserve-3d;
+  transform: rotateX(var(--rx)) rotateY(var(--ry));
+  transition: transform 0.25s ease-out;
+  will-change: transform;
+}
+.pack-float {
+  animation: pack-float 4.5s ease-in-out infinite;
+}
+@keyframes pack-float {
+  50% {
+    translate: 0 -10px;
+  }
+}
+.pack-foil {
+  position: absolute;
+  inset: 0;
+  filter: drop-shadow(0 18px 18px rgba(0, 0, 0, 0.3));
+}
+.pack-foil > .pack-skin {
+  position: absolute;
+  inset: 0;
+  clip-path: var(--pack-clip);
+  background:
+    radial-gradient(circle at var(--mx) var(--my), rgba(255, 255, 255, 0.55), transparent 40%),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.22), transparent 10%, transparent 90%, rgba(0, 0, 0, 0.22)),
+    var(--pack-motif, none),
+    linear-gradient(165deg, var(--pa), var(--pb));
+  background-size:
+    100% 100%,
+    100% 100%,
+    120px 120px,
+    100% 100%;
+}
+/* The pack's zig-zag crimped top and bottom */
+.pack-crimp {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 8%;
+  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.35) 0 2px, rgba(0, 0, 0, 0.14) 2px 5px);
+}
+.pack-crimp.top {
+  top: 0;
+}
+.pack-crimp.bottom {
+  bottom: 0;
+}
+/* Rainbow foil that slides as you tilt */
+.pack-holo {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    115deg,
+    transparent 25%,
+    rgba(255, 90, 200, 0.45) 38%,
+    rgba(90, 230, 255, 0.45) 48%,
+    rgba(255, 245, 120, 0.45) 58%,
+    transparent 72%
+  );
+  background-size: 260% 260%;
+  background-position: var(--mx) var(--my);
+  mix-blend-mode: color-dodge;
+  opacity: 0.55;
+}
+.pack-sheen {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, 0.55) 50%, transparent 60%);
+  background-size: 300% 100%;
+  animation: sheen 3.8s ease-in-out infinite;
+}
+@keyframes sheen {
+  0% {
+    background-position: 120% 0;
+  }
+  60%,
+  100% {
+    background-position: -40% 0;
+  }
+}
+
+/* ---------- Pack opening show ---------- */
+.rays {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 160vmax;
+  height: 160vmax;
+  margin: -80vmax 0 0 -80vmax;
+  background: repeating-conic-gradient(from 0deg, var(--ray, rgba(255, 255, 255, 0.07)) 0 9deg, transparent 9deg 18deg);
+  animation: spin 40s linear infinite;
+  mask: radial-gradient(closest-side, #000 20%, transparent 75%);
+  pointer-events: none;
+}
+@keyframes spin {
+  to {
+    rotate: 360deg;
+  }
+}
+.charge {
+  animation: charge 0.9s ease-in-out infinite;
+}
+@keyframes charge {
+  0%,
+  100% {
+    rotate: 0deg;
+    scale: 1;
+  }
+  20% {
+    rotate: -2.5deg;
+  }
+  40% {
+    rotate: 2.5deg;
+    scale: 1.03;
+  }
+  60% {
+    rotate: -1.5deg;
+  }
+  80% {
+    rotate: 1.5deg;
+  }
+}
+
+/* ---------- Collectible cards ---------- */
+.flip {
+  position: relative;
+  aspect-ratio: 621 / 874;
+  transform-style: preserve-3d;
+  transition: transform 0.75s cubic-bezier(0.3, 1.4, 0.5, 1);
+}
+.flip.face-down {
+  transform: rotateY(180deg);
+}
+.flip-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 14px;
+  overflow: hidden;
+}
+.flip-face.back {
+  transform: rotateY(180deg);
+}
+
+/* Card back: the STEMulate design every card shares */
+.card-back {
+  background-color: var(--primary);
+  background-image:
+    radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.35), transparent 45%),
+    var(--motif-on),
+    linear-gradient(160deg, rgba(255, 255, 255, 0.2), rgba(0, 0, 0, 0.25));
+  background-size:
+    100% 100%,
+    140px 140px,
+    100% 100%;
+  border: 5px solid #fff;
+  box-shadow: inset 0 0 0 2px rgba(0, 0, 0, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Tilt + holo shine used on collection cards and the big viewer */
+.tilt {
+  --rx: 0deg;
+  --ry: 0deg;
+  --mx: 50%;
+  --my: 50%;
+  --lift: 0px;
+  transform: perspective(800px) rotateX(var(--rx)) rotateY(var(--ry)) translateZ(var(--lift));
+  transform-style: preserve-3d;
+  transition: transform 0.2s ease-out, box-shadow 0.2s;
+}
+.holo {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at var(--mx) var(--my), rgba(255, 255, 255, 0.5), transparent 38%),
+    linear-gradient(
+      125deg,
+      transparent 20%,
+      rgba(255, 80, 200, 0.35) 35%,
+      rgba(80, 220, 255, 0.35) 45%,
+      rgba(255, 240, 100, 0.35) 55%,
+      rgba(120, 255, 160, 0.3) 65%,
+      transparent 80%
+    );
+  background-size:
+    100% 100%,
+    250% 250%;
+  background-position:
+    0 0,
+    var(--mx) var(--my);
+  mix-blend-mode: color-dodge;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.holo.on,
+.tilt:hover .holo {
+  opacity: 0.75;
+}
+.glare {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(circle at var(--mx) var(--my), rgba(255, 255, 255, 0.35), transparent 45%);
+  mix-blend-mode: overlay;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.tilt:hover .glare {
+  opacity: 1;
+}
+
+/* Rarity glows */
+.glow-common {
+  box-shadow: 0 10px 24px -10px rgba(0, 0, 0, 0.5);
+}
+.glow-rare {
+  box-shadow:
+    0 0 0 3px #38bdf8,
+    0 0 26px 4px rgba(56, 189, 248, 0.6);
+}
+.glow-epic {
+  box-shadow:
+    0 0 0 3px #a855f7,
+    0 0 32px 6px rgba(168, 85, 247, 0.65);
+}
+.glow-legendary {
+  box-shadow:
+    0 0 0 3px #fbbf24,
+    0 0 40px 10px rgba(251, 191, 36, 0.7);
+  animation: legend-pulse 1.8s ease-in-out infinite;
+}
+@keyframes legend-pulse {
+  50% {
+    box-shadow:
+      0 0 0 3px #fde68a,
+      0 0 56px 16px rgba(251, 191, 36, 0.85);
+  }
+}
+
+/* Plastic sleeve slots in the album */
+.sleeve {
+  position: relative;
+  aspect-ratio: 621 / 874;
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.5), transparent 40%),
+    var(--muted);
+  border: 2px dashed color-mix(in srgb, var(--foreground) 22%, transparent);
+}
+.binder {
+  background-color: var(--card);
+  background-image:
+    radial-gradient(circle at 18px 50%, var(--background) 7px, color-mix(in srgb, var(--foreground) 25%, transparent) 7.5px 8.5px, transparent 9px);
+  background-size: 36px 120px;
+  background-repeat: repeat-y;
+  padding-left: 2.6rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pack-float,
+  .pack-sheen,
+  .rays,
+  .charge,
+  .glow-legendary {
+    animation: none;
+  }
+}

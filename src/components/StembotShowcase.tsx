@@ -1,8 +1,16 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { X, Heart, Sparkles } from "lucide-react";
+import { X, Heart } from "lucide-react";
 import { STEMBOTS } from "../data/mock";
 import { cn } from "./ui/utils";
+
+// Pale backdrop behind each bot, in the bot's own colour.
+const BOT_TINT: Record<string, string> = {
+  Science: "bg-[#dcf5c8] dark:bg-green-500/15",
+  Technology: "bg-[#d3ecfc] dark:bg-sky-500/15",
+  Engineering: "bg-[#fdf0c9] dark:bg-amber-500/15",
+  Mathematics: "bg-[#ffdcdc] dark:bg-red-500/15",
+};
 
 const DISCIPLINE_STYLE: Record<string, string> = {
   Science: "bg-green-100 text-green-700 border-green-300",
@@ -16,26 +24,29 @@ export function StembotShowcase() {
   const bots = Object.entries(STEMBOTS);
 
   return (
-    <div className="bg-card rounded-3xl border border-border shadow-sm p-5">
-      <h3 className="font-black text-foreground mb-4 flex items-center gap-1.5">
-        Meet the STEMbots! <Sparkles size={16} className="text-amber-500" />
-      </h3>
-      <div className="grid grid-cols-4 gap-3">
-        {bots.map(([key, bot]) => (
+    <section>
+      <div className="flex items-center gap-3 mb-3">
+        <h2 className="font-display text-foreground !text-xl">Meet the STEMbots</h2>
+        <span className="kicker">Tap to say hi</span>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+        {bots.map(([key, bot], i) => (
           <button
             key={key}
             onClick={() => setOpen(key)}
-            className="flex flex-col items-center gap-2 group"
+            className={cn(
+              "group relative sticker !rounded-[1.5rem] pt-3 pb-3 px-3 flex flex-col items-center overflow-hidden transition-transform hover:-translate-y-1",
+              i % 2 ? "rotate-[0.8deg]" : "rotate-[-0.8deg]",
+            )}
           >
-            <div
-              className={cn(
-                "w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden bg-white border-2 shadow-sm transition-transform group-hover:scale-105 group-active:scale-95",
-                DISCIPLINE_STYLE[bot.discipline].split(" ")[2],
-              )}
-            >
-              <img src={bot.avatar} alt={bot.name} className="w-full h-full object-contain p-1" />
-            </div>
-            <span className="text-xs sm:text-sm font-bold text-foreground">{bot.name}</span>
+            <div className={cn("absolute inset-x-0 top-0 h-[58%]", BOT_TINT[bot.discipline])} />
+            <img
+              src={bot.avatar}
+              alt=""
+              className="relative h-20 sm:h-24 object-contain die-cut transition-transform group-hover:scale-110 group-hover:-rotate-6"
+            />
+            <span className="relative font-display font-bold text-foreground mt-1.5">{bot.name}</span>
+            <span className="relative text-[11px] font-extrabold text-muted-foreground">{bot.role}</span>
           </button>
         ))}
       </div>
@@ -62,7 +73,7 @@ export function StembotShowcase() {
                 return (
                   <div
                     onClick={(e) => e.stopPropagation()}
-                    className="bg-card rounded-3xl shadow-2xl max-w-sm w-full p-6 relative border border-border"
+                    className="sticker max-w-sm w-full p-6 relative !border-ink !border-[2.5px] !shadow-[0_6px_0_var(--ink-line)]"
                   >
                     <button
                       onClick={() => setOpen(null)}
@@ -71,8 +82,8 @@ export function StembotShowcase() {
                       <X size={20} />
                     </button>
                     <div className="flex flex-col items-center text-center gap-2 mb-4">
-                      <div className="w-24 h-24 rounded-full overflow-hidden bg-white border-2 border-border">
-                        <img src={bot.avatar} alt={bot.name} className="w-full h-full object-contain p-1" />
+                      <div className={cn("w-28 h-28 rounded-full flex items-center justify-center -mt-16 border-[2.5px] border-ink", BOT_TINT[bot.discipline])}>
+                        <img src={bot.avatar} alt={bot.name} className="h-28 object-contain die-cut bob" />
                       </div>
                       <h3 className="text-xl font-black text-foreground">{bot.name}</h3>
                       <span
@@ -121,6 +132,6 @@ export function StembotShowcase() {
           </>
         )}
       </AnimatePresence>
-    </div>
+    </section>
   );
 }

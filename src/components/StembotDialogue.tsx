@@ -34,7 +34,7 @@ export function StembotDialogue({
   atoms?: number;
 }) {
   return (
-    <div className="flex items-start gap-3 bg-card border border-border rounded-3xl p-4 shadow-sm">
+    <div className="flex items-start gap-3 sticker p-4 ">
       <div className="w-12 h-12 rounded-full overflow-hidden bg-white border-2 border-border shrink-0">
         <img src={bot.avatar} alt={bot.name} className="w-full h-full object-contain p-0.5" />
       </div>

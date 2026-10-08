@@ -1,10 +1,20 @@
-import { Home, Trophy, Image as ImageIcon, Package, LogOut, Moon, Sun, Gamepad2, Users } from "lucide-react";
+import { Home, Trophy, Package, LogOut, Moon, Sun, Gamepad2, Users } from "lucide-react";
 import { cn } from "./ui/utils";
+import stemulateLogo from "../assets/stemulate_logo.png";
+import { THEMES, type ThemeId } from "../lib/theme";
 
-export type Page = "home" | "profile" | "leaderboard" | "gallery" | "cards" | "games" | "friends" | "lesson";
+export type Page = "home" | "profile" | "leaderboard" | "cards" | "games" | "friends" | "lesson";
 
 const RING_RADIUS = 42;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+
+const NAV: { page: Page; icon: React.ReactNode; label: string; short: string }[] = [
+  { page: "home", icon: <Home size={20} strokeWidth={2.4} />, label: "Home", short: "Home" },
+  { page: "cards", icon: <Package size={20} strokeWidth={2.4} />, label: "Cards", short: "Cards" },
+  { page: "games", icon: <Gamepad2 size={20} strokeWidth={2.4} />, label: "Games", short: "Games" },
+  { page: "leaderboard", icon: <Trophy size={20} strokeWidth={2.4} />, label: "Leaderboard", short: "Ranks" },
+  { page: "friends", icon: <Users size={20} strokeWidth={2.4} />, label: "Friends", short: "Friends" },
+];
 
 function ProfileRing({
   avatar,
@@ -21,28 +31,18 @@ function ProfileRing({
 }) {
   const offset = RING_CIRCUMFERENCE * (1 - Math.min(1, Math.max(0, progressPct)));
   return (
-    <button
-      onClick={onClick}
-      className="flex flex-col items-center gap-2 group w-full"
-      aria-label="Go to profile"
-    >
+    <button onClick={onClick} className="flex flex-col items-center gap-1 group w-full" aria-label="Go to profile">
       <div className="relative w-28 h-28">
         <svg viewBox="0 0 96 96" className="w-28 h-28 -rotate-90">
-          <circle
-            cx="48"
-            cy="48"
-            r={RING_RADIUS}
-            fill="none"
-            stroke="var(--sidebar-accent)"
-            strokeWidth="6"
-          />
+          <circle cx="48" cy="48" r={RING_RADIUS} fill="var(--card)" stroke="var(--ink-line)" strokeWidth="9" />
+          <circle cx="48" cy="48" r={RING_RADIUS} fill="none" stroke="var(--card)" strokeWidth="5" />
           <circle
             cx="48"
             cy="48"
             r={RING_RADIUS}
             fill="none"
             stroke="var(--primary)"
-            strokeWidth="6"
+            strokeWidth="5"
             strokeLinecap="round"
             strokeDasharray={RING_CIRCUMFERENCE}
             strokeDashoffset={offset}
@@ -51,43 +51,16 @@ function ProfileRing({
         </svg>
         <div
           className={cn(
-            "absolute inset-[8px] rounded-full overflow-hidden ring-2 transition-all",
-            active ? "ring-primary" : "ring-transparent group-hover:ring-primary/50",
+            "absolute inset-[11px] rounded-full overflow-hidden bg-soft-1 transition-transform group-hover:scale-105",
+            active && "ring-[3px] ring-primary ring-offset-2 ring-offset-sidebar",
           )}
         >
           <img src={avatar} alt="Your avatar" className="w-full h-full object-cover" />
         </div>
+        <span className="chip-ink absolute -bottom-2 left-1/2 -translate-x-1/2 text-xs !py-0.5 !px-2.5 bg-pop-2 text-[#1b1b12] rotate-[-4deg]">
+          Lv {level}
+        </span>
       </div>
-      <span className="text-sm font-black text-sidebar-foreground/70">
-        Level <span className="text-primary">{level}</span>
-      </span>
-    </button>
-  );
-}
-
-function NavButton({
-  icon,
-  label,
-  active,
-  onClick,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-bold text-sm transition-all",
-        active
-          ? "bg-primary text-primary-foreground shadow-md shadow-primary/30"
-          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-      )}
-    >
-      {icon}
-      <span>{label}</span>
     </button>
   );
 }
@@ -101,6 +74,7 @@ export function Sidebar({
   onLogout,
   darkMode,
   onToggleDark,
+  theme,
   variant = "desktop",
   logoutLabel = "Log Out",
 }: {
@@ -112,20 +86,31 @@ export function Sidebar({
   onLogout: () => void;
   darkMode: boolean;
   onToggleDark: () => void;
+  theme: ThemeId;
   /** "desktop" = the permanent md+ rail (hidden below md).
    *  "mobile" = embedded inside the slide-out drawer, always visible there. */
   variant?: "desktop" | "mobile";
   logoutLabel?: string;
 }) {
+  const themeInfo = THEMES.find((t) => t.id === theme) ?? THEMES[0];
   return (
     <aside
       className={cn(
-        "flex flex-col w-60 shrink-0 bg-sidebar px-4 py-6 gap-6",
+        "relative flex flex-col w-64 shrink-0 bg-sidebar px-4 pt-5 pb-4 gap-5 overflow-hidden",
         variant === "desktop"
-          ? "hidden md:flex h-screen sticky top-0 border-r border-sidebar-border"
+          ? "hidden md:flex h-screen sticky top-0 border-r-2 border-sidebar-border"
           : "flex h-full w-full",
       )}
     >
+      {/* Wordmark, like the website's nav */}
+      <div className="flex items-center gap-2 px-1">
+        <img src={stemulateLogo} alt="" className="w-10 h-10 object-contain" />
+        <div className="leading-none">
+          <p className="font-display font-semibold text-[1.05rem] text-sidebar-foreground">STEMulate</p>
+          <p className="font-display font-bold text-[1.05rem] text-primary -mt-0.5">Academy</p>
+        </div>
+      </div>
+
       <ProfileRing
         avatar={avatar}
         progressPct={progressPct}
@@ -134,56 +119,49 @@ export function Sidebar({
         active={currentPage === "profile"}
       />
 
-      <nav className="flex flex-col gap-1.5 flex-1">
-        <NavButton
-          icon={<Home size={20} />}
-          label="Home"
-          active={currentPage === "home"}
-          onClick={() => onNavigate("home")}
-        />
-        <NavButton
-          icon={<Package size={20} />}
-          label="Cards"
-          active={currentPage === "cards"}
-          onClick={() => onNavigate("cards")}
-        />
-        <NavButton
-          icon={<Trophy size={20} />}
-          label="Leaderboard"
-          active={currentPage === "leaderboard"}
-          onClick={() => onNavigate("leaderboard")}
-        />
-        <NavButton
-          icon={<ImageIcon size={20} />}
-          label="Gallery"
-          active={currentPage === "gallery"}
-          onClick={() => onNavigate("gallery")}
-        />
-        <NavButton
-          icon={<Gamepad2 size={20} />}
-          label="Games"
-          active={currentPage === "games"}
-          onClick={() => onNavigate("games")}
-        />
-        <NavButton
-          icon={<Users size={20} />}
-          label="Friends"
-          active={currentPage === "friends"}
-          onClick={() => onNavigate("friends")}
-        />
+      <nav className="flex flex-col gap-1.5 flex-1 pt-2">
+        {NAV.map((item, i) => {
+          const active = currentPage === item.page;
+          return (
+            <button
+              key={item.page}
+              onClick={() => onNavigate(item.page)}
+              className={cn(
+                "w-full flex items-center gap-3 px-4 py-2.5 rounded-2xl font-display font-semibold text-[0.98rem] transition-all border-2",
+                active
+                  ? "bg-primary text-primary-foreground border-ink shadow-[0_4px_0_var(--ink-line)]"
+                  : "border-transparent text-sidebar-foreground/75 hover:bg-card hover:text-sidebar-foreground hover:border-sidebar-border",
+              )}
+              style={active ? { transform: `rotate(${i % 2 ? 1.2 : -1.2}deg)` } : undefined}
+            >
+              {item.icon}
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
       </nav>
 
-      <div className="flex flex-col gap-1.5 pt-3 border-t border-sidebar-border">
+      {/* The theme's STEMbot waves from the corner, standing on its doodles */}
+      <div className="relative h-24 -mx-4 pointer-events-none" aria-hidden="true">
+        <div className="absolute left-3 bottom-1 w-12 h-12 motif-icon opacity-60 rotate-[-12deg]" />
+        <div className="absolute left-16 bottom-10 w-7 h-7 motif-icon-2 opacity-50 rotate-12" />
+        <img src={themeInfo.bot} alt="" className="absolute right-3 -bottom-3 h-24 die-cut bob rotate-[-8deg]" />
+        <span className="absolute right-[6.2rem] top-0 bg-card text-[11px] font-black px-2.5 py-1 rounded-full border-2 border-ink">
+          Hi!
+        </span>
+      </div>
+
+      <div className="flex flex-col gap-1 pt-3 border-t-2 border-dashed border-sidebar-border">
         <button
           onClick={onToggleDark}
-          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-2xl text-sm font-semibold text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-all"
+          className="w-full flex items-center gap-3 px-4 py-2 rounded-2xl text-sm font-bold text-sidebar-foreground/60 hover:bg-card hover:text-sidebar-foreground transition-all"
         >
           {darkMode ? <Sun size={17} /> : <Moon size={17} />}
-          <span>{darkMode ? "Light Mode" : "Dark Mode"}</span>
+          <span>{darkMode ? "Light mode" : "Dark mode"}</span>
         </button>
         <button
           onClick={onLogout}
-          className="w-full flex items-center gap-3 px-4 py-2.5 rounded-2xl text-sm font-semibold text-sidebar-foreground/50 hover:bg-destructive/10 hover:text-destructive transition-all"
+          className="w-full flex items-center gap-3 px-4 py-2 rounded-2xl text-sm font-bold text-sidebar-foreground/60 hover:bg-destructive/10 hover:text-destructive transition-all"
         >
           <LogOut size={17} />
           <span>{logoutLabel}</span>
@@ -202,50 +180,36 @@ export function MobileTabBar({
   onNavigate: (page: Page) => void;
   avatar: string;
 }) {
-  const items: { page: Page; icon: React.ReactNode; label: string }[] = [
-    { page: "home", icon: <Home size={22} />, label: "Home" },
-    { page: "cards", icon: <Package size={22} />, label: "Cards" },
-    { page: "leaderboard", icon: <Trophy size={22} />, label: "Ranks" },
-    { page: "gallery", icon: <ImageIcon size={22} />, label: "Gallery" },
-    { page: "games", icon: <Gamepad2 size={22} />, label: "Games" },
-    { page: "friends", icon: <Users size={22} />, label: "Friends" },
-  ];
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t border-border flex items-center justify-around px-2 py-2 z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
+    <nav className="md:hidden fixed bottom-3 left-3 right-3 bg-card border-2 border-ink rounded-[1.6rem] shadow-[0_5px_0_var(--ink-line)] flex items-center justify-around px-1.5 py-1.5 z-40">
+      {NAV.map((item) => {
+        const active = currentPage === item.page;
+        return (
+          <button
+            key={item.page}
+            onClick={() => onNavigate(item.page)}
+            className={cn(
+              "flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-2xl transition-colors min-w-0",
+              active ? "bg-primary text-primary-foreground" : "text-muted-foreground",
+            )}
+          >
+            {item.icon}
+            <span className="text-[10px] font-black">{item.short}</span>
+          </button>
+        );
+      })}
       <button
         onClick={() => onNavigate("profile")}
-        className="flex flex-col items-center gap-0.5 px-2 py-1"
+        className={cn(
+          "flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-2xl",
+          currentPage === "profile" ? "bg-primary text-primary-foreground" : "text-muted-foreground",
+        )}
       >
-        <div
-          className={cn(
-            "w-7 h-7 rounded-full overflow-hidden ring-2",
-            currentPage === "profile" ? "ring-primary" : "ring-transparent",
-          )}
-        >
+        <div className="w-6 h-6 rounded-full overflow-hidden border-2 border-ink bg-soft-1">
           <img src={avatar} alt="" className="w-full h-full object-cover" />
         </div>
-        <span
-          className={cn(
-            "text-[10px] font-bold",
-            currentPage === "profile" ? "text-primary" : "text-muted-foreground",
-          )}
-        >
-          Profile
-        </span>
+        <span className="text-[10px] font-black">Me</span>
       </button>
-      {items.map((item) => (
-        <button
-          key={item.page}
-          onClick={() => onNavigate(item.page)}
-          className={cn(
-            "flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl transition-colors",
-            currentPage === item.page ? "text-primary" : "text-muted-foreground",
-          )}
-        >
-          {item.icon}
-          <span className="text-[10px] font-bold">{item.label}</span>
-        </button>
-      ))}
     </nav>
   );
 }
