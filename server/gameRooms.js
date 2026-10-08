@@ -6,7 +6,9 @@
 // needs no extra packages and works through the Vite /api proxy.
 //
 // Rooms live in memory: they only matter while a match is being played.
-// High scores are stored in SQLite (game_scores table, created below).
+// High scores are stored in SQLite (game_scores table in schema.sql).
+
+import { requireAuth } from "./sessions.js";
 
 const MAX_PLAYERS = 4;
 const ROOM_TTL_MS = 2 * 60 * 60 * 1000; // drop rooms idle for 2 hours
@@ -77,27 +79,18 @@ setInterval(() => {
 }, 30_000).unref();
 
 export function registerGameRoutes(app, db) {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS game_scores (
-      user_id    INTEGER NOT NULL,
-      game_id    TEXT    NOT NULL,
-      best_score INTEGER NOT NULL,
-      plays      INTEGER NOT NULL DEFAULT 1,
-      updated_at TEXT    NOT NULL DEFAULT (datetime('now')),
-      PRIMARY KEY (user_id, game_id)
-    );
-  `);
-
   // ── High scores (0–100 per game) ──────────────────────────
-  app.get("/api/game-scores/:userId", (req, res) => {
+  // Signed-in player only (the user comes from the session token).
+  app.get("/api/game-scores", requireAuth, (req, res) => {
     const rows = db
       .prepare("SELECT game_id, best_score, plays FROM game_scores WHERE user_id = ?")
-      .all(req.params.userId);
+      .all(req.userId);
     res.json({ scores: rows });
   });
 
-  app.post("/api/game-scores", (req, res) => {
-    const { userId, gameId, score } = req.body || {};
+  app.post("/api/game-scores", requireAuth, (req, res) => {
+    const userId = req.userId;
+    const { gameId, score } = req.body || {};
     const s = Math.max(0, Math.min(100, Math.round(Number(score))));
     if (!userId || !gameId || Number.isNaN(s)) return res.status(400).json({ error: "Missing fields." });
     db.prepare(
@@ -111,17 +104,6 @@ export function registerGameRoutes(app, db) {
       .prepare("SELECT best_score, plays FROM game_scores WHERE user_id = ? AND game_id = ?")
       .get(userId, gameId);
     res.json({ best: row.best_score, plays: row.plays });
-  });
-
-  app.get("/api/game-leaderboard/:gameId", (req, res) => {
-    const rows = db
-      .prepare(
-        `SELECT u.full_name AS name, u.avatar AS avatar, g.best_score AS score
-         FROM game_scores g JOIN users u ON u.user_id = g.user_id
-         WHERE g.game_id = ? ORDER BY g.best_score DESC, g.updated_at ASC LIMIT 10`,
-      )
-      .all(req.params.gameId);
-    res.json({ leaderboard: rows });
   });
 
   // ── Live rooms ────────────────────────────────────────────

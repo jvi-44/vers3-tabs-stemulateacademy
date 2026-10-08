@@ -6,9 +6,11 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite",
+    "start": "node server/index.js",
     "server": "node server/index.js",
     "server:dev": "node --watch server/index.js",
     "dev:all": "concurrently -n web,api -c blue,green \"npm run dev\" \"npm run server:dev\"",
+    "simulate": "node scripts/simulate-players.mjs",
     "simulate:game": "node scripts/simulate-game-players.mjs"
   },
   "dependencies": {

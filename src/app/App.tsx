@@ -11,6 +11,13 @@ import {
   Menu,
   Award,
   ArrowRight,
+  User as UserIcon,
+  Palette,
+  Moon,
+  Sun,
+  LogOut,
+  LogIn,
+  UserPlus,
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Toaster, toast } from "sonner";
@@ -22,7 +29,6 @@ import {
   MOCK_USER,
   MOCK_COURSES,
   MOCK_GALLERY,
-  MOCK_LEADERBOARD,
   AVATAR_OPTIONS,
   STEMBOTS,
 } from "../data/mock";
@@ -44,10 +50,29 @@ import stembotRed from "../assets/stembot_red.png";
 import stembotGreen from "../assets/stembot_green.png";
 import stembotCream from "../assets/stembot_cream.png";
 import type { AuthUser } from "../types-auth";
-import { getUser } from "../api/auth";
+import { getMe, logout } from "../api/auth";
+import { getToken } from "../api/client";
 import { getProgress, postProgress, postXP, postAvatar } from "../api/progress";
 import { setGamePlayer } from "../games/kit/player";
 import { syncHighScores } from "../games/kit/scores";
+import { getLeaderboard, sendFriendRequest } from "../api/social";
+import { useColourTheme, THEMES, type ThemeId } from "../lib/theme";
+import { ProfileDetails, PrivacyAndAccount, ThemePicker } from "../components/ProfileSettings";
+import { AdminPage } from "../components/AdminPage";
+import { avatarFor } from "../components/FriendsTab";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "../components/ui/dropdown-menu";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -84,6 +109,10 @@ export default function App() {
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [selectedBeatId, setSelectedBeatId] = useState<string | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  // Guest mode: look around without an account. Nothing is sent to or saved
+  // on the server, and members-only pages (leaderboard, chat) stay locked.
+  const [isGuest, setIsGuest] = useState(false);
+  const [loginView, setLoginView] = useState<"signin" | "signup">("signin");
   const [user, setUser] = useState<UserType>(MOCK_USER);
   const [userCards, setUserCards] = useState<Record<string, number>>({});
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
@@ -94,7 +123,16 @@ export default function App() {
   const [darkMode, setDarkMode] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showCertificate, setShowCertificate] = useState(false);
+  const [colourTheme, setColourTheme] = useColourTheme();
+  const [isAdminRoute, setIsAdminRoute] = useState(() => window.location.hash === "#/admin");
   const allGameBeatIds = useMemo(() => GAME_LESSONS.flatMap((l) => l.beats.map((b) => b.id)), []);
+
+  // ---- Admin page lives at /#/admin ----
+  useEffect(() => {
+    const onHash = () => setIsAdminRoute(window.location.hash === "#/admin");
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
 
   // ---- Dark mode ----
   useEffect(() => {
@@ -110,11 +148,13 @@ export default function App() {
   // Lets the lesson games know who is playing (for high scores and live rooms).
   useEffect(() => {
     if (!authUser) return;
-    setGamePlayer({ id: String(authUser.userId), userId: authUser.userId, name: user.username, avatar: user.avatar });
+    // Other players in live games see the username, never the full name.
+    setGamePlayer({ id: String(authUser.userId), userId: authUser.userId, name: authUser.username, avatar: user.avatar });
     syncHighScores(authUser.userId);
-  }, [authUser, user.username, user.avatar]);
+  }, [authUser, user.avatar]);
 
   const applyAuthUser = (u: AuthUser) => {
+    setIsGuest(false);
     setAuthUser(u);
     setUser((prev) => ({
       ...prev,
@@ -125,7 +165,11 @@ export default function App() {
       avatar: u.avatar || prev.avatar,
     }));
     setIsLoggedIn(true);
-    localStorage.setItem("stemulate_user_id", String(u.userId));
+
+    // Fill in organisation / school level for the profile page.
+    getMe()
+      .then(({ user: full }) => setAuthUser(full))
+      .catch(() => {});
 
     // Pull lesson progress from SQLite so completed beats persist across
     // devices / refreshes (see SQL_EXPLAINED.md for how this is stored).
@@ -145,19 +189,44 @@ export default function App() {
 
   const handleLogin = (u: AuthUser) => applyAuthUser(u);
 
+  // Restore the sign-in after a refresh, using the saved session token.
   useEffect(() => {
-    const savedId = localStorage.getItem("stemulate_user_id");
-    if (!savedId) return;
-    getUser(savedId)
+    localStorage.removeItem("stemulate_user_id"); // pre-token sign-ins: sign in again
+    if (!getToken()) return;
+    getMe()
       .then(({ user: u }) => applyAuthUser(u))
-      .catch(() => localStorage.removeItem("stemulate_user_id"));
+      .catch(() => {});
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem("stemulate_user_id");
-    setAuthUser(null);
-    setIsLoggedIn(false);
+  const resetLocalState = () => {
+    setUser(MOCK_USER);
+    setCompletedBeats({});
+    setUserCards({});
+    setSubmittedExitCards([]);
     setCurrentPage("home");
+  };
+
+  const handleLogout = () => {
+    if (!isGuest) logout();
+    setAuthUser(null);
+    setIsGuest(false);
+    setIsLoggedIn(false);
+    setLoginView("signin");
+    resetLocalState();
+  };
+
+  const handleGuest = () => {
+    resetLocalState();
+    setUser({ ...MOCK_USER, username: "Guest", xp: 0, level: 1, atoms: 0, badges: [] });
+    setGamePlayer({ id: "guest", name: "Guest", avatar: MOCK_USER.avatar });
+    setIsGuest(true);
+    setIsLoggedIn(true);
+  };
+
+  // From guest mode back to the sign-in / sign-up screen.
+  const leaveGuest = (view: "signin" | "signup") => {
+    handleLogout();
+    setLoginView(view);
   };
 
   // ---- Points ----
@@ -213,7 +282,11 @@ export default function App() {
         },
         ...prev,
       ]);
-      toast.success("Your reflection was published to the Gallery! 🎉");
+      toast.success(
+        isGuest
+          ? "Your reflection is in the Gallery for now. Create an account to keep it!"
+          : "Your reflection was published to the Gallery! 🎉",
+      );
     }
 
     setCompletedBeats((prev) => {
@@ -269,7 +342,21 @@ export default function App() {
     return drawn;
   };
 
-  if (!isLoggedIn) return <LoginScreen onLogin={handleLogin} />;
+  const handleAccountDeleted = () => {
+    if (authUser) localStorage.removeItem(BEATS_KEY_PREFIX + authUser.userId);
+    if (authUser) localStorage.removeItem(`stemulate_game_best_${authUser.userId}`);
+    setAuthUser(null);
+    setIsLoggedIn(false);
+    setCompletedBeats({});
+    setUser(MOCK_USER);
+    setCurrentPage("home");
+    toast.success("Your account and all its data have been deleted.");
+  };
+
+  if (isAdminRoute) return <AdminPage onExit={() => (window.location.hash = "")} />;
+
+  if (!isLoggedIn)
+    return <LoginScreen key={loginView} onLogin={handleLogin} onGuest={handleGuest} initialView={loginView} />;
 
   const activeLesson = GAME_LESSONS.find((l) => l.id === selectedLessonId);
 
@@ -308,11 +395,12 @@ export default function App() {
         onLogout={handleLogout}
         darkMode={darkMode}
         onToggleDark={() => setDarkMode((d) => !d)}
+        logoutLabel={isGuest ? "Leave guest mode" : "Log Out"}
       />
 
       <div className="flex-1 min-w-0 h-screen flex flex-col overflow-hidden">
         {/* Top bar — logo, greeting (Singapore time) + progress to next level, XP + Atoms */}
-        <header className="shrink-0 bg-gradient-to-r from-lime-500 via-lime-400 to-yellow-400 dark:from-lime-700 dark:via-lime-800 dark:to-yellow-800 px-4 md:px-8 py-4 flex items-center justify-between gap-4 shadow-sm">
+        <header className="shrink-0 h-[76px] bg-hero px-4 md:px-8 flex items-center justify-between gap-4 shadow-sm">
           <div className="flex items-center gap-3 min-w-0">
             <button
               className="md:hidden p-2 -ml-2 text-white"
@@ -341,14 +429,42 @@ export default function App() {
               <Star size={16} className="fill-amber-500 text-amber-500" />
               {user.xp.toLocaleString()} XP
             </div>
-            <div className="flex items-center gap-1.5 bg-white text-sky-600 px-3.5 py-2 rounded-full font-black text-sm shadow-md">
+            <div className="hidden sm:flex items-center gap-1.5 bg-white text-sky-600 px-3.5 py-2 rounded-full font-black text-sm shadow-md">
               <AtomIcon size={16} />
               {user.atoms.toLocaleString()}
             </div>
+            <AccountMenu
+              avatar={user.avatar}
+              name={authUser?.username ?? user.username}
+              theme={colourTheme}
+              onTheme={setColourTheme}
+              darkMode={darkMode}
+              onToggleDark={() => setDarkMode((d) => !d)}
+              onProfile={() => setCurrentPage("profile")}
+              onLogout={handleLogout}
+              isGuest={isGuest}
+              onSignUp={() => leaveGuest("signup")}
+              onSignIn={() => leaveGuest("signin")}
+            />
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 md:pb-8">
+        {isGuest && (
+          <div className="shrink-0 bg-accent text-accent-foreground px-4 md:px-8 py-2 flex items-center justify-between gap-3 text-xs sm:text-sm font-semibold">
+            <span className="min-w-0">👀 You're exploring as a guest. Your progress won't be saved.</span>
+            <button
+              onClick={() => leaveGuest("signup")}
+              className="shrink-0 bg-primary text-primary-foreground font-bold px-3 py-1.5 rounded-xl hover:opacity-90"
+            >
+              Create account
+            </button>
+          </div>
+        )}
+
+        <main className="flex-1 overflow-y-auto bg-playful p-4 md:p-8 pb-24 md:pb-8">
+          {/* One fixed content width for every page, so screens don't jump
+              around in size as you move between tabs. */}
+          <div className="max-w-6xl mx-auto w-full min-h-full">
           {currentPage === "home" && (
             <Dashboard
               courses={MOCK_COURSES}
@@ -358,16 +474,31 @@ export default function App() {
               onShowCertificate={() => setShowCertificate(true)}
             />
           )}
-          {currentPage === "profile" && (
+          {currentPage === "profile" && authUser && (
             <Profile
+              authUser={authUser}
+              onAuthUserChange={(u) => {
+                setAuthUser(u);
+                setUser((prev) => ({ ...prev, username: u.fullName }));
+              }}
+              onAccountDeleted={handleAccountDeleted}
+              theme={colourTheme}
+              onTheme={setColourTheme}
               user={user}
               onUpdateAvatar={handleUpdateAvatar}
               gamesModuleComplete={gamesModuleComplete}
               onShowCertificate={() => setShowCertificate(true)}
             />
           )}
-          {currentPage === "leaderboard" && (
-            <Leaderboard entries={MOCK_LEADERBOARD} currentUser={user} />
+          {isGuest && (currentPage === "leaderboard" || currentPage === "friends" || currentPage === "profile") && (
+            <MembersOnly
+              page={currentPage}
+              onSignUp={() => leaveGuest("signup")}
+              onSignIn={() => leaveGuest("signin")}
+            />
+          )}
+          {currentPage === "leaderboard" && !isGuest && (
+            <Leaderboard myUserId={authUser?.userId ?? 0} />
           )}
           {currentPage === "gallery" && <Gallery posts={MOCK_GALLERY} reflectionPosts={submittedExitCards} />}
           {currentPage === "games" && (
@@ -378,12 +509,14 @@ export default function App() {
                 handleEarnXP(xp);
                 handleEarnAtoms(atoms);
               }}
+              isGuest={isGuest}
             />
           )}
-          {currentPage === "friends" && <FriendsTab myAtoms={user.atoms} />}
+          {currentPage === "friends" && authUser && <FriendsTab myUserId={authUser.userId} />}
           {currentPage === "cards" && (
             <CardsHub ownedCounts={userCards} userAtoms={user.atoms} onOpenPack={handleOpenPack} />
           )}
+          </div>
         </main>
       </div>
 
@@ -420,6 +553,7 @@ export default function App() {
                 onLogout={handleLogout}
                 darkMode={darkMode}
                 onToggleDark={() => setDarkMode((d) => !d)}
+                logoutLabel={isGuest ? "Leave guest mode" : "Log Out"}
               />
             </motion.div>
           </>
@@ -491,7 +625,7 @@ function Dashboard({
   const gamesPct = Math.round((gamesDone / allGameBeats.length) * 100);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 w-full">
       <StembotShowcase />
 
       {/* Search + tag filters */}
@@ -551,7 +685,7 @@ function Dashboard({
               artwork was supplied. Lessons expand inline, right here. */}
           {gamesCourse && (
             <div className="rounded-3xl border border-primary/30 shadow-sm bg-card overflow-hidden">
-              <div className="relative h-36 sm:h-44 bg-gradient-to-br from-lime-400 via-yellow-300 to-lime-500 flex items-end justify-center gap-2 overflow-hidden">
+              <div className="relative h-36 sm:h-44 bg-hero-diagonal flex items-end justify-center gap-2 overflow-hidden">
                 <Sparkles className="absolute top-3 left-4 text-white/70" size={20} />
                 <Sparkles className="absolute top-6 right-8 text-white/50" size={14} />
                 {[stembotGreen, stembotBlue, stembotCream, stembotRed].map((src, i) => (
@@ -683,11 +817,21 @@ function levelName(level: number) {
 }
 
 function Profile({
+  authUser,
+  onAuthUserChange,
+  onAccountDeleted,
+  theme,
+  onTheme,
   user,
   onUpdateAvatar,
   gamesModuleComplete,
   onShowCertificate,
 }: {
+  authUser: AuthUser;
+  onAuthUserChange: (u: AuthUser) => void;
+  onAccountDeleted: () => void;
+  theme: ThemeId;
+  onTheme: (t: ThemeId) => void;
   user: UserType;
   onUpdateAvatar: (avatar: string) => void;
   gamesModuleComplete: boolean;
@@ -698,8 +842,8 @@ function Profile({
   const xpToGo = 1000 - xpIntoLevel;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div className="bg-card rounded-3xl p-8 border border-border shadow-sm flex flex-col md:flex-row items-center gap-8">
+    <div className="w-full space-y-6">
+      <div className="bg-card rounded-3xl p-6 md:p-8 border border-border shadow-sm flex flex-col md:flex-row items-center gap-8">
         <div className="relative shrink-0">
           <div className="w-32 h-32 rounded-full overflow-hidden ring-4 ring-primary/20 bg-muted">
             <img src={user.avatar} alt="Avatar" className="w-full h-full object-cover" />
@@ -714,12 +858,15 @@ function Profile({
 
         <div className="text-center md:text-left flex-1 w-full">
           <div className="flex flex-col md:flex-row items-center gap-3 mb-1">
-            <h2 className="text-2xl font-black text-foreground">{user.username}</h2>
+            <h2 className="text-2xl font-black text-foreground truncate max-w-full">{authUser.fullName}</h2>
             <span className="bg-primary text-primary-foreground px-3 py-1 rounded-full text-xs font-black uppercase">
               Level {user.level} · {levelName(user.level)}
             </span>
           </div>
-          <p className="text-muted-foreground font-medium mb-3">STEMulate Academy Member</p>
+          <p className="text-muted-foreground font-medium mb-3 truncate">
+            @{authUser.username}
+            {authUser.orgName ? ` · ${authUser.orgName}` : ""}
+          </p>
           <div className="max-w-xs mx-auto md:mx-0 mb-6">
             <div className="w-full h-2.5 bg-accent rounded-full overflow-hidden">
               <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${(xpIntoLevel / 1000) * 100}%` }} />
@@ -765,6 +912,10 @@ function Profile({
           </motion.div>
         )}
       </AnimatePresence>
+
+      <ProfileDetails authUser={authUser} onChange={onAuthUserChange} />
+
+      <ThemePicker theme={theme} onTheme={onTheme} />
 
       <div className="bg-card rounded-3xl p-6 border border-border shadow-sm">
         <p className="font-bold text-foreground mb-4">Badges &amp; Certificates</p>
@@ -821,6 +972,8 @@ function Profile({
           })}
         </div>
       </div>
+
+      <PrivacyAndAccount authUser={authUser} onDeleted={onAccountDeleted} />
     </div>
   );
 }
@@ -829,58 +982,211 @@ function Profile({
 // Leaderboard
 // ---------------------------------------------------------------------------
 
-function Leaderboard({ entries, currentUser }: { entries: any[]; currentUser: UserType }) {
-  const [requested, setRequested] = useState<Record<string, boolean>>({});
+function Leaderboard({ myUserId }: { myUserId: number }) {
+  const [entries, setEntries] = useState<Awaited<ReturnType<typeof getLeaderboard>>["entries"]>([]);
+  const [loading, setLoading] = useState(true);
+  const [requested, setRequested] = useState<Record<number, boolean>>({});
+
+  useEffect(() => {
+    getLeaderboard()
+      .then(({ entries }) => setEntries(entries))
+      .catch(() => toast.error("Couldn't load the leaderboard."))
+      .finally(() => setLoading(false));
+  }, []);
+
+  // Friend requests from here go to real accounts only (the server checks).
+  const addFriend = async (username: string, userId: number) => {
+    try {
+      const res = await sendFriendRequest(username);
+      setRequested((r) => ({ ...r, [userId]: true }));
+      toast.success(
+        res.status === "friends" ? `You and ${username} are now friends! 🎉` : `Friend request sent to ${username}!`,
+      );
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
   return (
-    <div className="max-w-3xl mx-auto space-y-4">
-      <div className="bg-gradient-to-r from-amber-500 to-yellow-500 rounded-3xl p-6 text-white shadow-md flex items-center gap-4">
-        <Trophy size={32} />
+    <div className="w-full space-y-4">
+      <div className="bg-hero rounded-3xl p-6 text-white shadow-md flex items-center gap-4 overflow-hidden relative">
+        <Trophy size={32} className="shrink-0" />
         <div>
           <h2 className="text-xl font-black">Leaderboard</h2>
-          <p className="text-amber-100 text-sm">Ranked by total XP</p>
+          <p className="text-white/85 text-sm">Ranked by total XP</p>
         </div>
+        <img src={stembotRed} alt="" className="absolute right-4 -bottom-3 h-20 w-auto drop-shadow-lg hidden sm:block" />
       </div>
       <div className="bg-card rounded-3xl border border-border shadow-sm divide-y divide-border overflow-hidden">
-        {entries
-          .sort((a, b) => b.xp - a.xp)
-          .map((entry, i) => {
-            const isMe = entry.username === currentUser.username;
-            return (
-              <div
-                key={entry.id}
-                className={cn(
-                  "flex items-center gap-4 px-5 py-3.5",
-                  isMe && "bg-accent/60",
-                )}
-              >
-                <span className={cn("w-7 text-center font-black", i < 3 ? "text-amber-500" : "text-muted-foreground")}>
-                  {i + 1}
-                </span>
-                <img src={entry.avatar} className="w-10 h-10 rounded-xl bg-muted" />
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-foreground truncate">{entry.username}</p>
-                  <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wide">
-                    Level {Math.floor(entry.xp / 1000) + 1}
-                  </p>
-                </div>
-                <span className="font-black text-foreground">{entry.xp.toLocaleString()} XP</span>
-                {!isMe && (
-                  <button
-                    onClick={() => {
-                      setRequested((r) => ({ ...r, [entry.id]: true }));
-                      toast.success(`Friend request sent to ${entry.username}!`);
-                    }}
-                    disabled={!!requested[entry.id]}
-                    className="ml-1 shrink-0 text-[10px] font-bold px-2.5 py-1.5 rounded-xl bg-accent text-accent-foreground disabled:opacity-50"
-                  >
-                    {requested[entry.id] ? "Sent" : "+ Friend"}
-                  </button>
-                )}
+        {loading && <p className="p-5 text-sm text-muted-foreground">Loading…</p>}
+        {!loading && entries.length === 0 && (
+          <p className="p-5 text-sm text-muted-foreground">No one on the board yet. Finish a lesson to be first!</p>
+        )}
+        {entries.map((entry, i) => {
+          const isMe = entry.userId === myUserId;
+          return (
+            <div key={entry.userId} className={cn("flex items-center gap-3 sm:gap-4 px-4 sm:px-5 py-3.5", isMe && "bg-accent/60")}>
+              <span className={cn("w-7 text-center font-black", i < 3 ? "text-amber-500" : "text-muted-foreground")}>
+                {i + 1}
+              </span>
+              <img src={avatarFor(entry)} className="w-10 h-10 rounded-xl bg-muted" />
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-foreground truncate">
+                  {entry.username} {isMe && <span className="text-muted-foreground font-medium">(you)</span>}
+                </p>
+                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wide">
+                  Level {Math.floor(entry.xp / 1000) + 1}
+                </p>
               </div>
-            );
-          })}
+              <span className="font-black text-foreground whitespace-nowrap">{entry.xp.toLocaleString()} XP</span>
+              {!isMe && (
+                <button
+                  onClick={() => addFriend(entry.username, entry.userId)}
+                  disabled={entry.isFriend || !!requested[entry.userId]}
+                  className="ml-1 shrink-0 text-[10px] font-bold px-2.5 py-1.5 rounded-xl bg-accent text-accent-foreground disabled:opacity-50"
+                >
+                  {entry.isFriend ? "Friends" : requested[entry.userId] ? "Sent" : "+ Friend"}
+                </button>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Members-only pages, shown to guests instead of the leaderboard, chat and
+// profile (they hold other students' data or need an account to save).
+// ---------------------------------------------------------------------------
+
+const MEMBERS_ONLY_TEXT: Partial<Record<Page, { title: string; body: string }>> = {
+  leaderboard: {
+    title: "The leaderboard is for members",
+    body: "Create a free account to earn XP, climb the leaderboard and see how you rank against other explorers.",
+  },
+  friends: {
+    title: "Friends and chat are for members",
+    body: "To keep everyone safe, only students with an account can add friends and chat.",
+  },
+  profile: {
+    title: "Make it yours with an account",
+    body: "Pick an avatar, collect badges and keep your progress by creating a free account.",
+  },
+};
+
+function MembersOnly({ page, onSignUp, onSignIn }: { page: Page; onSignUp: () => void; onSignIn: () => void }) {
+  const text = MEMBERS_ONLY_TEXT[page] ?? MEMBERS_ONLY_TEXT.profile!;
+  return (
+    <div className="w-full flex justify-center pt-6">
+      <div className="bg-card rounded-3xl border border-border shadow-sm p-8 max-w-md w-full text-center">
+        <div className="flex justify-center -space-x-4 mb-4">
+          {[stembotGreen, stembotBlue, stembotRed].map((src, i) => (
+            <img key={i} src={src} alt="" className="h-20 w-20 object-contain drop-shadow" />
+          ))}
+        </div>
+        <div className="w-11 h-11 rounded-2xl bg-accent text-muted-foreground flex items-center justify-center mx-auto mb-3">
+          <Lock size={20} />
+        </div>
+        <h2 className="font-black text-foreground mb-2">{text.title}</h2>
+        <p className="text-sm text-muted-foreground mb-5">{text.body}</p>
+        <div className="flex flex-col sm:flex-row gap-2 justify-center">
+          <button onClick={onSignUp} className="px-5 py-2.5 rounded-2xl bg-primary text-primary-foreground font-bold text-sm">
+            Create an account
+          </button>
+          <button onClick={onSignIn} className="px-5 py-2.5 rounded-2xl bg-accent text-accent-foreground font-bold text-sm">
+            Sign in
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Account menu (avatar drop-down in the top bar)
+// ---------------------------------------------------------------------------
+
+function AccountMenu({
+  avatar,
+  name,
+  theme,
+  onTheme,
+  darkMode,
+  onToggleDark,
+  onProfile,
+  onLogout,
+  isGuest,
+  onSignUp,
+  onSignIn,
+}: {
+  avatar: string;
+  name: string;
+  theme: ThemeId;
+  onTheme: (t: ThemeId) => void;
+  darkMode: boolean;
+  onToggleDark: () => void;
+  onProfile: () => void;
+  onLogout: () => void;
+  isGuest: boolean;
+  onSignUp: () => void;
+  onSignIn: () => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-white shadow-md bg-white shrink-0"
+          aria-label="Account menu"
+        >
+          <img src={avatar} alt="" className="w-full h-full object-cover" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56 rounded-2xl">
+        <DropdownMenuLabel className="truncate">{isGuest ? "Guest" : `@${name}`}</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {isGuest ? (
+          <>
+            <DropdownMenuItem onSelect={onSignUp}>
+              <UserPlus size={15} /> Create an account
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={onSignIn}>
+              <LogIn size={15} /> Sign in
+            </DropdownMenuItem>
+          </>
+        ) : (
+          <DropdownMenuItem onSelect={onProfile}>
+            <UserIcon size={15} /> View profile
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger className="gap-2">
+            <Palette size={15} className="text-muted-foreground" /> Colour theme
+          </DropdownMenuSubTrigger>
+          <DropdownMenuSubContent className="rounded-2xl">
+            <DropdownMenuRadioGroup value={theme} onValueChange={(v) => onTheme(v as ThemeId)}>
+              {THEMES.map((t) => (
+                <DropdownMenuRadioItem key={t.id} value={t.id}>
+                  <span
+                    className="w-4 h-4 rounded-full shrink-0"
+                    style={{ background: `linear-gradient(135deg, ${t.swatch.join(", ")})` }}
+                  />
+                  {t.name}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
+        <DropdownMenuItem onSelect={(e) => (e.preventDefault(), onToggleDark())}>
+          {darkMode ? <Sun size={15} /> : <Moon size={15} />} {darkMode ? "Light mode" : "Dark mode"}
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem variant="destructive" onSelect={onLogout}>
+          <LogOut size={15} /> {isGuest ? "Leave guest mode" : "Log out"}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -903,16 +1209,16 @@ function Gallery({ posts, reflectionPosts }: { posts: any[]; reflectionPosts: an
   const allPosts = [...reflectionPosts, ...posts];
 
   return (
-    <div className="columns-1 sm:columns-2 lg:columns-3 gap-5 space-y-5 max-w-6xl mx-auto">
+    <div className="columns-1 sm:columns-2 lg:columns-3 gap-5 space-y-5 w-full">
       {allPosts.map((post) => {
         const isReflection = !post.imageUrl;
         const likeCount = likes[post.id] ?? post.likes;
         return (
           <div key={post.id} className="break-inside-avoid bg-card rounded-3xl border border-border shadow-sm overflow-hidden hover:shadow-md transition-all group">
             {isReflection ? (
-              <div className="p-5 bg-gradient-to-br from-lime-50 to-yellow-50 dark:from-lime-500/10 dark:to-yellow-500/10">
+              <div className="p-5 bg-accent/50">
                 <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-2">Exit Card Reflection</p>
-                <p className="text-sm font-medium text-foreground whitespace-pre-line leading-relaxed">{post.caption}</p>
+                <p className="text-sm font-medium text-foreground whitespace-pre-line leading-relaxed line-clamp-[12]">{post.caption}</p>
               </div>
             ) : (
               <div className="relative">

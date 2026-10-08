@@ -9,6 +9,12 @@ real accounts and progress tracking (replacing the old mock login).
 npm install
 ```
 
+## Keys and secrets
+
+Copy `.env.example` to `.env` and fill in the values you need. `.env` is
+gitignored, so keys stay on your own computer and never reach GitHub. The
+server loads it automatically when it starts.
+
 ## Running it
 
 You need **both** the frontend and the backend running.
@@ -60,8 +66,32 @@ with saved high scores, and rival STEMbots for solo play.
   persists across refresh via `localStorage` (just the user id — no
   sensitive data is stored client-side).
 
+## Admin page
+
+Set `ADMIN_PASSKEY` in `.env`, start the app, and open
+`http://localhost:5173/#/admin`. Enter the passkey to see every student, their
+progress, and to delete accounts.
+
+## Testing friends and live chat with two players
+
+With the server running:
+
+```bash
+npm run simulate                       # two bot players befriend each other and chat
+npm run simulate -- --with your_name   # the bots also friend-request you and chat with you live
+```
+
+The bots are real accounts (PIN 1111), so you can also sign in as one in a
+second browser window. The script prints the command to delete them afterwards.
+
+## Privacy
+
+See [docs/DATA_PRIVACY.md](docs/DATA_PRIVACY.md) for what is stored, the
+Singapore PDPA rules for children's data, and how account deletion works.
+
 ## Build
 
 ```bash
 npm run build
+npm start      # serves the built site and the API together on one port
 ```

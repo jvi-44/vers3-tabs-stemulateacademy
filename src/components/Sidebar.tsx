@@ -102,6 +102,7 @@ export function Sidebar({
   darkMode,
   onToggleDark,
   variant = "desktop",
+  logoutLabel = "Log Out",
 }: {
   avatar: string;
   level: number;
@@ -114,6 +115,7 @@ export function Sidebar({
   /** "desktop" = the permanent md+ rail (hidden below md).
    *  "mobile" = embedded inside the slide-out drawer, always visible there. */
   variant?: "desktop" | "mobile";
+  logoutLabel?: string;
 }) {
   return (
     <aside
@@ -184,7 +186,7 @@ export function Sidebar({
           className="w-full flex items-center gap-3 px-4 py-2.5 rounded-2xl text-sm font-semibold text-sidebar-foreground/50 hover:bg-destructive/10 hover:text-destructive transition-all"
         >
           <LogOut size={17} />
-          <span>Log Out</span>
+          <span>{logoutLabel}</span>
         </button>
       </div>
     </aside>
