@@ -3,6 +3,7 @@ import cors from "cors";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import db from "./db.js";
+import { registerGameRoutes } from "./gameRooms.js";
 
 const app = express();
 app.use(cors());
@@ -332,6 +333,8 @@ app.post("/api/chat", async (req, res) => {
     res.status(500).json({ error: "Internal error", reply: null });
   }
 });
+
+registerGameRoutes(app, db);
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
