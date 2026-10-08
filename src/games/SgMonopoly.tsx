@@ -1037,10 +1037,8 @@ export function SgMonopoly({ mode, seed, me, live, reportProgress, finish }: Gam
           top="#4ade80"
           topStyle={{
             backgroundImage:
-              "linear-gradient(45deg, rgba(255,255,255,0.12) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.12) 75%), linear-gradient(45deg, rgba(255,255,255,0.12) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.12) 75%)",
-            backgroundSize: `${cell / 2}px ${cell / 2}px`,
-            backgroundPosition: `0 0, ${cell / 4}px ${cell / 4}px`,
-            borderRadius: 6,
+              "radial-gradient(circle at 30% 25%, rgba(255,255,255,0.28), transparent 55%), linear-gradient(160deg, rgba(255,255,255,0.12), rgba(0,0,0,0.04))",
+            borderRadius: 14,
           }}
         />
         {/* Marina Bay water in the middle */}
@@ -1417,7 +1415,7 @@ export function SgMonopoly({ mode, seed, me, live, reportProgress, finish }: Gam
           style={{ top: 70 + k * 46, left: 0, animation: `sgm-cloud ${38 + k * 11}s linear ${-k * 13}s infinite`, opacity: 0.85 }}
         >
           {[0, 1, 2].map((j) => (
-            <span key={j} className="block bg-white" style={{ width: 24, height: j === 1 ? 24 : 15, marginTop: j === 1 ? 0 : 9, boxShadow: "inset 0 -4px 0 rgba(0,0,0,0.06)" }} />
+            <span key={j} className="block bg-white rounded-full" style={{ width: j === 1 ? 34 : 26, height: j === 1 ? 28 : 18, marginTop: j === 1 ? 0 : 10, marginLeft: j ? -10 : 0 }} />
           ))}
         </div>
       ))}

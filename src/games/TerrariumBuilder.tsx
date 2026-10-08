@@ -497,9 +497,9 @@ export function TerrariumBuilder({ seed, reportProgress, finish }: GameProps) {
       ].map(([left, top, sc], i) => (
         <div key={i} className="absolute pointer-events-none" style={{ left: `${left}%`, top: top + 96, transform: `scale(${sc})`, animation: `game-float ${4 + i}s ease-in-out infinite` }}>
           <div className="flex items-end">
-            <span className="block w-8 h-5 bg-white/80" />
-            <span className="block w-10 h-8 bg-white/90" />
-            <span className="block w-12 h-6 bg-white/80" />
+            <span className="block w-8 h-5 -ml-3 rounded-full bg-white/80 blur-[1px]" />
+            <span className="block w-10 h-8 -ml-3 rounded-full bg-white/90 blur-[1px]" />
+            <span className="block w-12 h-6 -ml-3 rounded-full bg-white/80 blur-[1px]" />
           </div>
         </div>
       ))}

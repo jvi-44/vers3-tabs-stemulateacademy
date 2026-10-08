@@ -417,9 +417,9 @@ export function RoomDesigner({ seed, reportProgress, finish }: GameProps) {
       ].map(([left, top, sc], i) => (
         <div key={i} className="absolute pointer-events-none" style={{ left: `${left}%`, top: top + 96, transform: `scale(${sc})`, animation: `game-float ${4 + i}s ease-in-out infinite` }}>
           <div className="flex items-end">
-            <span className="block w-8 h-5 bg-white/90" />
-            <span className="block w-10 h-8 bg-white/95" />
-            <span className="block w-12 h-6 bg-white/90" />
+            <span className="block w-8 h-5 -ml-3 rounded-full bg-white/90 blur-[1px]" />
+            <span className="block w-10 h-8 -ml-3 rounded-full bg-white/95 blur-[1px]" />
+            <span className="block w-12 h-6 -ml-3 rounded-full bg-white/90 blur-[1px]" />
           </div>
         </div>
       ))}
@@ -667,10 +667,7 @@ function Slab({ w, d, t, top, side, side2 }: { w: number; d: number; t: number; 
           width: w,
           height: d,
           background: top,
-          backgroundImage:
-            "linear-gradient(45deg, rgba(0,0,0,0.06) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.06) 75%), linear-gradient(45deg, rgba(0,0,0,0.06) 25%, transparent 25%, transparent 75%, rgba(0,0,0,0.06) 75%)",
-          backgroundSize: `${(w / GRID) * 2}px ${(w / GRID) * 2}px`,
-          backgroundPosition: `0 0, ${w / GRID}px ${w / GRID}px`,
+          backgroundImage: "radial-gradient(circle at 35% 30%, rgba(255,255,255,0.25), transparent 60%)",
           transform: `translateZ(${t}px)`,
         }}
       />

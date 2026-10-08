@@ -715,7 +715,7 @@ function FlightScene({ box, things, lane, bump }: { box: { w: number; h: number 
       );
   return (
     <div key={bump} className="absolute inset-0" style={bump ? { animation: "game-shake 300ms ease" } : undefined}>
-      <VoxelWorld cols={LANES} rows={TRACK} size={S} tilt={62} spin={0} className="absolute inset-x-0 top-0" style={{ bottom: S * 1.2, perspective: 900, perspectiveOrigin: "50% 30%" }}>
+      <VoxelWorld cols={LANES} rows={TRACK} size={S} tilt={62} spin={0} sway={false} className="absolute inset-x-0 top-0" style={{ bottom: S * 1.2, perspective: 900, perspectiveOrigin: "50% 30%" }}>
         {tiles}
         {things.map((o) =>
           o.kind === "rock" ? (
