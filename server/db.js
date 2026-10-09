@@ -35,6 +35,11 @@ function hasColumn(table, column) {
     .some((c) => c.name === column);
 }
 
+// A database created by the short-lived bearer-token build has a `sessions`
+// table keyed by token_hash. Sessions are disposable, so drop it and let
+// 002_sessions.sql recreate the cookie-session shape (everyone signs in again).
+if (hasColumn("sessions", "token_hash")) db.exec("DROP TABLE sessions");
+
 const MIGRATIONS_DIR = path.join(__dirname, "migrations");
 if (fs.existsSync(MIGRATIONS_DIR)) {
   const files = fs

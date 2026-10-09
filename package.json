@@ -13,7 +13,9 @@
     "typecheck": "tsc --noEmit",
     "test": "npm run test:server && npm run test:client",
     "test:server": "node --test \"server/test/*.test.js\"",
-    "test:client": "vitest run --dir src"
+    "test:client": "vitest run --dir src",
+    "simulate": "node scripts/simulate-players.mjs",
+    "simulate:game": "node scripts/simulate-game-players.mjs"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "1.2.3",

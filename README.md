@@ -29,6 +29,8 @@ the frontend.
 | `APP_ORIGIN` | CORS: the only origin allowed to call the API with the login cookie | `http://localhost:5173` |
 | `DB_PATH` | Where the SQLite file lives | `server/stemulate.db` |
 | `PORT` | API port | `4000` |
+| `ADMIN_PASSKEY` | The admin page at `/#/admin` (use something long) | none (admin page switched off) |
+| `AUTH_RATE_LIMIT_PER_MIN` | Per-IP sign-in / sign-up / Forgot PIN / admin-login requests per minute | `20` |
 
 ### Gemini (STEMbot chat)
 
@@ -66,6 +68,22 @@ The SQLite database file is created automatically at `server/stemulate.db`
 `server/schema.sql` runs first, then every file in `server/migrations/` in
 filename order (see `server/db.js`). Delete the database file to reset all
 accounts and progress during testing.
+
+## Lesson games
+
+Each lesson has a game (`src/games/`, one file per game, listed in
+`src/games/registry.ts`). They share a kit in `src/games/kit/`: 3D voxel
+blocks, chiptune music and sound effects made in code, a score out of 100
+with saved high scores, and rival STEMbots for solo play.
+
+- **In a lesson** the game is always single player.
+- **In the Games tab** you can replay it solo, or press **Live** to host a
+  2 to 4 player match and share its 4-letter code. Live rooms run on the
+  Express server (`server/gameRooms.js`, Server-Sent Events), so the API must
+  be running.
+- **Testing live play alone:** host a Live game, then in another terminal run
+  `npm run simulate:game -- ABCD 2` (the room code, and 1 to 3 pretend
+  players). They join, get ready, and play along when you press Start.
 
 ## What changed from the original mock version
 
@@ -133,8 +151,32 @@ The Express server can serve the built frontend and the API from one origin.
 Before launch, remove `<meta name="robots" content="noindex, nofollow" />`
 from `index.html` if the site should appear in search results.
 
+## Admin page
+
+Set `ADMIN_PASSKEY` in `.env`, start the app, and open
+`http://localhost:5173/#/admin`. Enter the passkey to see every student, their
+progress, and to delete accounts.
+
+## Testing friends and live chat with two players
+
+With the server running:
+
+```bash
+npm run simulate                       # two bot players befriend each other and chat
+npm run simulate -- --with your_name   # the bots also friend-request you and chat with you live
+```
+
+The bots are real accounts (PIN 1111), so you can also sign in as one in a
+second browser window. The script prints the command to delete them afterwards.
+
+## Privacy
+
+See [docs/DATA_PRIVACY.md](docs/DATA_PRIVACY.md) for what is stored, the
+Singapore PDPA rules for children's data, and how account deletion works.
+
 ## Build
 
 ```bash
 npm run build
+npm start      # serves the built site and the API together on one port
 ```

@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Curriculum · Project STEMulate</title>
+  <meta name="description" content="Three STEM x Games workshops built around Minecraft, Monopoly and Among Us, with the real workshop slides, learning outcomes and a curriculum map." />
+  <meta name="theme-color" content="#7cc242" />
+  <link rel="icon" href="assets/logo.png" />
+  <meta property="og:title" content="Curriculum · Project STEMulate" />
+  <meta property="og:description" content="Three STEM x Games workshops built around Minecraft, Monopoly and Among Us, with the real workshop slides, learning outcomes and a curriculum map." />
+  <meta property="og:image" content="assets/screens/home.jpg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Small SVG icon sprite used across the page -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></symbol>
+      <symbol id="i-quiz" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 14.5a1.2 1.2 0 1 1 0-2.4 1.2 1.2 0 0 1 0 2.4Zm1.4-5.1c-.6.4-.9.7-.9 1.3v.4h-2v-.5c0-1.2.6-1.9 1.4-2.4.7-.5 1.1-.8 1.1-1.4 0-.7-.6-1.2-1.4-1.2-.9 0-1.5.5-1.6 1.4l-2-.3C8.2 8.1 9.8 6.9 11.7 6.9c2 0 3.5 1.2 3.5 3 0 1.2-.7 1.9-1.8 2.5Z" fill="currentColor"/></symbol>
+      <symbol id="i-game" viewBox="0 0 24 24"><path d="M7 7h10a5 5 0 0 1 4.9 6l-.8 3.8a2.6 2.6 0 0 1-4.5 1.2L14.5 16h-5L7.4 18a2.6 2.6 0 0 1-4.5-1.2L2.1 13A5 5 0 0 1 7 7Zm1 3v1.5H6.5v2H8V15h2v-1.5h1.5v-2H10V10H8Zm8 .2a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4Zm-2 2.6a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4Z" fill="currentColor"/></symbol>
+      <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5.5C6.5 4.3 9.3 4.4 12 6c2.7-1.6 5.5-1.7 8-.5v13c-2.5-1.2-5.3-1.1-8 .5-2.7-1.6-5.5-1.7-8-.5v-13Zm7 2.2C9.2 6.7 7.6 6.5 6 7v8.9c1.6-.3 3.3-.1 5 .7V7.7Zm2 8.9c1.7-.8 3.4-1 5-.7V7c-1.6-.5-3.2-.3-5 .7v8.9Z" fill="currentColor"/></symbol>
+      <symbol id="i-pen" viewBox="0 0 24 24"><path d="m15.2 4.6 4.2 4.2L9 19.2 4 20l.8-5 10.4-10.4Zm0 2.8-8.6 8.6-.3 1.7 1.7-.3 8.6-8.6-1.4-1.4Z" fill="currentColor"/></symbol>
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M13.3 5.3 20 12l-6.7 6.7-1.4-1.4 4.3-4.3H4v-2h12.2l-4.3-4.3 1.4-1.4Z" fill="currentColor"/></symbol>
+      <symbol id="i-out" viewBox="0 0 24 24"><path d="M14 4h6v6h-2V7.4l-7.3 7.3-1.4-1.4L16.6 6H14V4ZM5 6h6v2H6v10h10v-5h2v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Z" fill="currentColor"/></symbol>
+      <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3 2.6 5.5 6 .8-4.4 4.1 1.1 6L12 16.5 6.7 19.4l1.1-6L3.4 9.3l6-.8z" fill="currentColor"/></symbol>
+      <symbol id="i-atom" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2" fill="currentColor"/><ellipse cx="12" cy="12" rx="9.5" ry="3.8" fill="none" stroke="currentColor" stroke-width="1.8"/><ellipse cx="12" cy="12" rx="9.5" ry="3.8" transform="rotate(60 12 12)" fill="none" stroke="currentColor" stroke-width="1.8"/><ellipse cx="12" cy="12" rx="9.5" ry="3.8" transform="rotate(120 12 12)" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+      <symbol id="i-chev-l" viewBox="0 0 24 24"><path d="M15.4 5.4 9.8 11l5.6 5.6-1.4 1.4-7-7 7-7 1.4 1.4Z" fill="currentColor" transform="translate(0 1)"/></symbol>
+      <symbol id="i-chev-r" viewBox="0 0 24 24"><path d="m8.6 5.4 1.4-1.4 7 7-7 7-1.4-1.4 5.6-5.6-5.6-5.6Z" fill="currentColor" transform="translate(0 1)"/></symbol>
+      <symbol id="i-close" viewBox="0 0 24 24"><path d="M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6l5.6-5.6L5 6.4 6.4 5Z" fill="currentColor"/></symbol>
+      <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 4h6v2H7.4l3.3 3.3-1.4 1.4L6 7.4V10H4V4Zm10 0h6v6h-2V7.4l-3.3 3.3-1.4-1.4L16.6 6H14V4ZM4 14h2v2.6l3.3-3.3 1.4 1.4L7.4 18H10v2H4v-6Zm14 2.6V14h2v6h-6v-2h2.6l-3.3-3.3 1.4-1.4 3.3 3.3Z" fill="currentColor"/></symbol>
+      <symbol id="i-clock" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18Zm0 2a7 7 0 1 0 0 14 7 7 0 0 0 0-14Zm1 2v4.6l3.2 2-1 1.7L11 12.7V7h2Z" fill="currentColor"/></symbol>
+      <symbol id="i-flask" viewBox="0 0 24 24"><path d="M9 3h6v2h-1v4.4l5.6 9.3A1.5 1.5 0 0 1 18.3 21H5.7a1.5 1.5 0 0 1-1.3-2.3L10 9.4V5H9V3Zm3 7.5L9.4 15h5.2L12 10.5Z" fill="currentColor"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="m9.5 16.2-4.2-4.2-1.4 1.4 5.6 5.6L20.1 8.4 18.7 7 9.5 16.2Z" fill="currentColor"/></symbol>
+    </defs>
+  </svg>
+
+
+  <a class="skip" href="#main">Skip to content</a>
+
+  <!-- Announcement strip: the quick route into the Academy -->
+  <div class="topbar">
+    <p><strong>New:</strong> Workshops end. Curiosity doesn't. Meet STEMulate Academy!</p>
+    <a data-academy-link href="index.html#academy">Enter STEMulate Academy <svg class="ico"><use href="#i-arrow"/></svg></a>
+  </div>
+
+  <header class="nav" id="top">
+    <a class="brand" href="index.html" aria-label="Project STEMulate home">
+      <img src="assets/logo.png" alt="" width="44" height="40" />
+      <span>Project <b>STEMulate</b></span>
+    </a>
+    <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links" aria-label="Open menu">
+      <span></span><span></span><span></span>
+    </button>
+    <nav id="nav-links" class="nav-links" aria-label="Main">
+      <a href="about.html">About us</a>
+      <a href="curriculum.html" aria-current="page">Curriculum</a>
+      <a href="impact.html">Impact</a>
+      <a href="index.html#lessons">Lessons</a>
+      <a href="index.html#join">Get involved</a>
+      <a class="btn btn-grape btn-sm" data-academy-link href="index.html#academy">
+        STEMulate Academy <svg class="ico"><use href="#i-out"/></svg>
+      </a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <!-- ───────── PAGE HERO ───────── -->
+    <section class="page-hero">
+      <div class="hero-pattern" aria-hidden="true"></div>
+      <div class="wrap page-hero-grid">
+        <div>
+          <span class="kicker">Curriculum · STEM x Games</span>
+          <h1>From the games kids play to the science they'll use.</h1>
+          <p class="lead">Three workshops, each built around a game children already love. Every session mixes a story, a bit of theory and a lot of hands-on making, and every topic links back to the primary school syllabus.</p>
+        </div>
+        <img class="page-hero-bot" src="assets/bots/stembot_green.png" alt="" />
+      </div>
+    </section>
+
+    <!-- ───────── WORKSHOP FLOW ───────── -->
+    <section class="section section-tight">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="kicker">How a workshop runs</span>
+          <h2>Six steps, one big “wow!”</h2>
+          <p class="section-sub">Each in-person workshop runs for 1.5 to 3 hours and follows the same rhythm, so children always know what's coming next.</p>
+        </div>
+        <ol class="steps">
+          <li style="--c:#7cc242"><b>Hello, STEM!</b><span>Name tags, ice-breakers and what S, T, E and M stand for.</span></li>
+          <li style="--c:#e0508f"><b>Story time</b><span>The STEMbots get into a pickle that only STEM can solve.</span></li>
+          <li style="--c:#e8a317"><b>Ground rules</b><span>Be kind, help your friends, join in.</span></li>
+          <li style="--c:#1f9d55"><b>Theory</b><span>Short, picture-heavy explanations with quick games like Hangman and Kahoot.</span></li>
+          <li style="--c:#7c4dff"><b>Hands-on</b><span>Build, test and play: rockets, terrariums, board games.</span></li>
+          <li style="--c:#1f7fc4"><b>Reflect</b><span>What did we learn? Then the fun continues in STEMulate Academy.</span></li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ───────── WORKSHOPS ───────── -->
+    <section class="section section-mint" id="workshops">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="kicker kicker-grape">Our workshops</span>
+          <h2>Pick a game, flip through the slides</h2>
+          <p class="section-sub">These are the real slides our volunteers teach from. Tap any slide to see it full size.</p>
+        </div>
+        <div class="tabs ws-tabs" role="tablist" aria-label="Workshops">
+          <button role="tab" id="wstab-minecraft" aria-controls="ws-minecraft" aria-selected="true" class="tab tab-minecraft"><img src="assets/slides/minecraft/01.jpg" alt="" /><span>Workshop 1 · Minecraft</span>Minecraft Masterminds</button>
+          <button role="tab" id="wstab-monopoly" aria-controls="ws-monopoly" aria-selected="false" tabindex="-1" class="tab tab-monopoly"><img src="assets/slides/monopoly/01.jpg" alt="" /><span>Workshop 2 · Monopoly</span>Mission Millionaire</button>
+          <button role="tab" id="wstab-amongus" aria-controls="ws-amongus" aria-selected="false" tabindex="-1" class="tab tab-amongus"><img src="assets/slides/amongus/01.jpg" alt="" /><span>Workshop 3 · Among Us</span>Space Busters</button>
+        </div>
+
+        <div class="workshop theme-mc" role="tabpanel" id="ws-minecraft" aria-labelledby="wstab-minecraft">
+          <div class="ws-top">
+            <div class="ws-intro">
+              <div class="lesson-top">
+                <span class="game-badge">Workshop 1 · Minecraft</span>
+                <span class="levels"><i>P5</i><i>P6</i></span>
+              </div>
+              <h3>Minecraft Masterminds</h3>
+              <p>One hot summer afternoon, Sophia's garden starts to change. Children explore Minecraft biomes to learn how matter and water cycle, then measure blocks to build better.</p>
+              <div class="topic-chips"><span class="chip chip-sci">States of matter</span><span class="chip chip-sci">The water cycle</span><span class="chip chip-sci">Ecosystems</span><span class="chip chip-math">Area</span><span class="chip chip-math">Volume of cubes & cuboids</span></div>
+            </div>
+          </div>
+
+          <div class="deck" aria-roledescription="carousel" aria-label="Minecraft Masterminds workshop slides">
+            <div class="deck-bar">
+              <span class="deck-title">Workshop slides</span>
+              <span class="deck-count" aria-live="polite"><b>1</b> / 10</span>
+              <div class="deck-nav">
+                <button class="deck-btn" type="button" data-dir="-1" aria-label="Previous slide"><svg class="ico"><use href="#i-chev-l"/></svg></button>
+                <button class="deck-btn" type="button" data-dir="1" aria-label="Next slide"><svg class="ico"><use href="#i-chev-r"/></svg></button>
+              </div>
+            </div>
+            <div class="deck-track" tabindex="0">
+              <figure class="slide" data-caption="STEM x Minecraft: the cover slide">
+                <button class="slide-open" type="button" aria-label="View slide 1 full screen: STEM x Minecraft: the cover slide">
+                  <img src="assets/slides/minecraft/01.jpg" alt="Workshop slide: STEM x Minecraft: the cover slide" loading="lazy" width="1280" height="720" />
+                  <span class="slide-zoom" aria-hidden="true"><svg class="ico"><use href="#i-expand"/></svg></span>
+                </button>
+                <figcaption><b>1</b>STEM x Minecraft: the cover slide</figcaption>
+              </figure>
+              <figure class="slide" data-caption="Story time: a hot summer afternoon in Sophia's garden">
+                <button class="slide-open" type="button" aria-label="View slide 2 full screen: Story time: a hot summer afternoon in Sophia's garden">
+                  <img src="assets/slides/minecraft/07.jpg" alt="Workshop slide: Story time: a hot summer afternoon in Sophia's garden" loading="lazy" width="1280" height="720" />
+                  <span class="slide-zoom" aria-hidden="true"><svg class="ico"><use href="#i-expand"/></svg></span>
+                </button>
+                <figcaption><b>2</b>Story time: a hot summer afternoon in Sophia's garden</figcaption>
+              </figure>
+              <figure class="slide" data-caption="What's a terrarium? Terra = land, arium = aquarium">
+                <button class="slide-open" type="button" aria-label="View slide 3 full screen: What's a terrarium? Terra = land, arium = aquarium">
+                  <img src="assets/slides/minecraft/12.jpg" alt="Workshop slide: What's a terrarium? Terra = land, arium = aquarium" loading="lazy" width="1280" height="720" />
+                  <span class="slide-zoom" aria-hidden="true"><svg class="ico"><use href="#i-expand"/></svg></span>
+                </button>
+                <figcaption><b>3</b>What's a terrarium? Terra = land, arium = aquarium</figcaption>
+              </figure>
+              <figure class="slide" data-caption="The three states of water">
+                <button class="slide-open" type="button" aria-label="View slide 4 full screen: The three states of water">
+                  <img src="assets/slides/minecraft/18.jpg" alt="Workshop slide: The three states of water" loading="lazy" width="1280" height="720" />
+                  <span class="slide-zoom" aria-hidden="true"><svg class="ico"><use href="#i-expand"/></svg></span>
+                </button>
+                <figcaption><b>4</b>The three states of water</figcaption>
+              </figure>
+              <figure class="slide" data-caption="The water cycle, step by step">
+                <button class="slide-open" type="button" aria-label="View slide 5 full screen: The water cycle, step by step">
+                  <img src="assets/slides/minecraft/20.jpg" alt="Workshop slide: The water cycle, step by step" loading="lazy" width="1280" height="720" />
+                  <span class="slide-zoom" aria-hidden="true"><svg class="ico"><use href="#i-expand"/></svg></span>
+                </button>
+                <figcaption><b>5</b>The water cycle, step by step</figcaption>
+              </figure>
+              <figure class="slide" data-caption="Pick your biome: forest, desert or swamp">
+                <button class="slide-open" type="button" aria-label="View slide 6 full screen: Pick your biome: forest, desert or swamp">
+                  <img src="assets/slides/minecraft/33.jpg" alt="Workshop slide: Pick your biome: forest, desert or swamp" loading="lazy" width="1280" height="720" />
+                  <span class="slide-zoom" aria-hidden="true"><svg class="ico"><use href="#i-expand"/></svg></span>
+                </button>
+                <figcaption><b>6</b>Pick your biome: forest, desert or swamp</figcaption>
+              </figure>
+              <figure class="slide" data-caption="Five steps to build a bottle terrarium">
+                <button class="slide-open" type="button" aria-label="View slide 7 full screen: Five steps to build a bottle terrarium">
+                  <img src="assets/slides/minecraft/34.jpg" alt="Workshop slide: Five steps to build a bottle terrarium" loading="lazy" width="1280" height="720" />
+                  <span class="slide-zoom" aria-hidden="true"><svg class="ico"><use href="#i-expand"/></svg></span>
+                </button>
+                <figcaption><b>7</b>Five steps to build a bottle terrarium</figcaption>
+              </figure>
+              <figure class="slide" data-caption="Area = length × width, Minecraft-floor style">
+                <button class="slide-open" type="button" aria-label="View slide 8 full screen: Area = length × width, Minecraft-floor style">
+                  <img src="assets/slides/minecraft/38.jpg" alt="Workshop slide: Area = length × width, Minecraft-floor style" loading="lazy" width="1280" height="720" />
+                  <span class="slide-zoom" aria-hidden="true"><svg class="ico"><use href="#i-expand"/></svg></span>
+                </button>
+                <figcaption><b>8</b>Area = length × width, Minecraft-floor style</figcaption>
+              </figure>
+              <figure class="slide" data-caption="Volume of cuboids, with Timothy">
+                <button class="slide-open" type="button" aria-label="View slide 9 full screen: Volume of cuboids, with Timothy">
+                  <img src="assets/slides/minecraft/43.jpg" alt="Workshop slide: Volume of cuboids, with Timothy" loading="lazy" width="1280" height="720" />
+                  <span class="slide-zoom" aria-hidden="true"><svg class="ico"><use href="#i-expand"/></svg></span>
+                </button>
+                <figcaption><b>9</b>Volume of cuboids, with Timothy</figcaption>
+              </figure>
+              <figure class="slide" data-caption="Practical: paper-craft blocks and Minecraft Education">
+                <button class="slide-open" type="button" aria-label="View slide 10 full screen: Practical: paper-craft blocks and Minecraft Education">
+                  <img src="assets/slides/minecraft/47.jpg" alt="Workshop slide: Practical: paper-craft blocks and Minecraft Education" loading="lazy" width="1280" height="720" />
+                  <span class="slide-zoom" aria-hidden="true"><svg class="ico"><use href="#i-expand"/></svg></span>
+                </button>
+                <figcaption><b>10</b>Practical: paper-craft blocks and Minecraft Education</figcaption>
+              </figure>
+            </div>
+          </div>
+
+          <div class="ws-cols">
+            <div class="ws-card sticker">
+              <h4>Children will be able to…</h4>
+              <ul class="outcomes">
+                <li><svg class="ico"><use href="#i-check"/></svg>Name the three states of matter and how water changes between them</li>
+                <li><svg class="ico"><use href="#i-check"/></svg>Explain where rain comes from: evaporation, condensation, precipitation</li>
+                <li><svg class="ico"><use href="#i-check"/></svg>Compare land, water and mixed ecosystems</li>
+                <li><svg class="ico"><use href="#i-check"/></svg>Find area with length × width, and by splitting odd shapes into rectangles</li>
+                <li><svg class="ico"><use href="#i-check"/></svg>Work out the volume of cubes and cuboids</li>
+              </ul>
+            </div>
+            <div class="ws-card sticker ws-hands">
+              <h4><svg class="ico"><use href="#i-flask"/></svg> Hands-on activities</h4>
+              <ul class="handson">
+                <li><b>Bottle terrarium</b><span>Build a sealed mini ecosystem for a forest, desert or swamp biome, and see the water cycle keep it alive.</span></li>
+                <li><b>Minecraft paper-craft</b><span>Fold 3D blocks from nets, then calculate their volumes.</span></li>
+              </ul>
+              <a class="text-link" data-academy-link href="index.html#academy">Continue online in STEMulate Academy <svg class="ico"><use href="#i-arrow"/></svg></a>
+            </div>
+          </div>
+        </div>
+
+        <div class="workshop theme-mono" role="tabpanel" id="ws-monopoly" aria-labelledby="wstab-monopoly" hidden>
+          <div class="ws-top">
+            <div class="ws-intro">
+              <div class="lesson-top">
+                <span class="game-badge">Workshop 2 · Monopoly</span>
+                <span class="levels"><i>P4</i><i>P5</i><i>P6</i></span>
+              </div>
+              <h3>Mission Millionaire</h3>
+              <p>What would you buy with a million dollars? Children learn to handle money like a property tycoon, then play Monopoly musical chairs across Singapore's MRT lines.</p>
+              <div class="topic-chips"><span class="chip chip-math">Money & decimals</span><span class="chip chip-math">GST (9%)</span><span class="chip chip-math">Percentages & discounts</span><span class="chip chip-math">Bank interest</span></div>
+            </div>
+          </div>
+
+          <div class="deck" aria-roledescription="carousel" aria-label="Mission Millionaire workshop slides">
+            <div class="deck-bar">
+              <span class="deck-title">Workshop slides</span>
+              <span class="deck-count" aria-live="polite"><b>1</b> / 10</span>
+              <div class="deck-nav">
+                <button class="deck-btn" type="button" data-dir="-1" aria-label="Previous slide"><svg class="ico"><use href="#i-chev-l"/></svg></button>
+                <button class="deck-btn" type="button" data-dir="1" aria-label="Next slide"><svg class="ico"><use href="#i-chev-r"/></svg></button>
+              </div>
+            </div>
+            <div class="deck-track" tabindex="0">
+              <figure class="slide" data-caption="STEM x Games: the cover slide">
+                <button class="slide-open" type="button" aria-label="View slide 1 full screen: STEM x Games: the cover slide">
+                  <img src="assets/slides/monopoly/01.jpg" alt="Workshop slide: STEM x Games: the cover slide" loading="lazy" width="1280" height="720" />
+                  <span class="slide-zoom" aria-hidden="true"><svg class="ico"><use href="#i-expand"/></svg></span>
+                </button>
+                <figcaption><b>1</b>STEM x Games: the cover slide</figcaption>
+              </figure>
+              <figure class="slide" data-caption="Story time: the Monopoly adventure">
+                <button class="slide-open" type="button" aria-label="View slide 2 full screen: Story time: the Monopoly adventure">
+                  <img src="assets/slides/monopoly/05.jpg" alt="Workshop slide: Story time: the Monopoly adventure" loading="lazy" width="1280" height="720" />
+                  <span class="slide-zoom" aria-hidden="true"><svg class="ico"><use href="#i-expand"/></svg></span>
+                </button>
+                <figcaption><b>2</b>Story time: the Monopoly adventure</figcaption>
+              </figure>
+              <figure class="slide" data-caption="Today's agenda: theory, then a game">
+                <button class="slide-open" type="button" aria-label="View slide 3 full screen: Today's agenda: theory, then a game">
+                  <img src="assets/slides/monopoly/06.jpg" alt="Workshop slide: Today's agenda: theory, then a game" loading="lazy" width="1280" height="720" />
+                  <span class="slide-zoom" aria-hidden="true"><svg class="ico"><use href="#i-expand"/></svg></span>
+                </button>
+                <figcaption><b>3</b>Today's agenda: theory, then a game</figcaption>
+              </figure>
+              <figure class="slide" data-caption="Adding and subtracting decimals, worked examples">
+                <button class="slide-open" type="button" aria-label="View slide 4 full screen: Adding and subtracting decimals, worked examples">
+                  <img src="assets/slides/monopoly/09.jpg" alt="Workshop slide: Adding and subtracting decimals, worked examples" loading="lazy" width="1280" height="720" />
+                  <span class="slide-zoom" aria-hidden="true"><svg class="ico"><use href="#i-expand"/></svg></span>
+                </button>
+                <figcaption><b>4</b>Adding and subtracting decimals, worked examples</figcaption>
+              </figure>
+              <figure class="slide" data-caption="GST and taxes: what they are and why 9%">
+                <button class="slide-open" type="button" aria-label="View slide 5 full screen: GST and taxes: what they are and why 9%">
+                  <img src="assets/slides/monopoly/10.jpg" alt="Workshop slide: GST and taxes: what they are and why 9%" loading="lazy" width="1280" height="720" />
+                  <span class="slide-zoom" aria-hidden="true"><svg class="ico"><use href="#i-expand"/></svg></span>
+                </button>
+                <figcaption><b>5</b>GST and taxes: what they are and why 9%</figcaption>
+              </figure>
+              <figure class="slide" data-caption="Percentages in money: discounts and sale prices">
+                <button class="slide-open" type="button" aria-label="View slide 6 full screen: Percentages in money: discounts and sale prices">
+                  <img src="assets/slides/monopoly/11.jpg" alt="Workshop slide: Percentages in money: discounts and sale prices" loading="lazy" width="1280" height="720" />
+                  <span class="slide-zoom" aria-hidden="true"><svg class="ico"><use href="#i-expand"/></svg></span>
+                </button>
+                <figcaption><b>6</b>Percentages in money: discounts and sale prices</figcaption>
+              </figure>
+              <figure class="slide" data-caption="Game time: Monopoly musical chairs">
+                <button class="slide-open" type="button" aria-label="View slide 7 full screen: Game time: Monopoly musical chairs">
+                  <img src="assets/slides/monopoly/13.jpg" alt="Workshop slide: Game time: Monopoly musical chairs" loading="lazy" width="1280" height="720" />
+                  <span class="slide-zoom" aria-hidden="true"><svg class="ico"><use href="#i-expand"/></svg></span>
+                </button>
+                <figcaption><b>7</b>Game time: Monopoly musical chairs</figcaption>
+              </figure>
+              <figure class="slide" data-caption="Deciding to buy: the price plus 9% GST">
+                <button class="slide-open" type="button" aria-label="View slide 8 full screen: Deciding to buy: the price plus 9% GST">
+                  <img src="assets/slides/monopoly/18.jpg" alt="Workshop slide: Deciding to buy: the price plus 9% GST" loading="lazy" width="1280" height="720" />
+                  <span class="slide-zoom" aria-hidden="true"><svg class="ico"><use href="#i-expand"/></svg></span>
+                </button>
+                <figcaption><b>8</b>Deciding to buy: the price plus 9% GST</figcaption>
+              </figure>
+              <figure class="slide" data-caption="20% off on the blue and red MRT lines">
+                <button class="slide-open" type="button" aria-label="View slide 9 full screen: 20% off on the blue and red MRT lines">
+                  <img src="assets/slides/monopoly/19.jpg" alt="Workshop slide: 20% off on the blue and red MRT lines" loading="lazy" width="1280" height="720" />
+                  <span class="slide-zoom" aria-hidden="true"><svg class="ico"><use href="#i-expand"/></svg></span>
+                </button>
+                <figcaption><b>9</b>20% off on the blue and red MRT lines</figcaption>
+              </figure>
+              <figure class="slide" data-caption="Buying property and paying rent">
+                <button class="slide-open" type="button" aria-label="View slide 10 full screen: Buying property and paying rent">
+                  <img src="assets/slides/monopoly/21.jpg" alt="Workshop slide: Buying property and paying rent" loading="lazy" width="1280" height="720" />
+                  <span class="slide-zoom" aria-hidden="true"><svg class="ico"><use href="#i-expand"/></svg></span>
+                </button>
+                <figcaption><b>10</b>Buying property and paying rent</figcaption>
+              </figure>
+            </div>
+          </div>
+
+          <div class="ws-cols">
+            <div class="ws-card sticker">
+              <h4>Children will be able to…</h4>
+              <ul class="outcomes">
+                <li><svg class="ico"><use href="#i-check"/></svg>Convert between dollars and cents</li>
+                <li><svg class="ico"><use href="#i-check"/></svg>Add and subtract money, lining up the decimal points</li>
+                <li><svg class="ico"><use href="#i-check"/></svg>Add 9% GST to a price</li>
+                <li><svg class="ico"><use href="#i-check"/></svg>Work out discounts and sale prices with percentages</li>
+                <li><svg class="ico"><use href="#i-check"/></svg>Explain how a bank pays interest on savings</li>
+              </ul>
+            </div>
+            <div class="ws-card sticker ws-hands">
+              <h4><svg class="ico"><use href="#i-flask"/></svg> Hands-on activities</h4>
+              <ul class="handson">
+                <li><b>Monopoly musical chairs</b><span>Each chair is an MRT-stop property. When the music stops, decide whether to buy, add GST, apply discounts and pay rent.</span></li>
+                <li><b>SG Budget game</b><span>Make spending choices in groups and keep the budget balanced.</span></li>
+              </ul>
+              <a class="text-link" data-academy-link href="index.html#academy">Continue online in STEMulate Academy <svg class="ico"><use href="#i-arrow"/></svg></a>
+            </div>
+          </div>
+        </div>
+
+        <div class="workshop theme-au" role="tabpanel" id="ws-amongus" aria-labelledby="wstab-amongus" hidden>
+          <div class="ws-top">
+            <div class="ws-intro">
+              <div class="lesson-top">
+                <span class="game-badge">Workshop 3 · Among Us</span>
+                <span class="levels"><i>P5</i><i>P6</i></span>
+              </div>
+              <h3>Space Busters</h3>
+              <p>The Skeld is drifting towards the Sun! Children learn how energy and forces move a spaceship, launch balloon rockets, then crack BODMAS tasks to find the impostor.</p>
+              <div class="topic-chips"><span class="chip chip-sci">Forms of energy</span><span class="chip chip-sci">Forces</span><span class="chip chip-sci">How rockets fly</span><span class="chip chip-math">Order of operations (BODMAS)</span></div>
+            </div>
+          </div>
+
+          <div class="deck" aria-roledescription="carousel" aria-label="Space Busters workshop slides">
+            <div class="deck-bar">
+              <span class="deck-title">Workshop slides</span>
+              <span class="deck-count" aria-live="polite"><b>1</b> / 10</span>
+              <div class="deck-nav">
+                <button class="deck-btn" type="button" data-dir="-1" aria-label="Previous slide"><svg class="ico"><use href="#i-chev-l"/></svg></button>
+                <button class="deck-btn" type="button" data-dir="1" aria-label="Next slide"><svg class="ico"><use href="#i-chev-r"/></svg></button>
+              </div>
+            </div>
+            <div class="deck-track" tabindex="0">
+              <figure class="slide" data-caption="STEM x Games: an Among Us series">
+                <button class="slide-open" type="button" aria-label="View slide 1 full screen: STEM x Games: an Among Us series">
+                  <img src="assets/slides/amongus/01.jpg" alt="Workshop slide: STEM x Games: an Among Us series" loading="lazy" width="1280" height="720" />
+                  <span class="slide-zoom" aria-hidden="true"><svg class="ico"><use href="#i-expand"/></svg></span>
+                </button>
+                <figcaption><b>1</b>STEM x Games: an Among Us series</figcaption>
+              </figure>
+              <figure class="slide" data-caption="Types of potential energy">
+                <button class="slide-open" type="button" aria-label="View slide 2 full screen: Types of potential energy">
+                  <img src="assets/slides/amongus/04.jpg" alt="Workshop slide: Types of potential energy" loading="lazy" width="1280" height="720" />
+                  <span class="slide-zoom" aria-hidden="true"><svg class="ico"><use href="#i-expand"/></svg></span>
+                </button>
+                <figcaption><b>2</b>Types of potential energy</figcaption>
+              </figure>
+              <figure class="slide" data-caption="A bouncing ball: energy changing form">
+                <button class="slide-open" type="button" aria-label="View slide 3 full screen: A bouncing ball: energy changing form">
+                  <img src="assets/slides/amongus/06.jpg" alt="Workshop slide: A bouncing ball: energy changing form" loading="lazy" width="1280" height="720" />
+                  <span class="slide-zoom" aria-hidden="true"><svg class="ico"><use href="#i-expand"/></svg></span>
+                </button>
+                <figcaption><b>3</b>A bouncing ball: energy changing form</figcaption>
+              </figure>
+              <figure class="slide" data-caption="Forces acting on a toy car">
+                <button class="slide-open" type="button" aria-label="View slide 4 full screen: Forces acting on a toy car">
+                  <img src="assets/slides/amongus/11.jpg" alt="Workshop slide: Forces acting on a toy car" loading="lazy" width="1280" height="720" />
+                  <span class="slide-zoom" aria-hidden="true"><svg class="ico"><use href="#i-expand"/></svg></span>
+                </button>
+                <figcaption><b>4</b>Forces acting on a toy car</figcaption>
+              </figure>
+              <figure class="slide" data-caption="How a rocket works: thrust, drag and weight">
+                <button class="slide-open" type="button" aria-label="View slide 5 full screen: How a rocket works: thrust, drag and weight">
+                  <img src="assets/slides/amongus/14.jpg" alt="Workshop slide: How a rocket works: thrust, drag and weight" loading="lazy" width="1280" height="720" />
+                  <span class="slide-zoom" aria-hidden="true"><svg class="ico"><use href="#i-expand"/></svg></span>
+                </button>
+                <figcaption><b>5</b>How a rocket works: thrust, drag and weight</figcaption>
+              </figure>
+              <figure class="slide" data-caption="Let's launch a rocket from Among Us!">
+                <button class="slide-open" type="button" aria-label="View slide 6 full screen: Let's launch a rocket from Among Us!">
+                  <img src="assets/slides/amongus/16.jpg" alt="Workshop slide: Let's launch a rocket from Among Us!" loading="lazy" width="1280" height="720" />
+                  <span class="slide-zoom" aria-hidden="true"><svg class="ico"><use href="#i-expand"/></svg></span>
+                </button>
+                <figcaption><b>6</b>Let's launch a rocket from Among Us!</figcaption>
+              </figure>
+              <figure class="slide" data-caption="What you'll need for the balloon rocket">
+                <button class="slide-open" type="button" aria-label="View slide 7 full screen: What you'll need for the balloon rocket">
+                  <img src="assets/slides/amongus/18.jpg" alt="Workshop slide: What you'll need for the balloon rocket" loading="lazy" width="1280" height="720" />
+                  <span class="slide-zoom" aria-hidden="true"><svg class="ico"><use href="#i-expand"/></svg></span>
+                </button>
+                <figcaption><b>7</b>What you'll need for the balloon rocket</figcaption>
+              </figure>
+              <figure class="slide" data-caption="Release both nozzles and watch it fly">
+                <button class="slide-open" type="button" aria-label="View slide 8 full screen: Release both nozzles and watch it fly">
+                  <img src="assets/slides/amongus/26.jpg" alt="Workshop slide: Release both nozzles and watch it fly" loading="lazy" width="1280" height="720" />
+                  <span class="slide-zoom" aria-hidden="true"><svg class="ico"><use href="#i-expand"/></svg></span>
+                </button>
+                <figcaption><b>8</b>Release both nozzles and watch it fly</figcaption>
+              </figure>
+              <figure class="slide" data-caption="BODMAS: the order of operations">
+                <button class="slide-open" type="button" aria-label="View slide 9 full screen: BODMAS: the order of operations">
+                  <img src="assets/slides/amongus/30.jpg" alt="Workshop slide: BODMAS: the order of operations" loading="lazy" width="1280" height="720" />
+                  <span class="slide-zoom" aria-hidden="true"><svg class="ico"><use href="#i-expand"/></svg></span>
+                </button>
+                <figcaption><b>9</b>BODMAS: the order of operations</figcaption>
+              </figure>
+              <figure class="slide" data-caption="Practical: Among Us tasks as maths problems">
+                <button class="slide-open" type="button" aria-label="View slide 10 full screen: Practical: Among Us tasks as maths problems">
+                  <img src="assets/slides/amongus/34.jpg" alt="Workshop slide: Practical: Among Us tasks as maths problems" loading="lazy" width="1280" height="720" />
+                  <span class="slide-zoom" aria-hidden="true"><svg class="ico"><use href="#i-expand"/></svg></span>
+                </button>
+                <figcaption><b>10</b>Practical: Among Us tasks as maths problems</figcaption>
+              </figure>
+            </div>
+          </div>
+
+          <div class="ws-cols">
+            <div class="ws-card sticker">
+              <h4>Children will be able to…</h4>
+              <ul class="outcomes">
+                <li><svg class="ico"><use href="#i-check"/></svg>Name kinetic, potential, light, sound and heat energy, with everyday examples</li>
+                <li><svg class="ico"><use href="#i-check"/></svg>Trace how energy changes form in a bouncing ball and a light bulb</li>
+                <li><svg class="ico"><use href="#i-check"/></svg>Describe gravity, friction, magnetic and spring forces</li>
+                <li><svg class="ico"><use href="#i-check"/></svg>Explain thrust, drag and weight on a rocket</li>
+                <li><svg class="ico"><use href="#i-check"/></svg>Solve mixed calculations in BODMAS order</li>
+              </ul>
+            </div>
+            <div class="ws-card sticker ws-hands">
+              <h4><svg class="ico"><use href="#i-flask"/></svg> Hands-on activities</h4>
+              <ul class="handson">
+                <li><b>Two-stage balloon rocket</b><span>Thread balloons onto a string, release both nozzles and watch thrust beat drag.</span></li>
+                <li><b>Among Us task hunt</b><span>Turn the room into the Skeld. Each crew task is a maths problem; solve them all to find the impostor.</span></li>
+              </ul>
+              <a class="text-link" data-academy-link href="index.html#academy">Continue online in STEMulate Academy <svg class="ico"><use href="#i-arrow"/></svg></a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────── CURRICULUM ───────── -->
+    <section class="section" id="map">
+      <div class="wrap">
+        <div class="section-head">
+          <span class="kicker">Curriculum map</span>
+          <h2>Mapped to the school syllabus</h2>
+          <p class="section-sub">Every topic is tagged to the primary science themes and maths strands children meet in school. The online lessons in STEMulate Academy cover the same topics.</p>
+        </div>
+        <div class="legend">
+          <span class="chip chip-sci">Science</span>
+          <span class="chip chip-math">Mathematics</span>
+          <span class="legend-note">● = level the topic is pitched at</span>
+        </div>
+        <div class="curr sticker" role="table" aria-label="Curriculum map">
+          <div class="curr-row curr-headrow" role="row">
+            <span role="columnheader">Topic</span><span role="columnheader">Lesson</span><span role="columnheader">Theme / strand</span>
+            <span role="columnheader" data-lv="P4" class="lv">P4</span><span role="columnheader" data-lv="P5" class="lv">P5</span><span role="columnheader" data-lv="P6" class="lv">P6</span>
+          </div>
+          <div class="curr-row sci" role="row"><span role="cell"><b>Cycles in Matter</b></span><span role="cell">Minecraft Masterminds</span><span role="cell">Cycles</span><span role="cell" data-lv="P4" class="lv"></span><span role="cell" data-lv="P5" class="lv on">●</span><span role="cell" data-lv="P6" class="lv"></span></div>
+          <div class="curr-row sci" role="row"><span role="cell"><b>Cycles in Water</b></span><span role="cell">Minecraft Masterminds</span><span role="cell">Cycles · Systems</span><span role="cell" data-lv="P4" class="lv"></span><span role="cell" data-lv="P5" class="lv on">●</span><span role="cell" data-lv="P6" class="lv on">●</span></div>
+          <div class="curr-row math" role="row"><span role="cell"><b>Area</b></span><span role="cell">Minecraft Masterminds</span><span role="cell">Measurement · Geometry</span><span role="cell" data-lv="P4" class="lv"></span><span role="cell" data-lv="P5" class="lv on">●</span><span role="cell" data-lv="P6" class="lv on">●</span></div>
+          <div class="curr-row math" role="row"><span role="cell"><b>Volume</b></span><span role="cell">Minecraft Masterminds</span><span role="cell">Measurement · Geometry</span><span role="cell" data-lv="P4" class="lv"></span><span role="cell" data-lv="P5" class="lv on">●</span><span role="cell" data-lv="P6" class="lv on">●</span></div>
+          <div class="curr-row math" role="row"><span role="cell"><b>Addition &amp; Subtraction with Decimals</b></span><span role="cell">Mission Millionaire</span><span role="cell">Numbers</span><span role="cell" data-lv="P4" class="lv on">●</span><span role="cell" data-lv="P5" class="lv on">●</span><span role="cell" data-lv="P6" class="lv"></span></div>
+          <div class="curr-row math" role="row"><span role="cell"><b>Percentages, Taxes &amp; Discounts</b></span><span role="cell">Mission Millionaire</span><span role="cell">Numbers · Statistics</span><span role="cell" data-lv="P4" class="lv"></span><span role="cell" data-lv="P5" class="lv on">●</span><span role="cell" data-lv="P6" class="lv on">●</span></div>
+          <div class="curr-row sci" role="row"><span role="cell"><b>Energy</b></span><span role="cell">Space Busters</span><span role="cell">Energy</span><span role="cell" data-lv="P4" class="lv"></span><span role="cell" data-lv="P5" class="lv"></span><span role="cell" data-lv="P6" class="lv on">●</span></div>
+          <div class="curr-row sci" role="row"><span role="cell"><b>Forces</b></span><span role="cell">Space Busters</span><span role="cell">Energy · Interactions</span><span role="cell" data-lv="P4" class="lv"></span><span role="cell" data-lv="P5" class="lv"></span><span role="cell" data-lv="P6" class="lv on">●</span></div>
+          <div class="curr-row math" role="row"><span role="cell"><b>Order of Operations (BODMAS)</b></span><span role="cell">Space Busters</span><span role="cell">Numbers · Algebra</span><span role="cell" data-lv="P4" class="lv"></span><span role="cell" data-lv="P5" class="lv on">●</span><span role="cell" data-lv="P6" class="lv on">●</span></div>
+        </div>
+        <div class="totals">
+          <div class="total sticker tilt-l"><b>9</b><span>video lessons</span></div>
+          <div class="total sticker tilt-r"><b>9</b><span>quizzes</span></div>
+          <div class="total sticker tilt-l2"><b>5</b><span>games</span></div>
+          <div class="total sticker tilt-r2"><b>3</b><span>intro stories</span></div>
+          <div class="total sticker tilt-l"><b>3</b><span>exit cards</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───────── CTA ───────── -->
+    <section class="section section-tight">
+      <div class="wrap cta-band sticker">
+        <img src="assets/bots/stembot_blue.png" alt="" />
+        <div>
+          <h2>Bring a workshop to your centre</h2>
+          <p>We run these sessions for free with student care centres, family service centres, libraries and charities.</p>
+        </div>
+        <a class="btn btn-grape" href="index.html#join">Partner with us <svg class="ico"><use href="#i-arrow"/></svg></a>
+      </div>
+    </section>
+
+    <!-- Full-screen slide viewer -->
+    <dialog class="lightbox" aria-label="Slide viewer">
+      <div class="lb-inner">
+        <button class="lb-close" type="button" aria-label="Close"><svg class="ico"><use href="#i-close"/></svg></button>
+        <img class="lb-img" src="" alt="" />
+        <div class="lb-bar">
+          <button class="deck-btn lb-prev" type="button" aria-label="Previous slide"><svg class="ico"><use href="#i-chev-l"/></svg></button>
+          <p class="lb-cap"></p>
+          <button class="deck-btn lb-next" type="button" aria-label="Next slide"><svg class="ico"><use href="#i-chev-r"/></svg></button>
+        </div>
+      </div>
+    </dialog>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-grid">
+      <div class="footer-brand">
+        <img src="assets/logo.png" alt="" width="52" height="47" />
+        <div>
+          <b>Project STEMulate</b>
+          <p><span class="footer-tag">Curiosity for all.</span> A student-initiated volunteering programme bringing hands-on STEM to every child in Singapore.</p>
+        </div>
+      </div>
+      <nav class="footer-links" aria-label="Footer">
+        <a href="index.html">Home</a><a href="about.html">About us</a><a href="curriculum.html">Curriculum</a><a href="impact.html">Impact</a><a href="index.html#academy">Academy</a><a href="index.html#join">Get involved</a>
+      </nav>
+      <a class="btn btn-lime btn-sm" data-academy-link href="index.html#academy">STEMulate Academy <svg class="ico"><use href="#i-out"/></svg></a>
+    </div>
+    <p class="wrap copyright">© 2026 Project STEMulate. STEMbot characters, card art and workshop slides belong to Project STEMulate.</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

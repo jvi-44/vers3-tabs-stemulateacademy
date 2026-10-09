@@ -2,21 +2,7 @@
 // for the routes and SQL_EXPLAINED.md (project root) for a walkthrough of how
 // this all persists to disk.
 
-const BASE_URL = "/api";
-
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    headers: { "Content-Type": "application/json" },
-    // The server identifies the user from the httpOnly session cookie.
-    credentials: "include",
-    ...options,
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.error || "Something went wrong. Please try again.");
-  }
-  return data as T;
-}
+import { request } from "./client";
 
 import type { AuthUser } from "../types-auth";
 
@@ -86,7 +72,7 @@ export function openPack(
   });
 }
 
-// ---- Gallery reflections & leaderboard ----
+// ---- Gallery reflections (the leaderboard is in social.ts) ----
 
 export interface Reflection {
   id: number;
@@ -106,10 +92,4 @@ export function postReflection(beatId: string, caption: string): Promise<{ refle
     method: "POST",
     body: JSON.stringify({ beatId, caption }),
   });
-}
-
-export function getLeaderboard(): Promise<{
-  entries: { username: string; avatar: string | null; xp: number }[];
-}> {
-  return request("/leaderboard");
 }

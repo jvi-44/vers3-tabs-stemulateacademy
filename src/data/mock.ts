@@ -1,14 +1,12 @@
 import type {
   Course,
   User,
-  GalleryPost,
   LeaderboardEntry,
   STEMbot,
   TopicTag,
   CardPack,
 } from "../types";
 
-import phenVolcano from "../assets/cards/phenomena/phen_9_front.jpg";
 import avatarBoyTeal from "../assets/avatar_boy_teal.png";
 import avatarBoyBlue from "../assets/avatar_boy_blue.png";
 import avatarGirlPurpleBob from "../assets/avatar_girl_purple_bob.png";
@@ -362,18 +360,6 @@ export const MOCK_COURSES: Course[] = [
         contents: [],
       },
     ],
-  },
-];
-
-export const MOCK_GALLERY: GalleryPost[] = [
-  {
-    id: "g1",
-    username: "AlexScience",
-    avatar: AVATAR_OPTIONS[5],
-    imageUrl: phenVolcano,
-    caption: "My volcano project erupted! 🌋",
-    likes: 24,
-    tags: ["Science", "Volcano"],
   },
 ];
 

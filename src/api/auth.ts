@@ -1,21 +1,5 @@
 import type { AuthUser, ReferenceData, SignupPayload } from "../types-auth";
-
-// In dev, Vite proxies /api to the Express server (see vite.config.ts).
-const BASE_URL = "/api";
-
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    headers: { "Content-Type": "application/json" },
-    // Send/receive the httpOnly session cookie set by /login and /signup.
-    credentials: "include",
-    ...options,
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.error || "Something went wrong. Please try again.");
-  }
-  return data as T;
-}
+import { request } from "./client";
 
 export function fetchReferenceData(): Promise<ReferenceData> {
   return request<ReferenceData>("/reference-data");
@@ -26,15 +10,6 @@ export function signup(payload: SignupPayload): Promise<{ user: AuthUser }> {
     method: "POST",
     body: JSON.stringify(payload),
   });
-}
-
-/** The signed-in user, from the session cookie. Rejects (401) when signed out. */
-export function getUser(): Promise<{ user: AuthUser }> {
-  return request("/user/me");
-}
-
-export function logout(): Promise<{ success: true }> {
-  return request("/logout", { method: "POST" });
 }
 
 export function login(username: string, pin: string): Promise<{ user: AuthUser }> {
@@ -64,4 +39,37 @@ export function resetPin(
     method: "POST",
     body: JSON.stringify({ username, resetToken, newPin }),
   });
+}
+
+// ---------------------------------------------------------------------------
+// The signed-in account (identified by the session cookie from login/signup)
+// ---------------------------------------------------------------------------
+
+/** The signed-in user. Rejects (401) when signed out. */
+export function getMe(): Promise<{ user: AuthUser }> {
+  return request("/me");
+}
+
+export function updateMe(changes: { username?: string; fullName?: string }): Promise<{ user: AuthUser }> {
+  return request("/me", { method: "PATCH", body: JSON.stringify(changes) });
+}
+
+export async function deleteMe(pin: string): Promise<void> {
+  await request("/me", { method: "DELETE", body: JSON.stringify({ pin }) });
+}
+
+export async function logout(): Promise<void> {
+  await request("/logout", { method: "POST" }).catch(() => {});
+}
+
+// Downloads everything the Academy stores about this account as a JSON file.
+export async function downloadMyData(): Promise<void> {
+  const data = await request<Record<string, unknown> & { profile: { username: string } }>("/me/export");
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `stemulate-${data.profile.username}-data.json`;
+  a.click();
+  URL.revokeObjectURL(url);
 }

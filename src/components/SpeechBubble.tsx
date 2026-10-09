@@ -1,20 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion } from "motion/react";
 import { STEMBOTS } from "../data/mock";
 import type { DialogueLine } from "../data/lessonContent";
 
-const BOT_COLORS: Record<string, string> = {
-  sophia: "bg-emerald-100 border-emerald-300 dark:bg-emerald-900/40 dark:border-emerald-700",
-  timothy: "bg-blue-100 border-blue-300 dark:bg-blue-900/40 dark:border-blue-700",
-  emily: "bg-amber-100 border-amber-300 dark:bg-amber-900/40 dark:border-amber-700",
-  matthew: "bg-rose-100 border-rose-300 dark:bg-rose-900/40 dark:border-rose-700",
-};
-
-const BOT_NAME_COLORS: Record<string, string> = {
-  sophia: "text-emerald-700 dark:text-emerald-400",
-  timothy: "text-blue-700 dark:text-blue-400",
-  emily: "text-amber-700 dark:text-amber-500",
-  matthew: "text-rose-700 dark:text-rose-400",
+// Each STEMbot's own colour, used behind their face and as the name tag.
+const BOT_TINT: Record<string, string> = {
+  sophia: "#bfe89a",
+  timothy: "#a9dcfb",
+  emily: "#fbe7b0",
+  matthew: "#ffb8b8",
 };
 
 const TYPING_SPEED_MS = 18; // ms per character
@@ -45,6 +39,9 @@ function TypewriterText({ text, onDone }: { text: string; onDone: () => void }) 
   return <span>{displayed}<span className="inline-block w-0.5 h-4 bg-current align-middle ml-0.5 animate-pulse">{displayed.length < text.length ? "▊" : ""}</span></span>;
 }
 
+/** The STEMbots' chat before a checkpoint, one line at a time in a single
+ * bubble. Every line is laid out in the same spot so the bubble is always as
+ * tall as the longest line, and the video or quiz below never moves. */
 export function SpeechBubbles({
   lines,
   onAllDone,
@@ -52,58 +49,110 @@ export function SpeechBubbles({
   lines: DialogueLine[];
   onAllDone?: () => void;
 }) {
-  const [visibleCount, setVisibleCount] = useState(0);
-  const [typingIdx, setTypingIdx] = useState(0);
+  const [active, setActive] = useState(0);
+  const [typed, setTyped] = useState(false);
+  const [paused, setPaused] = useState(false);
   const onAllDoneRef = useRef(onAllDone);
   onAllDoneRef.current = onAllDone;
 
   useEffect(() => {
-    setVisibleCount(0);
-    setTypingIdx(0);
-    const t = setTimeout(() => setVisibleCount(1), 200);
-    return () => clearTimeout(t);
+    setActive(0);
+    setTyped(false);
+    setPaused(false);
   }, [lines]);
 
-  const handleLineDone = (idx: number) => {
-    if (idx + 1 < lines.length) {
-      setTypingIdx(idx + 1);
-      setVisibleCount(idx + 2);
-    } else {
+  // Once a line is typed, give time to read it, then move to the next one.
+  useEffect(() => {
+    if (!typed || paused) return;
+    if (active + 1 >= lines.length) {
       onAllDoneRef.current?.();
+      return;
     }
+    const words = lines[active]?.text.split(/\s+/).length ?? 0;
+    const t = setTimeout(() => {
+      setActive((a) => a + 1);
+      setTyped(false);
+    }, 1600 + words * 140);
+    return () => clearTimeout(t);
+  }, [typed, paused, active, lines]);
+
+  const go = (i: number) => {
+    setActive(i);
+    setTyped(true);
+    setPaused(true);
   };
 
+  const valid = lines.filter((l) => STEMBOTS[l.bot]);
+  if (valid.length === 0) return null;
+
   return (
-    <div className="space-y-3">
-      <AnimatePresence initial={false}>
-        {lines.slice(0, visibleCount).map((line, i) => {
+    <div className="flex items-start gap-3 sm:gap-4">
+      {/* Speaker faces, stacked in the same spot */}
+      <div className="grid shrink-0">
+        {lines.map((line, i) => {
           const bot = STEMBOTS[line.bot];
           if (!bot) return null;
           return (
             <motion.div
-              key={`${line.bot}-${i}`}
-              initial={{ opacity: 0, x: -24, y: 8 }}
-              animate={{ opacity: 1, x: 0, y: 0 }}
-              transition={{ type: "spring", stiffness: 260, damping: 24 }}
-              className="flex items-start gap-3"
+              key={i}
+              className="[grid-area:1/1] w-14 h-14 rounded-full overflow-hidden border-[2.5px] border-ink shadow-[0_3px_0_var(--ink-line)]"
+              style={{ background: BOT_TINT[line.bot] }}
+              animate={{ opacity: i === active ? 1 : 0, scale: i === active ? 1 : 0.8, rotate: i === active ? 0 : -8 }}
+              transition={{ type: "spring", stiffness: 300, damping: 22 }}
+              aria-hidden={i !== active}
             >
-              <div className="w-11 h-11 rounded-full overflow-hidden bg-white border-2 border-border shrink-0 shadow-sm">
-                <img src={bot.avatar} alt={bot.name} className="w-full h-full object-contain p-0.5" />
-              </div>
-              <div className={`flex-1 rounded-3xl rounded-tl-sm border px-4 py-3 shadow-sm ${BOT_COLORS[line.bot]}`}>
-                <p className={`text-[11px] font-black mb-1 ${BOT_NAME_COLORS[line.bot]}`}>{bot.name}</p>
-                <p className="text-sm text-foreground leading-relaxed">
-                  {i < typingIdx ? (
-                    line.text
-                  ) : i === typingIdx ? (
-                    <TypewriterText text={line.text} onDone={() => handleLineDone(i)} />
-                  ) : null}
-                </p>
-              </div>
+              <img src={bot.avatar} alt={bot.name} className="w-full h-full object-contain p-0.5" />
             </motion.div>
           );
         })}
-      </AnimatePresence>
+      </div>
+
+      <div className="bubble bubble-left flex-1 min-w-0 px-4 py-3">
+        <div className="grid">
+          {lines.map((line, i) => {
+            const bot = STEMBOTS[line.bot];
+            if (!bot) return null;
+            const on = i === active;
+            return (
+              <div key={i} className={on ? "[grid-area:1/1]" : "[grid-area:1/1] invisible"} aria-hidden={!on}>
+                <span
+                  className="inline-block text-[11px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-full border-2 border-ink mb-1.5 text-[#1b1b12]"
+                  style={{ background: BOT_TINT[line.bot] }}
+                >
+                  {bot.name}
+                </span>
+                <p className="text-[0.98rem] text-[color:var(--card-foreground)] leading-relaxed font-semibold">
+                  {on && !typed ? (
+                    <TypewriterText key={i} text={line.text} onDone={() => setTyped(true)} />
+                  ) : (
+                    line.text
+                  )}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+
+        {lines.length > 1 && (
+          <div className="flex items-center gap-1.5 mt-2.5">
+            {lines.map((line, i) => (
+              <button
+                key={i}
+                onClick={() => go(i)}
+                className="h-2.5 rounded-full border-[1.5px] border-ink transition-all"
+                style={{
+                  width: i === active ? 22 : 10,
+                  background: i === active ? BOT_TINT[line.bot] ?? "var(--primary)" : i < active ? "var(--ink-line)" : "transparent",
+                }}
+                aria-label={`Line ${i + 1}`}
+              />
+            ))}
+            <span className="ml-auto text-[11px] font-extrabold text-muted-foreground">
+              {active + 1} / {lines.length}
+            </span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

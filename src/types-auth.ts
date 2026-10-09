@@ -22,6 +22,10 @@ export interface AuthUser {
   level: number;
   atoms: number;
   avatar: string | null;
+  // Only returned by /api/me (the signed-in user's own profile).
+  orgName?: string;
+  schoolLevelName?: string;
+  createdAt?: string;
 }
 
 export interface SignupPayload {

@@ -73,19 +73,22 @@ test("sign-up limits, organisations, reflections, leaderboard and account deleti
   await t.test("leaderboard is backed by users.xp", async () => {
     srv.db.prepare("UPDATE users SET xp = 4321 WHERE user_id = ?").run(userId);
     const { entries } = (await kid.get("/api/leaderboard")).json;
-    assert.ok(entries.length <= 20);
+    assert.ok(entries.length <= 50);
     assert.equal(entries[0].xp, 4321);
-    assert.deepEqual(Object.keys(entries[0]).sort(), ["avatar", "username", "xp"]);
+    // Never the full name or centre — only what other students may see.
+    assert.deepEqual(Object.keys(entries[0]).sort(), ["avatar", "isFriend", "level", "userId", "username", "xp"]);
   });
 
-  await t.test("DELETE /api/user/me removes the student's rows", async () => {
+  await t.test("DELETE /api/me needs the PIN and removes the student's rows", async () => {
     await kid.post("/api/progress", { lessonId: "mm-intro", status: "completed" });
     srv.db.prepare("UPDATE users SET atoms = 100 WHERE user_id = ?").run(userId);
     await kid.post("/api/packs/open", { albumKey: "phenomena", packId: "phen-p1" });
 
-    const res = await kid.del("/api/user/me");
+    assert.equal((await kid.del("/api/me", { pin: "0000" })).status, 401);
+    assert.equal((await kid.del("/api/me")).status, 401);
+    const res = await kid.del("/api/me", { pin: "1234" });
     assert.equal(res.status, 200);
-    for (const table of ["users", "lesson_progress", "user_cards", "reflections", "sessions", "beat_replays"]) {
+    for (const table of ["users", "lesson_progress", "user_cards", "reflections", "sessions", "beat_replays", "game_scores"]) {
       const { n } = srv.db.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE user_id = ?`).get(userId);
       assert.equal(n, 0, table);
     }

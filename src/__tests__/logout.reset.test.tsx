@@ -22,6 +22,7 @@ beforeAll(() => {
     disconnect() {}
   };
   Element.prototype.scrollIntoView ||= () => {};
+  Element.prototype.scrollTo ||= (() => {}) as any;
   window.scrollTo = (() => {}) as any; // jsdom only has a "not implemented" stub
 });
 
@@ -79,7 +80,7 @@ const fakeFetch = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
     return json(200, { success: true });
   }
   if (!session) return json(401, { error: "Please sign in again." });
-  if (url === "/api/user/me") return json(200, { user: USERS[session] });
+  if (url === "/api/me") return json(200, { user: USERS[session] });
   if (url === "/api/progress") return json(200, { progress: [] });
   if (url === "/api/cards") return json(200, { owned: OWNED[session] });
   return json(404, { error: "Not found." });
@@ -118,7 +119,7 @@ describe("logout", () => {
     await signIn("alice");
     await waitFor(() => expect(sidebarAvatar().src).toContain("avatar_girl_pink_ponytail"));
     openCards();
-    expect(await screen.findByText("2/16 collected")).toBeTruthy();
+    expect(await screen.findByText(/Collect them all · 2\//)).toBeTruthy();
 
     fireEvent.click(screen.getAllByRole("button", { name: "Log Out" })[0]);
     await screen.findByPlaceholderText("Enter your username");
@@ -127,8 +128,8 @@ describe("logout", () => {
     // Bob on the same device: no cards, default avatar, his own name.
     await signIn("bob");
     openCards();
-    expect(await screen.findAllByText("0/16 collected")).toHaveLength(1);
-    expect(screen.queryByText("2/16 collected")).toBeNull();
+    expect(await screen.findAllByText(/Collect them all · 0\//)).toHaveLength(1);
+    expect(screen.queryByText(/Collect them all · 2\//)).toBeNull();
     expect(sidebarAvatar().src).toContain("avatar_boy_teal");
     expect(sidebarAvatar().src).not.toContain("pink_ponytail");
     expect(screen.queryByText(/Alice/)).toBeNull();
@@ -138,7 +139,7 @@ describe("logout", () => {
     localStorage.setItem("stemulate_user_id", "1"); // the old, forgeable key
     render(<App />);
     expect(await screen.findByPlaceholderText("Enter your username")).toBeTruthy();
-    expect(fakeFetch).toHaveBeenCalledWith("/api/user/me", expect.anything());
+    expect(fakeFetch).toHaveBeenCalledWith("/api/me", expect.anything());
     expect(localStorage.getItem("stemulate_user_id")).toBeNull();
 
     session = "bob";

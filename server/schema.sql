@@ -57,3 +57,66 @@ CREATE TABLE IF NOT EXISTS login_attempts (
     success      INTEGER NOT NULL,
     attempted_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
+
+-- Sessions live in migrations/002_sessions.sql (see server/auth.js).
+
+-- ---------------------------------------------------------
+-- Friends. A request only exists between two real accounts; once accepted,
+-- one friendships row is stored with the smaller user_id in user_a.
+-- ---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS friend_requests (
+    request_id    INTEGER PRIMARY KEY AUTOINCREMENT,
+    from_user_id  INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    to_user_id    INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    created_at    TEXT DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(from_user_id, to_user_id)
+);
+
+CREATE TABLE IF NOT EXISTS friendships (
+    user_a      INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    user_b      INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    created_at  TEXT DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_a, user_b),
+    CHECK (user_a < user_b)
+);
+
+-- ---------------------------------------------------------
+-- Chats. A conversation is either a one-to-one chat (is_group = 0, exactly
+-- two members) or a named group chat (is_group = 1).
+-- ---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS conversations (
+    conversation_id  INTEGER PRIMARY KEY AUTOINCREMENT,
+    is_group         INTEGER NOT NULL DEFAULT 0,
+    name             TEXT,
+    created_by       INTEGER REFERENCES users(user_id) ON DELETE SET NULL,
+    created_at       TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS conversation_members (
+    conversation_id  INTEGER NOT NULL REFERENCES conversations(conversation_id) ON DELETE CASCADE,
+    user_id          INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    joined_at        TEXT DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (conversation_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_members_user ON conversation_members(user_id);
+
+CREATE TABLE IF NOT EXISTS messages (
+    message_id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    conversation_id  INTEGER NOT NULL REFERENCES conversations(conversation_id) ON DELETE CASCADE,
+    sender_id        INTEGER REFERENCES users(user_id) ON DELETE SET NULL,
+    body             TEXT NOT NULL,
+    created_at       TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_messages_convo ON messages(conversation_id, message_id);
+
+-- Best score (0-100) per lesson game, see server/gameRooms.js
+CREATE TABLE IF NOT EXISTS game_scores (
+    user_id     INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    game_id     TEXT    NOT NULL,
+    best_score  INTEGER NOT NULL,
+    plays       INTEGER NOT NULL DEFAULT 1,
+    updated_at  TEXT    NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (user_id, game_id)
+);

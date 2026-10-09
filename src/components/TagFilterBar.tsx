@@ -11,17 +11,17 @@ const CATEGORY_STYLES = {
   level: {
     label: "Primary Level",
     chip: "border-amber-300 text-amber-700 bg-amber-50 dark:bg-amber-500/10 dark:text-amber-300 dark:border-amber-500/30",
-    active: "bg-amber-500 border-amber-500 text-white",
+    active: "bg-amber-400 text-[#2a1f0c]",
   },
   science: {
     label: "Science Topics",
     chip: "border-emerald-300 text-emerald-700 bg-emerald-50 dark:bg-emerald-500/10 dark:text-emerald-300 dark:border-emerald-500/30",
-    active: "bg-emerald-500 border-emerald-500 text-white",
+    active: "bg-emerald-400 text-[#10291a]",
   },
   math: {
     label: "Mathematics Topics",
     chip: "border-sky-300 text-sky-700 bg-sky-50 dark:bg-sky-500/10 dark:text-sky-300 dark:border-sky-500/30",
-    active: "bg-sky-500 border-sky-500 text-white",
+    active: "bg-sky-400 text-[#0b2537]",
   },
 } as const;
 
@@ -48,7 +48,7 @@ export function TagFilterBar({
         const style = CATEGORY_STYLES[key];
         return (
           <div key={key} className="flex flex-wrap items-center gap-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground w-full sm:w-auto sm:min-w-[130px]">
+            <span className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground w-full sm:w-auto sm:min-w-[140px]">
               {style.label}
             </span>
             {tags.map((tag) => {
@@ -58,8 +58,10 @@ export function TagFilterBar({
                   key={tag}
                   onClick={() => onChange({ ...selection, [key]: toggle(selection[key], tag) })}
                   className={cn(
-                    "text-xs font-bold px-3 py-1.5 rounded-full border transition-all",
-                    active ? style.active : style.chip,
+                    "text-xs font-extrabold px-3 py-1.5 rounded-full border-2 transition-all",
+                    active
+                      ? cn(style.active, "border-ink shadow-[0_3px_0_var(--ink-line)] -translate-y-0.5")
+                      : cn(style.chip, "hover:-translate-y-0.5"),
                   )}
                 >
                   {tag}

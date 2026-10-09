@@ -99,11 +99,13 @@ export function AskStembots({
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: 60, opacity: 0 }}
             onClick={onToggle}
-            className="fixed right-0 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-1.5 bg-primary text-primary-foreground px-2 py-4 rounded-l-2xl shadow-xl"
+            className="fixed right-0 bottom-6 md:bottom-auto md:top-1/2 md:-translate-y-1/2 z-40 flex flex-col items-center gap-2 bg-pop-3 text-[color:var(--pop-3-ink)] pl-2 pr-1.5 py-2 md:pl-2.5 md:pr-2 md:py-4 rounded-l-[1.4rem] border-[2.5px] border-r-0 border-ink shadow-[-4px_4px_0_var(--ink-line)] hover:pr-3 transition-all"
           >
-            <MessageCircle size={18} />
-            <span className="text-[9px] font-black uppercase tracking-widest [writing-mode:vertical-rl]">Ask STEMbots</span>
-            <ChevronRight size={14} />
+            <span className="w-9 h-9 rounded-full bg-card border-2 border-ink overflow-hidden">
+              <img src={bot.avatar} alt="" className="w-full h-full object-contain" />
+            </span>
+            <span className="hidden md:inline font-display font-semibold text-[13px] tracking-wide [writing-mode:vertical-rl] rotate-180">Ask a STEMbot</span>
+            <ChevronRight size={14} className="hidden md:block" />
           </motion.button>
         )}
       </AnimatePresence>
@@ -117,31 +119,29 @@ export function AskStembots({
             animate={{ width: 340, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
             transition={{ type: "spring", stiffness: 280, damping: 30 }}
-            className="shrink-0 bg-card border-l border-border h-screen sticky top-0 flex flex-col overflow-hidden z-30"
+            className="shrink-0 bg-card border-l-[2.5px] border-ink h-screen fixed md:sticky right-0 top-0 flex flex-col overflow-hidden z-50 md:z-30 max-w-[100vw]"
             style={{ minWidth: 0 }}
           >
             {/* Header */}
-            <div className="flex items-center gap-3 px-4 py-4 border-b border-border shrink-0">
-              <div className="w-9 h-9 rounded-full overflow-hidden bg-white border border-border shrink-0">
+            <div className="flex items-center gap-3 px-4 py-4 border-b-[2.5px] border-ink shrink-0 bg-pop-3 text-[color:var(--pop-3-ink)]">
+              <div className="w-11 h-11 rounded-full overflow-hidden bg-white border-2 border-ink shrink-0">
                 <img src={bot.avatar} alt={bot.name} className="w-full h-full object-contain p-0.5" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-black text-sm text-foreground leading-none">Ask STEMbots</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5 truncate">Powered by Gemini AI</p>
+                <p className="font-display font-bold text-lg leading-none">Ask {bot.name}</p>
+                <p className="text-[11px] font-bold opacity-85 mt-1 truncate">Stuck? Ask anything about this lesson.</p>
               </div>
-              <button onClick={onToggle} className="shrink-0 p-1.5 rounded-xl hover:bg-accent text-muted-foreground">
+              <button onClick={onToggle} className="shrink-0 w-9 h-9 rounded-full bg-card text-[color:var(--card-foreground)] border-2 border-ink flex items-center justify-center" aria-label="Close">
                 <X size={16} />
               </button>
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto px-3 py-4 space-y-3">
+            <div className="flex-1 overflow-y-auto px-3 py-4 space-y-3 bg-playful">
               {messages.length === 0 && (
                 <div className="text-center py-6 space-y-2">
-                  <div className="w-14 h-14 rounded-full overflow-hidden bg-white border border-border mx-auto">
-                    <img src={bot.avatar} alt={bot.name} className="w-full h-full object-contain p-0.5" />
-                  </div>
-                  <p className="text-sm font-bold text-foreground">{bot.name} is here to help!</p>
+                  <img src={bot.avatar} alt={bot.name} className="h-28 mx-auto die-cut bob" />
+                  <p className="font-display font-bold text-lg text-foreground">{bot.name} is here to help!</p>
                   <p className="text-xs text-muted-foreground px-2">
                     Ask me anything about this lesson. I'll give you a STEM-powered answer!
                   </p>
@@ -150,7 +150,7 @@ export function AskStembots({
                       <button
                         key={q}
                         onClick={() => send(q)}
-                        className="block w-full text-left text-xs bg-accent hover:bg-accent/70 px-3 py-2 rounded-xl font-medium transition-colors"
+                        className="block w-full text-left text-sm bg-card border-2 border-ink shadow-[0_3px_0_var(--ink-line)] hover:-translate-y-0.5 px-3.5 py-2.5 rounded-2xl font-bold transition-transform"
                       >
                         {q}
                       </button>
@@ -162,16 +162,16 @@ export function AskStembots({
               {messages.map((m, i) =>
                 m.from === "me" ? (
                   <div key={i} className="flex justify-end">
-                    <p className="bg-primary text-primary-foreground text-xs px-3 py-2 rounded-2xl rounded-br-sm max-w-[85%] leading-relaxed">
+                    <p className="bg-primary text-primary-foreground text-sm font-semibold px-3.5 py-2.5 rounded-2xl rounded-br-sm max-w-[85%] leading-relaxed border-2 border-ink shadow-[0_3px_0_var(--ink-line)]">
                       {m.text}
                     </p>
                   </div>
                 ) : (
                   <div key={i} className="flex items-start gap-2">
-                    <div className="w-7 h-7 rounded-full overflow-hidden bg-white border border-border shrink-0">
+                    <div className="w-9 h-9 rounded-full overflow-hidden bg-white border-2 border-ink shrink-0">
                       <img src={STEMBOTS[m.botKey!]?.avatar} alt="" className="w-full h-full object-contain p-0.5" />
                     </div>
-                    <div className="bg-muted text-foreground text-xs px-3 py-2 rounded-2xl rounded-bl-sm max-w-[85%] leading-relaxed">
+                    <div className="bg-card text-foreground text-sm px-3.5 py-2.5 rounded-2xl rounded-bl-sm max-w-[85%] leading-relaxed border-2 border-ink shadow-[0_3px_0_var(--ink-line)]">
                       <span className="font-black text-primary">{STEMBOTS[m.botKey!]?.name}: </span>
                       {m.text}
                     </div>
@@ -181,10 +181,10 @@ export function AskStembots({
 
               {loading && (
                 <div className="flex items-start gap-2">
-                  <div className="w-7 h-7 rounded-full overflow-hidden bg-white border border-border shrink-0">
+                  <div className="w-9 h-9 rounded-full overflow-hidden bg-white border-2 border-ink shrink-0">
                     <img src={bot.avatar} alt="" className="w-full h-full object-contain p-0.5" />
                   </div>
-                  <div className="bg-muted px-3 py-2 rounded-2xl rounded-bl-sm">
+                  <div className="bg-card px-3.5 py-3 rounded-2xl rounded-bl-sm border-2 border-ink">
                     <span className="flex gap-1">
                       {[0, 1, 2].map((d) => (
                         <span key={d} className="w-1.5 h-1.5 rounded-full bg-muted-foreground/60 animate-bounce" style={{ animationDelay: `${d * 0.15}s` }} />
@@ -197,7 +197,7 @@ export function AskStembots({
             </div>
 
             {/* Input */}
-            <div className="px-3 py-3 border-t border-border shrink-0">
+            <div className="px-3 py-3 border-t-[2.5px] border-ink shrink-0">
               <div className="flex items-center gap-2">
                 <input
                   ref={inputRef}
@@ -206,14 +206,14 @@ export function AskStembots({
                   onKeyDown={(e) => e.key === "Enter" && send()}
                   maxLength={MAX_CHARS}
                   placeholder="Ask a question..."
-                  className="flex-1 px-3 py-2 rounded-xl border border-border bg-background text-xs outline-none focus:ring-2 focus:ring-primary/40"
+                  className="flex-1 px-4 py-2.5 rounded-full border-2 border-ink bg-input-background text-sm font-semibold outline-none focus:ring-4 focus:ring-primary/30"
                 />
                 <button
                   onClick={() => send()}
                   disabled={!input.trim() || loading}
-                  className="p-2 rounded-xl bg-primary text-primary-foreground shrink-0 disabled:opacity-40"
+                  className="w-11 h-11 rounded-full bg-primary text-primary-foreground border-2 border-ink shadow-[0_3px_0_var(--ink-line)] flex items-center justify-center shrink-0 disabled:opacity-40"
                 >
-                  <Send size={14} />
+                  <Send size={17} />
                 </button>
               </div>
             </div>

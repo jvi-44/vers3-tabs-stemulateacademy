@@ -1,0 +1,692 @@
+/* ---------------------------------------------------------------------------
+   UI pop: the sticker-book look for the shared building blocks (menus,
+   dialogs, toasts, form fields, switches, tabs, tooltips) plus the chat
+   bubbles in the Friends tab. Built on the tokens in theme.css, so every
+   colour theme and dark mode flows through. Base looks live in the
+   components layer, so Tailwind classes passed in by a screen still win.
+   --------------------------------------------------------------------------- */
+
+@layer components {
+  /* ---------- Floating surfaces: dropdowns, selects, popovers ---------- */
+  .pop-menu {
+    background: var(--popover);
+    color: var(--popover-foreground);
+    border: 2.5px solid var(--ink-line);
+    border-radius: 1.15rem;
+    box-shadow: 0 5px 0 var(--ink-line);
+    padding: 0.4rem;
+  }
+  .pop-menu[data-state="open"] {
+    animation: pop-drop 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .pop-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.5rem 0.7rem;
+    border: 2px solid transparent;
+    border-radius: 0.8rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    cursor: pointer;
+    user-select: none;
+    outline: none;
+    transition:
+      background-color 0.12s,
+      translate 0.12s;
+  }
+  .pop-item svg {
+    opacity: 0.85;
+  }
+  .pop-item[data-highlighted],
+  .pop-item:focus-visible {
+    background: var(--primary);
+    color: var(--primary-foreground);
+    border-color: var(--ink-line);
+    translate: 2px 0;
+  }
+  .pop-item[data-highlighted] svg {
+    opacity: 1;
+  }
+  .pop-item[data-state="open"]:not([data-highlighted]) {
+    background: var(--soft-1);
+    border-color: var(--ink-line);
+  }
+  .pop-item[data-variant="destructive"] {
+    color: var(--destructive);
+  }
+  .pop-item[data-variant="destructive"][data-highlighted] {
+    background: var(--destructive);
+    color: #fff;
+  }
+  .pop-item[data-disabled] {
+    pointer-events: none;
+    opacity: 0.5;
+  }
+  /* Items with a tick or dot on the left. */
+  .pop-item-ind {
+    padding-left: 2.1rem;
+  }
+  .pop-item-mark {
+    position: absolute;
+    left: 0.55rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.05rem;
+    height: 1.05rem;
+    border-radius: 999px;
+    border: 2px solid currentColor;
+    opacity: 0.35;
+  }
+  .pop-item[data-state="checked"] .pop-item-mark {
+    opacity: 1;
+    background: var(--card);
+    color: var(--ink);
+    border-color: var(--ink-line);
+  }
+  .dark .pop-item[data-state="checked"] .pop-item-mark {
+    color: var(--foreground);
+  }
+
+  .pop-menu-label {
+    font-family: var(--font-head);
+    font-weight: 700;
+    font-size: 0.95rem;
+    padding: 0.35rem 0.7rem 0.3rem;
+  }
+  .pop-sep {
+    height: 0;
+    border-top: 2px dashed color-mix(in srgb, var(--foreground) 22%, transparent);
+    margin: 0.35rem 0.3rem;
+  }
+
+  /* ---------- Dialogs ---------- */
+  .pop-overlay {
+    background: color-mix(in srgb, var(--ink) 45%, transparent);
+    backdrop-filter: blur(2px);
+  }
+  .dark .pop-overlay {
+    background: rgba(0, 0, 0, 0.62);
+  }
+  .pop-dialog {
+    background: var(--card);
+    color: var(--card-foreground);
+    border: 2.5px solid var(--ink-line);
+    border-radius: 1.75rem;
+    box-shadow: 0 8px 0 var(--ink-line);
+    padding: 2.4rem 1.5rem 1.5rem;
+  }
+  /* Themed strip with the theme's doodles along the top edge. */
+  .pop-dialog::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1.1rem;
+    background-color: var(--primary);
+    background-image: var(--motif-on);
+    background-size: 110px 110px;
+    border-bottom: 2.5px solid var(--ink-line);
+    border-radius: calc(1.75rem - 2.5px) calc(1.75rem - 2.5px) 0 0;
+    pointer-events: none;
+  }
+  .pop-dialog[data-state="open"] {
+    animation: pop-in 0.34s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .pop-dialog-title {
+    font-family: var(--font-head);
+    font-weight: 700;
+    font-size: 1.35rem;
+    line-height: 1.15;
+    color: var(--foreground);
+  }
+  .pop-dialog-desc {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--muted-foreground);
+  }
+  .pop-close {
+    position: absolute;
+    top: 1.75rem;
+    right: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.1rem;
+    height: 2.1rem;
+    border-radius: 999px;
+    background: var(--card);
+    color: var(--foreground);
+    border: 2px solid var(--ink-line);
+    box-shadow: 0 3px 0 var(--ink-line);
+    transition:
+      rotate 0.2s ease,
+      background-color 0.15s;
+  }
+  .pop-close:hover {
+    rotate: 90deg;
+    background: var(--pop-2);
+    color: #1b1b12;
+  }
+  .pop-close:focus-visible {
+    outline: none;
+    box-shadow:
+      0 3px 0 var(--ink-line),
+      0 0 0 4px color-mix(in srgb, var(--ring) 45%, transparent);
+  }
+
+  /* Side sheet */
+  .pop-sheet {
+    background: var(--card);
+    color: var(--card-foreground);
+    border-color: var(--ink-line);
+    border-width: 0;
+  }
+  .pop-sheet[data-side="right"] {
+    border-left-width: 2.5px;
+    box-shadow: -6px 0 0 var(--ink-line);
+    border-radius: 1.75rem 0 0 1.75rem;
+  }
+  .pop-sheet[data-side="left"] {
+    border-right-width: 2.5px;
+    box-shadow: 6px 0 0 var(--ink-line);
+    border-radius: 0 1.75rem 1.75rem 0;
+  }
+  .pop-sheet[data-side="top"] {
+    border-bottom-width: 2.5px;
+    box-shadow: 0 6px 0 var(--ink-line);
+    border-radius: 0 0 1.75rem 1.75rem;
+  }
+  .pop-sheet[data-side="bottom"] {
+    border-top-width: 2.5px;
+    box-shadow: 0 -6px 0 var(--ink-line);
+    border-radius: 1.75rem 1.75rem 0 0;
+  }
+
+  /* ---------- Form fields ---------- */
+  .pop-field {
+    background: var(--input-background);
+    color: var(--foreground);
+    border: 2.5px solid var(--ink-line);
+    border-radius: 0.95rem;
+    box-shadow: inset 0 3px 0 color-mix(in srgb, var(--ink) 7%, transparent);
+    font-weight: 600;
+    transition:
+      box-shadow 0.15s,
+      background-color 0.15s;
+  }
+  .pop-field::placeholder {
+    color: var(--muted-foreground);
+    opacity: 0.8;
+    font-weight: 600;
+  }
+  .pop-field:focus-visible,
+  .pop-field[data-state="open"] {
+    outline: none;
+    background: var(--card);
+    box-shadow:
+      0 0 0 4px color-mix(in srgb, var(--ring) 45%, transparent),
+      0 3px 0 var(--ink-line);
+  }
+  .pop-field[aria-invalid="true"] {
+    border-color: var(--destructive);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--destructive) 25%, transparent);
+  }
+  .pop-field:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  /* ---------- Switch, checkbox, radio ---------- */
+  .pop-switch {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    width: 3rem;
+    height: 1.75rem;
+    padding: 0 0.15rem;
+    border-radius: 999px;
+    border: 2.5px solid var(--ink-line);
+    box-shadow: 0 3px 0 var(--ink-line);
+    background: var(--switch-background);
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  .pop-switch[data-state="checked"] {
+    background-color: var(--primary);
+    background-image: repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.25) 0 5px, transparent 5px 10px);
+  }
+  .pop-switch-thumb {
+    display: block;
+    width: 1.15rem;
+    height: 1.15rem;
+    border-radius: 999px;
+    background: #fff;
+    border: 2px solid var(--ink-line);
+    transition: translate 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .pop-switch-thumb[data-state="checked"] {
+    translate: 1.2rem 0;
+  }
+
+  .pop-check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 1.35rem;
+    height: 1.35rem;
+    border-radius: 0.45rem;
+    border: 2.5px solid var(--ink-line);
+    box-shadow: 0 2px 0 var(--ink-line);
+    background: var(--card);
+    color: var(--primary-foreground);
+    cursor: pointer;
+    transition: background-color 0.15s;
+  }
+  .pop-check[data-state="checked"] {
+    background: var(--primary);
+    rotate: -4deg;
+  }
+  .pop-radio {
+    border-radius: 999px;
+  }
+  .pop-radio[data-state="checked"] {
+    background: var(--card);
+    rotate: 0deg;
+  }
+  .pop-check:focus-visible {
+    outline: none;
+    box-shadow:
+      0 2px 0 var(--ink-line),
+      0 0 0 4px color-mix(in srgb, var(--ring) 45%, transparent);
+  }
+
+  /* ---------- Tabs ---------- */
+  .pop-tabs-list {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.3rem;
+    border-radius: 999px;
+    background: var(--soft-1);
+    border: 2.5px solid var(--ink-line);
+    box-shadow: 0 3px 0 var(--ink-line);
+  }
+  .pop-tab {
+    display: inline-flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.85rem;
+    border-radius: 999px;
+    border: 2px solid transparent;
+    font-family: var(--font-head);
+    font-weight: 600;
+    font-size: 0.875rem;
+    white-space: nowrap;
+    color: var(--muted-foreground);
+    transition:
+      background-color 0.15s,
+      rotate 0.2s;
+  }
+  .pop-tab:hover {
+    color: var(--foreground);
+  }
+  .pop-tab[data-state="active"],
+  .pop-tab[aria-pressed="true"] {
+    background: var(--primary);
+    color: var(--primary-foreground);
+    border-color: var(--ink-line);
+    box-shadow: 0 2px 0 var(--ink-line);
+    rotate: -1.5deg;
+  }
+
+  /* ---------- Tooltip ---------- */
+  .pop-tip {
+    background: var(--foreground);
+    color: var(--background);
+    border: 2px solid var(--ink-line);
+    border-radius: 0.8rem;
+    box-shadow: 0 3px 0 var(--primary);
+    font-family: var(--font-head);
+    font-weight: 600;
+    font-size: 0.8rem;
+    padding: 0.35rem 0.7rem;
+  }
+
+  /* ---------- Progress & slider ---------- */
+  .pop-meter {
+    position: relative;
+    width: 100%;
+    height: 0.9rem;
+    border-radius: 999px;
+    background: var(--card);
+    border: 2px solid var(--ink-line);
+    overflow: hidden;
+  }
+  .pop-meter-fill {
+    height: 100%;
+    width: 100%;
+    background-color: var(--primary);
+    background-image: repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.28) 0 6px, transparent 6px 12px);
+    border-right: 2px solid var(--ink-line);
+    border-radius: 999px;
+    transition: transform 0.6s ease;
+  }
+  .pop-thumb {
+    display: block;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 999px;
+    background: var(--card);
+    border: 2.5px solid var(--ink-line);
+    box-shadow: 0 3px 0 var(--ink-line);
+    cursor: grab;
+    transition: scale 0.15s;
+  }
+  .pop-thumb:hover,
+  .pop-thumb:focus-visible {
+    outline: none;
+    scale: 1.12;
+    background: var(--pop-2);
+  }
+
+  /* ---------- Chat bubbles (comic speech balloons) ---------- */
+  .chat-bubble {
+    position: relative;
+    max-width: min(75%, 34rem);
+    padding: 0.55rem 0.95rem 0.4rem;
+    border: 2.5px solid var(--ink-line);
+    border-radius: 1.35rem;
+    box-shadow: 0 3px 0 var(--ink-line);
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.4;
+  }
+  .chat-bubble-them {
+    background: var(--card);
+    color: var(--card-foreground);
+    border-bottom-left-radius: 0.45rem;
+    rotate: -0.6deg;
+  }
+  .chat-bubble-me {
+    background: var(--primary);
+    color: var(--primary-foreground);
+    border-bottom-right-radius: 0.45rem;
+    rotate: 0.6deg;
+  }
+  /* The tail: an ink triangle, with a filled one on top that also hides the
+     bubble's outline where the tail joins it. */
+  .chat-bubble::before,
+  .chat-bubble::after {
+    content: "";
+    position: absolute;
+    pointer-events: none;
+  }
+  .chat-bubble-them::before {
+    left: -14px;
+    bottom: -2.5px;
+    width: 22px;
+    height: 18px;
+    background: var(--ink-line);
+    clip-path: polygon(0 100%, 100% 100%, 100% 0);
+  }
+  .chat-bubble-them::after {
+    left: -7px;
+    bottom: 0;
+    width: 15px;
+    height: 12.3px;
+    background: var(--card);
+    clip-path: polygon(0 100%, 100% 100%, 100% 0);
+  }
+  .chat-bubble-me::before {
+    right: -14px;
+    bottom: -2.5px;
+    width: 22px;
+    height: 18px;
+    background: var(--ink-line);
+    clip-path: polygon(0 0, 0 100%, 100% 100%);
+  }
+  .chat-bubble-me::after {
+    right: -7px;
+    bottom: 0;
+    width: 15px;
+    height: 12.3px;
+    background: var(--primary);
+    clip-path: polygon(0 0, 0 100%, 100% 100%);
+  }
+  .chat-bubble-hit {
+    box-shadow:
+      0 3px 0 var(--ink-line),
+      0 0 0 5px color-mix(in srgb, var(--pop-2) 70%, transparent);
+  }
+
+  /* Paper for the chat window: faint ruled lines in the theme ink. */
+  .chat-paper {
+    background-color: var(--background);
+    background-image: radial-gradient(color-mix(in srgb, var(--foreground) 12%, transparent) 1.2px, transparent 1.4px);
+    background-size: 18px 18px;
+  }
+
+  /* Small inked round icon button (chat options, send, accept). */
+  .icon-pop {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 2.35rem;
+    height: 2.35rem;
+    border-radius: 999px;
+    border: 2px solid var(--ink-line);
+    box-shadow: 0 3px 0 var(--ink-line);
+    background: var(--card);
+    color: var(--foreground);
+    transition:
+      translate 0.12s,
+      box-shadow 0.12s,
+      background-color 0.15s;
+  }
+  .icon-pop:hover:not(:disabled) {
+    translate: 0 -2px;
+    box-shadow: 0 5px 0 var(--ink-line);
+  }
+  .icon-pop:active:not(:disabled) {
+    translate: 0 2px;
+    box-shadow: 0 1px 0 var(--ink-line);
+  }
+  .icon-pop:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .icon-pop-sm {
+    width: 1.95rem;
+    height: 1.95rem;
+    box-shadow: 0 2px 0 var(--ink-line);
+  }
+
+  /* A tiny tilted section label, like a sticker tab. */
+  .tag-pop {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font: 800 0.65rem/1 var(--font-body);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    padding: 0.35rem 0.6rem;
+    border-radius: 999px;
+    background: var(--soft-3);
+    color: var(--soft-3-ink);
+    border: 2px solid var(--ink-line);
+    rotate: -2deg;
+  }
+}
+
+@keyframes pop-in {
+  0% {
+    opacity: 0;
+    scale: 0.88;
+    rotate: -2.5deg;
+  }
+  100% {
+    opacity: 1;
+    scale: 1;
+    rotate: 0deg;
+  }
+}
+@keyframes pop-drop {
+  0% {
+    opacity: 0;
+    scale: 0.92;
+    translate: 0 -6px;
+  }
+  100% {
+    opacity: 1;
+    scale: 1;
+    translate: 0 0;
+  }
+}
+@keyframes toast-shake {
+  0%,
+  100% {
+    rotate: 0deg;
+  }
+  25% {
+    rotate: -2.5deg;
+  }
+  75% {
+    rotate: 2.5deg;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Toasts (sonner). Sonner injects its own CSS at runtime, so these selectors
+   carry one extra level of specificity to win.
+   --------------------------------------------------------------------------- */
+:root [data-sonner-toaster] [data-sonner-toast][data-styled="true"] {
+  background: var(--card);
+  color: var(--card-foreground);
+  border: 2.5px solid var(--ink-line);
+  border-radius: 1.3rem;
+  box-shadow: 0 5px 0 var(--ink-line);
+  padding: 0.85rem 1rem;
+  gap: 0.75rem;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+}
+:root [data-sonner-toaster] [data-sonner-toast][data-styled="true"]:nth-child(odd) {
+  rotate: -0.8deg;
+}
+:root [data-sonner-toaster] [data-sonner-toast][data-styled="true"]:nth-child(even) {
+  rotate: 0.8deg;
+}
+:root [data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-title] {
+  font-family: var(--font-head);
+  font-weight: 600;
+  font-size: 0.98rem;
+  line-height: 1.25;
+}
+:root [data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-description] {
+  color: var(--muted-foreground);
+  font-weight: 600;
+}
+/* Icon in a round inked badge, coloured by the kind of toast. */
+/* Sonner's icons are filled circles with the symbol cut out, so the badge is
+   ink and the circle itself takes the accent colour. */
+:root [data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-icon] {
+  width: 2rem;
+  height: 2rem;
+  margin: 0;
+  flex-shrink: 0;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 999px;
+  border: 2px solid var(--ink-line);
+  box-shadow: 0 2px 0 var(--ink-line);
+  background: var(--ink-line);
+  color: var(--primary);
+}
+:root [data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-icon] svg {
+  width: 2.25rem;
+  height: 2.25rem;
+  margin: 0;
+  flex-shrink: 0;
+}
+:root [data-sonner-toaster] [data-sonner-toast][data-type="success"] [data-icon] {
+  color: var(--pop-2);
+}
+:root [data-sonner-toaster] [data-sonner-toast][data-type="error"] [data-icon] {
+  color: var(--destructive);
+}
+:root [data-sonner-toaster] [data-sonner-toast][data-type="info"] [data-icon] {
+  color: var(--pop-3);
+}
+:root [data-sonner-toaster] [data-sonner-toast][data-type="warning"] [data-icon] {
+  background: var(--card);
+  color: var(--primary);
+}
+:root [data-sonner-toaster] [data-sonner-toast][data-type="warning"] [data-icon] svg {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+:root [data-sonner-toaster] [data-sonner-toast][data-type="error"][data-mounted="true"] {
+  animation: toast-shake 0.4s ease 0.15s 1;
+}
+/* Plain toast("...") messages: a mini theme banner with the doodles. */
+:root [data-sonner-toaster] [data-sonner-toast][data-styled="true"]:not([data-type]),
+:root [data-sonner-toaster] [data-sonner-toast][data-styled="true"][data-type="default"] {
+  background-color: var(--primary);
+  background-image: var(--motif-on);
+  background-size: 140px 140px;
+  color: var(--primary-foreground);
+}
+:root [data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-close-button] {
+  background: var(--card);
+  color: var(--foreground);
+  border: 2px solid var(--ink-line);
+}
+:root [data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-button] {
+  font-family: var(--font-head);
+  font-weight: 600;
+  border-radius: 999px;
+  border: 2px solid var(--ink-line);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: 0 2px 0 var(--ink-line);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pop-menu[data-state="open"],
+  .pop-dialog[data-state="open"],
+  :root [data-sonner-toaster] [data-sonner-toast][data-type="error"][data-mounted="true"] {
+    animation: none;
+  }
+}
+
+@layer components {
+  .tag-pop-1 {
+    background: var(--soft-1);
+    color: var(--foreground);
+  }
+  .tag-pop-2 {
+    background: var(--soft-2);
+    color: var(--soft-2-ink);
+  }
+}
+
+/* The login page keeps the website's light forest palette in every theme and
+   in dark mode, so its dropdown lists do too (they render in a portal). */
+.login-menu {
+  --popover: #fffdf3;
+  --popover-foreground: #1b2e1c;
+  --primary: #7cc242;
+  --primary-foreground: #1b2e1c;
+  --ink-line: #1b2e1c;
+  --soft-1: #eaf7dc;
+  --muted-foreground: #4e5f50;
+}

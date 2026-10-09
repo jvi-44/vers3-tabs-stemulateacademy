@@ -27,6 +27,17 @@ import {
   destroyAllSessionsFor,
   requireUser,
 } from "./auth.js";
+import {
+  PIN_REGEX,
+  USERNAME_REGEX,
+  USERNAME_RULE,
+  publicUser,
+  usernameTaken,
+} from "./users.js";
+import accountRoutes from "./routes/account.js";
+import socialRoutes from "./routes/social.js";
+import adminRoutes from "./routes/admin.js";
+import { registerGameRoutes } from "./gameRooms.js";
 
 // Overridable so the model can be changed without a code edit.
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
@@ -42,9 +53,9 @@ app.use(cors({ origin: process.env.APP_ORIGIN || "http://localhost:5173", creden
 app.use(express.json({ limit: "20kb" }));
 app.use(cookieParser(COOKIE_SECRET));
 
-const PIN_REGEX = /^\d{4}$/;
-const USERNAME_REGEX = /^[A-Za-z0-9_]+$/;
-const USERNAME_MAX = 32;
+// Sign-in accepts any username an older account might have; new usernames
+// must match USERNAME_REGEX (3–20 characters) from users.js.
+const LOGIN_USERNAME_REGEX = /^[A-Za-z0-9_]+$/;
 const NAME_MAX = 80;
 const REFLECTION_MAX = 280;
 
@@ -62,7 +73,7 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: "Too many tries — please wait a minute and try again." },
 });
-app.use(["/api/login", "/api/signup", "/api/recover"], authLimiter);
+app.use(["/api/login", "/api/signup", "/api/recover", "/api/admin/login"], authLimiter);
 
 // In-memory store for short-lived PIN-reset tokens (username -> {token, expiresAt}).
 // Fine for a small deployment; swap for Redis if you scale this up.
@@ -93,12 +104,13 @@ function logAttempt(username, success) {
   );
 }
 
-/** True once a username has 5+ failed sign-in/recovery attempts in 15 minutes. */
+/** True once a username has 5+ failed sign-in/recovery attempts in 15 minutes.
+ *  Case-insensitive, like sign-in, so changing the case can't reset the count. */
 function isLockedOut(username) {
   const { n } = db
     .prepare(
       `SELECT COUNT(*) AS n FROM login_attempts
-       WHERE username = ? AND success = 0 AND attempted_at > datetime('now','-15 minutes')`,
+       WHERE username = ? COLLATE NOCASE AND success = 0 AND attempted_at > datetime('now','-15 minutes')`,
     )
     .get(username);
   return n >= LOCKOUT_FAILURES;
@@ -107,7 +119,7 @@ function isLockedOut(username) {
 /** A username that could belong to an account. Others are rejected without
  *  being written to login_attempts, so junk can't bloat the table. */
 function plausibleUsername(username) {
-  return username.length <= 64 && USERNAME_REGEX.test(username);
+  return username.length <= 64 && LOGIN_USERNAME_REGEX.test(username);
 }
 
 /** Positive integer from a number or numeric string, else null. */
@@ -116,18 +128,12 @@ function toId(value) {
   return Number.isInteger(n) && n > 0 ? n : null;
 }
 
-function publicUser(row) {
-  return {
-    userId: row.user_id,
-    fullName: row.full_name,
-    username: row.username,
-    schoolLevelId: row.school_level_id,
-    orgId: row.org_id,
-    xp: row.xp,
-    level: row.level,
-    atoms: row.atoms,
-    avatar: row.avatar,
-  };
+/** Account for a typed username: exact match first, then ignoring case. */
+function findUserByUsername(username) {
+  return (
+    db.prepare("SELECT * FROM users WHERE username = ?").get(username) ??
+    db.prepare("SELECT * FROM users WHERE username = ? COLLATE NOCASE").get(username)
+  );
 }
 
 function getUserRow(userId) {
@@ -192,13 +198,8 @@ app.post("/api/signup", async (req, res) => {
         error: "Please ask your parent or teacher, then tick the box to join.",
       });
     }
-    if (!username || !USERNAME_REGEX.test(username)) {
-      return res.status(400).json({
-        error: "Username can only contain letters, numbers, and underscores.",
-      });
-    }
-    if (username.length > USERNAME_MAX) {
-      return res.status(400).json({ error: `Username must be ${USERNAME_MAX} characters or fewer.` });
+    if (!USERNAME_REGEX.test(username)) {
+      return res.status(400).json({ error: USERNAME_RULE });
     }
     if (!PIN_REGEX.test(pin)) {
       return res.status(400).json({ error: "PIN must be exactly 4 digits." });
@@ -241,10 +242,7 @@ app.post("/api/signup", async (req, res) => {
       return res.status(400).json({ error: "Please complete all fields." });
     }
 
-    const existing = db
-      .prepare("SELECT user_id FROM users WHERE username = ?")
-      .get(username);
-    if (existing) {
+    if (usernameTaken(username)) {
       return res.status(409).json({ error: "That username is already taken." });
     }
 
@@ -296,14 +294,14 @@ app.post("/api/login", async (req, res) => {
       return res.status(429).json({ error: LOCKOUT_MESSAGE });
     }
 
-    const user = db.prepare("SELECT * FROM users WHERE username = ?").get(username);
+    const user = findUserByUsername(username);
     const ok = user && PIN_REGEX.test(pin) && (await bcrypt.compare(pin, user.pin_hash));
     if (!ok) {
-      logAttempt(username, false);
+      logAttempt(user?.username ?? username, false);
       return res.status(401).json({ error: "Incorrect username or PIN." });
     }
 
-    logAttempt(username, true);
+    logAttempt(user.username, true);
     createSession(res, user.user_id);
     res.json({ user: publicUser(user) });
   } catch (err) {
@@ -389,35 +387,8 @@ app.post("/api/recover/reset", async (req, res) => {
   }
 });
 
-// ---------------------------------------------------------
-// The signed-in user (used to rehydrate on page refresh)
-// ---------------------------------------------------------
-app.get("/api/user/me", requireUser, (req, res) => {
-  const user = getUserRow(req.userId);
-  if (!user) return res.status(401).json({ error: "Please sign in again." });
-  res.json({ user: publicUser(user) });
-});
-
-// ---------------------------------------------------------
-// Delete my account and everything stored about me
-// ---------------------------------------------------------
-const deleteUserTx = db.transaction((userId) => {
-  const user = getUserRow(userId);
-  if (!user) return;
-  db.prepare("DELETE FROM lesson_progress WHERE user_id = ?").run(userId);
-  db.prepare("DELETE FROM user_cards WHERE user_id = ?").run(userId);
-  db.prepare("DELETE FROM reflections WHERE user_id = ?").run(userId);
-  db.prepare("DELETE FROM beat_replays WHERE user_id = ?").run(userId);
-  db.prepare("DELETE FROM login_attempts WHERE username = ?").run(user.username);
-  db.prepare("DELETE FROM sessions WHERE user_id = ?").run(userId);
-  db.prepare("DELETE FROM users WHERE user_id = ?").run(userId);
-});
-
-app.delete("/api/user/me", requireUser, (req, res) => {
-  deleteUserTx(req.userId);
-  destroySession(req, res);
-  res.json({ success: true });
-});
+// The signed-in user, profile edits, data export and account deletion live in
+// routes/account.js (mounted below).
 
 // ---------------------------------------------------------
 // Lesson progress (always for the signed-in user)
@@ -569,16 +540,6 @@ function reflectionById(id) {
 app.get("/api/reflections", requireUser, (req, res) => {
   const rows = db.prepare(`${REFLECTION_SELECT} ORDER BY r.id DESC LIMIT 50`).all();
   res.json({ reflections: rows.map(toPublicReflection) });
-});
-
-// ---------------------------------------------------------
-// Leaderboard — top 20 by XP (username, avatar and XP only)
-// ---------------------------------------------------------
-app.get("/api/leaderboard", requireUser, (req, res) => {
-  const entries = db
-    .prepare("SELECT username, avatar, xp FROM users ORDER BY xp DESC LIMIT 20")
-    .all();
-  res.json({ entries });
 });
 
 // ---------------------------------------------------------
@@ -740,6 +701,14 @@ app.post("/api/chat", requireUser, chatLimiter, async (req, res) => {
     res.status(502).json({ error: "Chat is unavailable right now.", reply: null });
   }
 });
+
+// ---------------------------------------------------------
+// Account, friends & chats, admin page, lesson-game scores and live rooms
+// ---------------------------------------------------------
+app.use("/api/admin", adminRoutes);
+app.use("/api", accountRoutes);
+app.use("/api", socialRoutes);
+registerGameRoutes(app, db);
 
 // ---------------------------------------------------------
 // Production: serve the built frontend (npm run build -> dist/) from the same

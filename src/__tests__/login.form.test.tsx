@@ -49,7 +49,7 @@ describe("LoginScreen", () => {
       }),
     );
 
-    render(<LoginScreen onLogin={() => {}} />);
+    render(<LoginScreen onLogin={() => {}} onGuest={() => {}} />);
     fireEvent.click(screen.getByRole("button", { name: "Create One" }));
 
     expect(await screen.findByText("Couldn't load the form.")).toBeTruthy();
