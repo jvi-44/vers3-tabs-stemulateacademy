@@ -3,7 +3,9 @@
 // the 0–100 score and high score.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Crown, LogOut, Music, Play, RotateCcw, Trophy, Users, Volume2, VolumeX, X } from "lucide-react";
+import { Check, Crown, LogOut, Music, Play, RotateCcw, Trophy, Users, Volume2, VolumeX, X } from "lucide-react";
+import { Art, Sticker } from "./Art";
+import { GAME_ART, GameProp } from "../../components/GameArt";
 import { STEMBOTS } from "../../data/mock";
 import { cn } from "../../components/ui/utils";
 import { isMuted, onMuteChange, primeAudio, setMuted, sfx, startMusic, stopMusic } from "./audio";
@@ -101,9 +103,9 @@ function Stars({ n, size = 34 }: { n: number; size?: number }) {
         <span
           key={i}
           className={cn("game-bounce-in", i < n ? "" : "grayscale opacity-30")}
-          style={{ fontSize: size, animationDelay: `${0.3 + i * 0.2}s` }}
+          style={{ animationDelay: `${0.3 + i * 0.2}s` }}
         >
-          ⭐
+          <Sticker name="star" size={size * 1.2} />
         </span>
       ))}
     </div>
@@ -124,7 +126,7 @@ function Scoreboard({ rows, title }: { rows: Rival[]; title: string }) {
             {r.avatar ? (
               <img src={r.avatar} alt="" className="w-7 h-7 rounded-lg object-contain bg-white/10" />
             ) : (
-              <span className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center text-xs">🙂</span>
+              <Art name="smile" size={28} />
             )}
             <div className="flex-1 min-w-0">
               <p className="text-xs font-bold truncate">
@@ -336,7 +338,7 @@ export function GameShell({
     <div className="w-full max-w-6xl mx-auto">
       {/* Header band */}
       <div className={cn("relative rounded-t-3xl px-4 sm:px-6 py-3 flex items-center gap-3 text-white overflow-hidden game-checker", def.gradient)}>
-        <span className="text-3xl drop-shadow">{def.icon}</span>
+        {GAME_ART[def.id] ? <GameProp id={def.id} className="h-11 shrink-0" /> : <span className="text-3xl drop-shadow">{def.icon}</span>}
         <div className="flex-1 min-w-0">
           <p className="text-[10px] font-bold uppercase tracking-widest text-white/80 truncate">{def.lessonTitle}</p>
           <h2 className="game-fun text-xl sm:text-2xl font-bold leading-tight truncate drop-shadow">{def.title}</h2>
@@ -539,7 +541,7 @@ function LiveLobby({
             <div key={p?.id ?? `empty-${i}`} className={cn("rounded-2xl p-2 border-2", p ? "border-emerald-300 bg-emerald-50" : "border-dashed border-slate-300")}>
               {p ? (
                 <>
-                  {p.avatar ? <img src={p.avatar} alt="" className="w-12 h-12 mx-auto object-contain" /> : <div className="w-12 h-12 mx-auto text-3xl">🙂</div>}
+                  {p.avatar ? <img src={p.avatar} alt="" className="w-12 h-12 mx-auto object-contain" /> : <Art name="smile" size={48} className="mx-auto" />}
                   <p className="text-xs font-bold truncate mt-1">{p.name}</p>
                   <p className={cn("text-[10px] font-bold", p.id === room.hostId ? "text-amber-600" : p.ready ? "text-emerald-600" : "text-slate-400")}>
                     {p.id === room.hostId ? "HOST" : p.ready ? "READY" : "not ready"}
@@ -574,7 +576,13 @@ function LiveLobby({
               }}
               className={cn("game-btn", mePlayer?.ready ? "bg-emerald-500 text-white" : "bg-yellow-400 text-slate-900")}
             >
-              {mePlayer?.ready ? "Ready! ✓" : "I'm ready"}
+              {mePlayer?.ready ? (
+              <>
+                Ready! <Check size={16} strokeWidth={3} className="inline -mt-0.5" />
+              </>
+            ) : (
+              "I'm ready"
+            )}
             </button>
           )}
         </div>

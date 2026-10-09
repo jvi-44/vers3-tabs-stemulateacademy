@@ -7,7 +7,8 @@
 // STEMbots) and live play (2-4 humans, host-authoritative) share it.
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { Coins, Crown, Dice5, Trophy } from "lucide-react";
+import { Coins, Crown, Dice5, Dices, House, Trophy } from "lucide-react";
+import { Art, INK, Sticker, type ArtName } from "./kit/Art";
 import { cn } from "../components/ui/utils";
 import { STEMBOTS } from "../data/mock";
 import { sfx } from "./kit/audio";
@@ -22,7 +23,7 @@ interface Tile {
   kind: TileKind;
   name: string;
   short: string;
-  emoji: string;
+  art: ArtName;
   price?: number; // dollars
   group?: string; // colour band
 }
@@ -37,30 +38,30 @@ const G_PURPLE = "#a855f7";
 const G_PINK = "#ec4899";
 
 const TILES: Tile[] = [
-  { kind: "go", name: "Payday", short: "PAYDAY", emoji: "💰" },
-  { kind: "prop", name: "Chinatown", short: "Chinatown", emoji: "🏮", price: 100, group: G_RED },
-  { kind: "prop", name: "Lau Pa Sat", short: "Lau Pa Sat", emoji: "🍢", price: 120, group: G_RED },
-  { kind: "chance", name: "Chance", short: "Chance", emoji: "❓" },
-  { kind: "prop", name: "Little India", short: "Little India", emoji: "🪔", price: 140, group: G_ORANGE },
-  { kind: "prop", name: "Kampong Glam", short: "Kg Glam", emoji: "🕌", price: 160, group: G_ORANGE },
-  { kind: "sale", name: "Great Singapore Sale", short: "GREAT SG SALE", emoji: "🛍️" },
-  { kind: "prop", name: "Clarke Quay", short: "Clarke Quay", emoji: "🚤", price: 180, group: G_YELLOW },
-  { kind: "prop", name: "Dhoby Ghaut MRT", short: "Dhoby Ghaut", emoji: "🚇", price: 200, group: G_MRT },
-  { kind: "prop", name: "Singapore Zoo", short: "S'pore Zoo", emoji: "🦧", price: 220, group: G_YELLOW },
-  { kind: "gst", name: "GST Counter", short: "9% GST", emoji: "🧾" },
-  { kind: "prop", name: "East Coast Park", short: "East Coast", emoji: "🚲", price: 240, group: G_GREEN },
-  { kind: "kopi", name: "Kopi Break", short: "KOPI BREAK", emoji: "☕" },
-  { kind: "prop", name: "Orchard Road", short: "Orchard Rd", emoji: "🛒", price: 260, group: G_SKY },
-  { kind: "chance", name: "Chance", short: "Chance", emoji: "❓" },
-  { kind: "prop", name: "Sentosa", short: "Sentosa", emoji: "🏝️", price: 280, group: G_SKY },
-  { kind: "prop", name: "Raffles Place MRT", short: "Raffles Pl", emoji: "🚇", price: 300, group: G_MRT },
-  { kind: "prop", name: "Merlion Park", short: "Merlion", emoji: "🦁", price: 320, group: G_PURPLE },
-  { kind: "gst", name: "Tax Office", short: "TAX OFFICE", emoji: "🏛️" },
-  { kind: "prop", name: "Changi Airport", short: "Changi", emoji: "✈️", price: 340, group: G_PURPLE },
-  { kind: "prop", name: "Gardens by the Bay", short: "Gardens", emoji: "🌳", price: 360, group: G_PINK },
-  { kind: "sale", name: "Sale!", short: "SALE", emoji: "🏷️" },
-  { kind: "prop", name: "Jewel Changi", short: "Jewel", emoji: "💎", price: 380, group: G_PINK },
-  { kind: "prop", name: "Marina Bay Sands", short: "MBS", emoji: "🏨", price: 400, group: G_PINK },
+  { kind: "go", name: "Payday", short: "PAYDAY", art: "coin" },
+  { kind: "prop", name: "Chinatown", short: "Chinatown", art: "lantern", price: 100, group: G_RED },
+  { kind: "prop", name: "Lau Pa Sat", short: "Lau Pa Sat", art: "satay", price: 120, group: G_RED },
+  { kind: "chance", name: "Chance", short: "Chance", art: "chance" },
+  { kind: "prop", name: "Little India", short: "Little India", art: "garland", price: 140, group: G_ORANGE },
+  { kind: "prop", name: "Kampong Glam", short: "Kg Glam", art: "mosque", price: 160, group: G_ORANGE },
+  { kind: "sale", name: "Great Singapore Sale", short: "GREAT SG SALE", art: "sale" },
+  { kind: "prop", name: "Clarke Quay", short: "Clarke Quay", art: "boat", price: 180, group: G_YELLOW },
+  { kind: "prop", name: "Dhoby Ghaut MRT", short: "Dhoby Ghaut", art: "mrt", price: 200, group: G_MRT },
+  { kind: "prop", name: "Singapore Zoo", short: "S'pore Zoo", art: "zoo", price: 220, group: G_YELLOW },
+  { kind: "gst", name: "GST Counter", short: "9% GST", art: "gst" },
+  { kind: "prop", name: "East Coast Park", short: "East Coast", art: "bike", price: 240, group: G_GREEN },
+  { kind: "kopi", name: "Kopi Break", short: "KOPI BREAK", art: "kopi" },
+  { kind: "prop", name: "Orchard Road", short: "Orchard Rd", art: "orchard", price: 260, group: G_SKY },
+  { kind: "chance", name: "Chance", short: "Chance", art: "chance" },
+  { kind: "prop", name: "Sentosa", short: "Sentosa", art: "island", price: 280, group: G_SKY },
+  { kind: "prop", name: "Raffles Place MRT", short: "Raffles Pl", art: "mrt", price: 300, group: G_MRT },
+  { kind: "prop", name: "Merlion Park", short: "Merlion", art: "merlion", price: 320, group: G_PURPLE },
+  { kind: "gst", name: "Tax Office", short: "TAX OFFICE", art: "tax" },
+  { kind: "prop", name: "Changi Airport", short: "Changi", art: "plane", price: 340, group: G_PURPLE },
+  { kind: "prop", name: "Gardens by the Bay", short: "Gardens", art: "gardens", price: 360, group: G_PINK },
+  { kind: "sale", name: "Sale!", short: "SALE", art: "tag" },
+  { kind: "prop", name: "Jewel Changi", short: "Jewel", art: "gem", price: 380, group: G_PINK },
+  { kind: "prop", name: "Marina Bay Sands", short: "MBS", art: "hotel", price: 400, group: G_PINK },
 ];
 const NT = TILES.length;
 
@@ -97,11 +98,12 @@ interface Question {
   answer: number;
   reward?: number; // cents, for bonus questions
   amt?: number; // cents, chance card amount
+  art?: ArtName; // picture for a chance card
 }
 
 interface Result {
   id: number;
-  emoji: string;
+  art: ArtName;
   title: string;
   lines: string[];
   tone: "good" | "bad" | "info";
@@ -252,16 +254,16 @@ const SALE_ITEMS = ["sneakers", "headphones", "LEGO set", "scooter", "backpack",
 const SALE_PRICES = [6000, 8000, 9000, 12000, 15000, 7500, 4500];
 const BILLS = [2000, 3000, 4000, 5000, 6000, 8000, 12000, 15000, 4500];
 
-const CHANCE: { emoji: string; text: string; amt: number }[] = [
-  { emoji: "🧧", text: "Grandma gives you a hongbao!", amt: 8800 },
-  { emoji: "🧋", text: "Bubble tea for the whole team.", amt: -1290 },
-  { emoji: "🏆", text: "You won the school science fair!", amt: 4550 },
-  { emoji: "🚌", text: "Top up your EZ-Link card.", amt: -2000 },
-  { emoji: "☂️", text: "Lost your umbrella in the rain. Buy a new one.", amt: -1590 },
-  { emoji: "🎨", text: "Your art sold at the school fair!", amt: 3275 },
-  { emoji: "🍗", text: "Treat your friends to chicken rice.", amt: -1850 },
-  { emoji: "💡", text: "Your invention wins a prize!", amt: 6025 },
-  { emoji: "🎟️", text: "Tickets to the Night Safari.", amt: -2560 },
+const CHANCE: { art: ArtName; text: string; amt: number }[] = [
+  { art: "gift", text: "Grandma gives you a hongbao!", amt: 8800 },
+  { art: "drink", text: "Bubble tea for the whole team.", amt: -1290 },
+  { art: "trophy", text: "You won the school science fair!", amt: 4550 },
+  { art: "bus", text: "Top up your EZ-Link card.", amt: -2000 },
+  { art: "umbrella", text: "Lost your umbrella in the rain. Buy a new one.", amt: -1590 },
+  { art: "palette", text: "Your art sold at the school fair!", amt: 3275 },
+  { art: "food", text: "Treat your friends to chicken rice.", amt: -1850 },
+  { art: "idea", text: "Your invention wins a prize!", amt: 6025 },
+  { art: "ticket", text: "Tickets to the Night Safari.", amt: -2560 },
 ];
 
 function netWorth(g: GState, i: number) {
@@ -289,7 +291,7 @@ function land(n: GState, r: Rng) {
   const p = n.players[pi];
   const t = TILES[p.pos];
   if (t.kind === "go") {
-    setResult(n, { emoji: "💰", title: "Payday!", lines: [], tone: "good", sound: "coin", toast: `+${fmt(PAYDAY)}` });
+    setResult(n, { art: "coin", title: "Payday!", lines: [], tone: "good", sound: "coin", toast: `+${fmt(PAYDAY)}` });
     return;
   }
   if (t.kind === "prop") {
@@ -297,7 +299,7 @@ function land(n: GState, r: Rng) {
     if (own === -1) {
       const P = (t.price ?? 0) * 100;
       if (p.cash < P * 1.1) {
-        setResult(n, { emoji: "😅", title: `Can't afford ${t.name}`, lines: [`It costs about ${fmt(P)}. You have ${fmt(p.cash)}.`], tone: "info", sound: "info", bubble: "Too pricey for me!" });
+        setResult(n, { art: "oops", title: `Can't afford ${t.name}`, lines: [`It costs about ${fmt(P)}. You have ${fmt(p.cash)}.`], tone: "info", sound: "info", bubble: "Too pricey for me!" });
         return;
       }
       n.q = buyQuestion(r, p.pos, n.round);
@@ -308,14 +310,14 @@ function land(n: GState, r: Rng) {
       if (n.level[p.pos] < 3) {
         n.level[p.pos] += 1;
         setResult(n, {
-          emoji: "🏠",
+          art: "house",
           title: `${t.name} grows!`,
           lines: [`A new house pops up. Rent is now ${fmt(rentOf(p.pos, n.level[p.pos]))}.`],
           tone: "good",
           sound: "buy",
           bubble: "Another house for me!",
         });
-      } else setResult(n, { emoji: "😎", title: `Home sweet home`, lines: [`${t.name} is fully built.`], tone: "info", sound: "info" });
+      } else setResult(n, { art: "house", title: `Home sweet home`, lines: [`${t.name} is fully built.`], tone: "info", sound: "info" });
       return;
     }
     const rent = Math.min(p.cash, rentOf(p.pos, n.level[p.pos]));
@@ -341,7 +343,7 @@ function land(n: GState, r: Rng) {
       return;
     }
     setResult(n, {
-      emoji: "💸",
+      art: "rent",
       title: `Pay rent at ${t.name}`,
       lines: [line],
       tone: "bad",
@@ -360,11 +362,12 @@ function land(n: GState, r: Rng) {
         kind: "chance",
         tile: p.pos,
         title: "Chance card",
-        prompt: `${c.emoji} ${c.text} (${c.amt >= 0 ? "+" : "−"}${fmt(Math.abs(c.amt))})`,
+        prompt: `${c.text} (${c.amt >= 0 ? "+" : "−"}${fmt(Math.abs(c.amt))})`,
         ask: `You have ${fmt(before)}. What is your new balance? Get it right for a $5.00 bonus!`,
         topic: "new balance",
         reward: 500,
         amt: c.amt,
+        art: c.art,
         ...options(r, ans, [before - c.amt, ans + 1000, ans - 100, ans + 10]),
       };
       n.phase = "question";
@@ -372,7 +375,7 @@ function land(n: GState, r: Rng) {
     }
     p.cash = Math.max(0, p.cash + c.amt);
     setResult(n, {
-      emoji: c.emoji,
+      art: c.art,
       title: c.text,
       lines: [`${fmt(before)} ${c.amt >= 0 ? "+" : "−"} ${fmt(Math.abs(c.amt))} = ${fmt(p.cash)}`],
       tone: c.amt >= 0 ? "good" : "bad",
@@ -454,14 +457,14 @@ function answerQuestion(n: GState, choice: number, secs: number) {
   if (q.kind === "buy") {
     if (right) {
       if (p.cash < correct) {
-        setResult(n, { emoji: "😅", title: "Correct, but not enough cash!", lines: [`You need ${fmt(correct)}.`], tone: "info", sound: "good" });
+        setResult(n, { art: "oops", title: "Correct, but not enough cash!", lines: [`You need ${fmt(correct)}.`], tone: "info", sound: "good" });
         return;
       }
       p.cash -= correct;
       n.owner[q.tile] = n.turn;
       n.level[q.tile] = 1;
       setResult(n, {
-        emoji: "🎉",
+        art: "party",
         title: `You bought ${t.name}!`,
         lines: [`${fmt(before)} − ${fmt(correct)} = ${fmt(p.cash)}`, `Rent here: ${fmt(rentOf(q.tile, 1))}`],
         tone: "good",
@@ -472,7 +475,7 @@ function answerQuestion(n: GState, choice: number, secs: number) {
     } else {
       p.cash = Math.max(0, p.cash - OOPS);
       setResult(n, {
-        emoji: "🙈",
+        art: "oops",
         title: "Oops! Not the right price",
         lines: [`It was ${fmt(correct)}. Oops fee: ${fmt(before)} − ${fmt(OOPS)} = ${fmt(p.cash)}`],
         tone: "bad",
@@ -487,7 +490,7 @@ function answerQuestion(n: GState, choice: number, secs: number) {
     const pay = right ? correct : correct + OOPS;
     p.cash = Math.max(0, p.cash - pay);
     setResult(n, {
-      emoji: right ? "✅" : "🙈",
+      art: right ? "yes" : "oops",
       title: right ? "Correct GST paid" : "Wrong! GST + $5.00 oops fee",
       lines: [`9% GST = ${fmt(correct)}`, `${fmt(before)} − ${fmt(pay)} = ${fmt(p.cash)}`],
       tone: right ? "good" : "bad",
@@ -501,7 +504,7 @@ function answerQuestion(n: GState, choice: number, secs: number) {
     const amt = q.amt ?? 0;
     p.cash = Math.max(0, p.cash + amt + (right ? 500 : 0));
     setResult(n, {
-      emoji: right ? "🤑" : "🙈",
+      art: right ? "coin" : "oops",
       title: right ? "Correct! +$5.00 bonus" : `Not quite, it was ${fmt(correct)}`,
       lines: [`${fmt(before)} ${amt >= 0 ? "+" : "−"} ${fmt(Math.abs(amt))} = ${fmt(before + amt)}`, ...(right ? [`Bonus: + $5.00 = ${fmt(p.cash)}`] : [])],
       tone: right ? "good" : "bad",
@@ -515,7 +518,7 @@ function answerQuestion(n: GState, choice: number, secs: number) {
   const reward = q.kind === "sale" ? correct : q.reward ?? 0;
   if (right) p.cash += reward;
   setResult(n, {
-    emoji: right ? "🤑" : "🙈",
+    art: right ? "coin" : "oops",
     title: right ? `Correct! +${fmt(reward)} bonus` : `Not quite, it was ${fmt(correct)}`,
     lines: right ? [`${fmt(before)} + ${fmt(reward)} = ${fmt(p.cash)}`] : ["No bonus this time."],
     tone: right ? "good" : "bad",
@@ -554,7 +557,7 @@ function reduce(g: GState, a: Action & { by: number }): GState {
     answerQuestion(n, a.choice, a.secs);
   } else if (a.type === "skip") {
     if (g.phase !== "question" || g.q?.kind !== "buy") return g;
-    setResult(n, { emoji: "👋", title: `Skipped ${TILES[g.q.tile].name}`, lines: ["Maybe next time!"], tone: "info", sound: "info" });
+    setResult(n, { art: "wave", title: `Skipped ${TILES[g.q.tile].name}`, lines: ["Maybe next time!"], tone: "info", sound: "info" });
   } else if (a.type === "next") {
     if (g.phase !== "result") return g;
     n.turn = (n.turn + 1) % n.players.length;
@@ -1105,10 +1108,9 @@ export function SgMonopoly({ mode, seed, me, live, reportProgress, finish }: Gam
             height: cell * 0.7,
             transformOrigin: "bottom center",
             transform: `translateZ(2px) rotateX(-${TILT}deg)`,
-            fontSize: cell * 0.5,
           }}
         >
-          🦁
+          <Sticker name="merlion" size={cell * 0.85} />
         </div>
 
         {/* Dice */}
@@ -1142,7 +1144,7 @@ export function SgMonopoly({ mode, seed, me, live, reportProgress, finish }: Gam
             >
               <div className={cn("absolute inset-0 flex flex-col items-center text-center", glow && "sgm-tile-glow")} style={{ borderRadius: 4 }}>
                 {t.group && <div className="w-full shrink-0" style={{ height: cell * 0.16, background: t.group, borderBottom: "2px solid rgba(0,0,0,0.15)" }} />}
-                <span style={{ fontSize: cell * (corner ? 0.36 : 0.27), lineHeight: 1.1, marginTop: t.group ? 1 : cell * 0.08 }}>{t.emoji}</span>
+                <Art name={t.art} size={cell * (corner ? 0.5 : 0.42)} style={{ marginTop: t.group ? 2 : cell * 0.08 }} className="!drop-shadow-none" />
                 <span
                   className="game-fun font-bold text-slate-800 leading-none px-0.5"
                   style={{ fontSize: Math.max(7, cell * (corner ? 0.12 : 0.13)), marginTop: 1 }}
@@ -1287,7 +1289,7 @@ export function SgMonopoly({ mode, seed, me, live, reportProgress, finish }: Gam
                 <span className="game-pixel text-[8px] text-emerald-700">{fmt(p.cash)}</span>
                 {wide && (
                   <span className="text-[10px] text-slate-500 font-bold whitespace-nowrap">
-                    🏠{owned} · worth ${Math.round(nw / 100)}
+                    <House size={10} strokeWidth={2.6} className="inline -mt-0.5" /> {owned} · worth ${Math.round(nw / 100)}
                   </span>
                 )}
               </p>
@@ -1308,7 +1310,12 @@ export function SgMonopoly({ mode, seed, me, live, reportProgress, finish }: Gam
         <div className="mt-2 space-y-1">
           {rank.map((i, k) => (
             <div key={i} className="flex items-center gap-2 text-sm game-fun font-bold">
-              <span className="w-5">{["🥇", "🥈", "🥉", "4️⃣"][k]}</span>
+              <span
+                className="w-5 h-5 rounded-full border-2 flex items-center justify-center game-pixel text-[9px]"
+                style={{ background: ["#fcd34d", "#e2e8f0", "#fdba74", "#fff"][k], borderColor: INK, color: INK }}
+              >
+                {k + 1}
+              </span>
               <img src={g.players[i].avatar} alt="" className="w-6 h-6 object-contain" />
               <span className="flex-1 truncate">{g.players[i].name}</span>
               <span className="game-pixel text-[9px] text-emerald-700">{fmt(netWorth(g, i))}</span>
@@ -1342,7 +1349,7 @@ export function SgMonopoly({ mode, seed, me, live, reportProgress, finish }: Gam
           }}
           className="game-btn bg-yellow-400 text-slate-900 text-xl w-full mt-2 py-3 flex items-center justify-center gap-2 game-pulse"
         >
-          🎲 ROLL!
+          <Dices size={24} strokeWidth={2.6} /> ROLL!
         </button>
         <p className="text-[11px] text-slate-500 mt-2 game-fun">Pass Payday to collect {fmt(PAYDAY)}</p>
       </div>
@@ -1378,7 +1385,7 @@ export function SgMonopoly({ mode, seed, me, live, reportProgress, finish }: Gam
           )}
         >
           <div className="flex items-center gap-2">
-            <span className="text-2xl">{res.emoji}</span>
+            <Art name={res.art} size={30} />
             <p className="game-fun font-bold leading-tight">{res.title}</p>
           </div>
           {res.lines.map((l) => (
@@ -1539,7 +1546,7 @@ function QuestionCard({
         </p>
       ))}
       <div className="flex items-center gap-2">
-        <span className={compact ? "text-lg" : "text-2xl"}>{t.emoji}</span>
+        <Art name={q.art ?? t.art} size={compact ? 22 : 30} />
         <div className="min-w-0">
           <p className="game-pixel text-[8px] text-indigo-200 truncate">{q.title.toUpperCase()}</p>
           <p className={cn("game-fun font-bold leading-tight", compact ? "text-sm" : "text-base")}>{q.prompt}</p>

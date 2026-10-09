@@ -8,7 +8,8 @@
 // One clear job at a time, picked from a Minecraft-style hotbar.
 
 import { Fragment, createContext, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { Check, Timer } from "lucide-react";
+import { Check, Timer, X } from "lucide-react";
+import { Sticker, type StickerName } from "./kit/Art";
 import { cn } from "../components/ui/utils";
 import { STEMBOTS } from "../data/mock";
 import { sfx } from "./kit/audio";
@@ -28,61 +29,61 @@ type DecorId = "fern" | "moss" | "leafy" | "cactus" | "pebbles" | "deadbush" | "
 
 interface Item {
   label: string;
-  emoji: string;
+  art: StickerName;
 }
 
 const LAYERS: Record<LayerId, Item & { colors: BlockColors[]; thick: number }> = {
   rocks: {
     label: "Rocks",
-    emoji: "🪨",
+    art: "rocks",
     thick: 0.55,
     colors: [BLOCKS.stone, { top: "#8f8f8f", side: "#7a7a7a", side2: "#636363" }, { top: "#b5b5b5", side: "#9c9c9c", side2: "#808080" }],
   },
   perlite: {
     label: "Perlite",
-    emoji: "⚪",
+    art: "perlite",
     thick: 0.4,
     colors: [{ top: "#f8fafc", side: "#e2e8f0", side2: "#cbd5e1" }, { top: "#e5e7eb", side: "#d1d5db", side2: "#b7bcc4" }],
   },
   soil: {
     label: "Soil",
-    emoji: "🟫",
+    art: "soil",
     thick: 0.9,
     colors: [{ top: "#5b3a1e", side: "#6b4423", side2: "#54351b" }, { top: "#4a2f17", side: "#6b4423", side2: "#54351b" }],
   },
   sand: {
     label: "Sand",
-    emoji: "🟨",
+    art: "sand",
     thick: 0.9,
     colors: [BLOCKS.sand, { top: "#efd27a", side: "#e6c96c", side2: "#cfb257" }],
   },
   wetsoil: {
     label: "Wet soil",
-    emoji: "💧",
+    art: "wetsoil",
     thick: 0.9,
     colors: [BLOCKS.mud, { top: "#5a4325", side: "#5a4122", side2: "#47331b" }],
   },
 };
 
 const DECOR: Record<DecorId, Item> = {
-  fern: { label: "Fern", emoji: "🌿" },
-  moss: { label: "Moss", emoji: "🟩" },
-  leafy: { label: "Leafy plant", emoji: "🪴" },
-  cactus: { label: "Cactus", emoji: "🌵" },
-  pebbles: { label: "Small rocks", emoji: "🪨" },
-  deadbush: { label: "Dry bush", emoji: "🥀" },
-  lilypad: { label: "Lily pad", emoji: "🪷" },
-  log: { label: "Mini log", emoji: "🪵" },
-  mushroom: { label: "Mushroom", emoji: "🍄" },
-  snow: { label: "Snow block", emoji: "❄️" },
-  flower: { label: "Desert flower", emoji: "🌼" },
+  fern: { label: "Fern", art: "fern" },
+  moss: { label: "Moss", art: "moss" },
+  leafy: { label: "Leafy plant", art: "leafy" },
+  cactus: { label: "Cactus", art: "cactus" },
+  pebbles: { label: "Small rocks", art: "pebbles" },
+  deadbush: { label: "Dry bush", art: "deadbush" },
+  lilypad: { label: "Lily pad", art: "lilypad" },
+  log: { label: "Mini log", art: "log" },
+  mushroom: { label: "Mushroom", art: "mushroom" },
+  snow: { label: "Snow block", art: "snow" },
+  flower: { label: "Desert flower", art: "flower" },
 };
 
 // ── Biomes ────────────────────────────────────────────
 interface Biome {
   key: "forest" | "desert" | "swamp";
   name: string;
-  emoji: string;
+  art: StickerName;
   ground: LayerId;
   groundTip: string;
   good: DecorId[];
@@ -95,7 +96,7 @@ const BIOMES: Biome[] = [
   {
     key: "forest",
     name: "Forest",
-    emoji: "🌲",
+    art: "pine",
     ground: "soil",
     groundTip: "Forest plants grow in rich, dark soil.",
     good: ["fern", "moss", "leafy"],
@@ -110,7 +111,7 @@ const BIOMES: Biome[] = [
   {
     key: "desert",
     name: "Desert",
-    emoji: "🏜️",
+    art: "dune",
     ground: "sand",
     groundTip: "Deserts are dry and sandy.",
     good: ["cactus", "pebbles", "flower"],
@@ -125,7 +126,7 @@ const BIOMES: Biome[] = [
   {
     key: "swamp",
     name: "Swamp",
-    emoji: "🐸",
+    art: "frog",
     ground: "wetsoil",
     groundTip: "Swamps are soggy! The bottom is moist soil.",
     good: ["moss", "lilypad", "log"],
@@ -473,13 +474,13 @@ export function TerrariumBuilder({ seed, reportProgress, finish }: GameProps) {
           ? "Fill the jar from the BOTTOM up. What goes in first?"
           : `Great! Now pick layer ${layers.length + 1} of 3.`;
       case "decor":
-        return `Pick 3 things that belong in a ${biome.name.toUpperCase()} ${biome.emoji}  (${decor.length}/3)`;
+        return `Pick 3 things that belong in a ${biome.name.toUpperCase()} (${decor.length}/3)`;
       case "seal":
         return "Put the lid on to seal the jar!";
       case "cycle":
         return "Watch the water inside the closed jar, then answer!";
       case "done":
-        return `Your ${biome.name} terrarium is alive! 🎉`;
+        return `Your ${biome.name} terrarium is alive!`;
     }
   })();
 
@@ -509,7 +510,7 @@ export function TerrariumBuilder({ seed, reportProgress, finish }: GameProps) {
         <div key={`${jar}-${step}`} className="flex-1 min-w-0 bg-white/95 rounded-2xl game-panel px-2 sm:px-3 py-2 flex items-center gap-2 sm:gap-3 game-bounce-in">
           <div key={`s${shakeId}`} className={cn("relative shrink-0 rounded-2xl p-1 bg-emerald-500", shakeId > 0 && "game-shake")}>
             <img src={sophia.avatar} alt={sophia.name} className="w-10 h-10 sm:w-14 sm:h-14 object-contain drop-shadow" />
-            <span className="absolute -bottom-1 -right-1 text-lg">{biome.emoji}</span>
+            <Sticker name={biome.art} size={24} className="absolute -bottom-1.5 -right-1.5" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="game-pixel text-[8px] sm:text-[9px] text-slate-500 truncate">
@@ -561,12 +562,12 @@ export function TerrariumBuilder({ seed, reportProgress, finish }: GameProps) {
         {/* Sun (heats the jar during evaporation) */}
         <div
           className={cn(
-            "absolute right-3 top-2 text-5xl sm:text-6xl transition-all duration-700 pointer-events-none",
+            "absolute right-3 top-2 transition-all duration-700 pointer-events-none",
             stage === "evaporation" ? "opacity-100 scale-110 drop-shadow-[0_0_24px_rgba(250,204,21,0.9)]" : "opacity-60 scale-90",
           )}
           style={stage === "evaporation" ? { animation: "game-spin-slow 8s linear infinite" } : undefined}
         >
-          ☀️
+          <Sticker name="sun" size={60} />
         </div>
 
         {/* Recipe card */}
@@ -583,7 +584,7 @@ export function TerrariumBuilder({ seed, reportProgress, finish }: GameProps) {
                     <span className="w-4 text-right">{i + 1}.</span>
                     {show ? (
                       <>
-                        <span>{LAYERS[id].emoji}</span> {LAYERS[id].label}
+                        <Sticker name={LAYERS[id].art} size={16} /> {LAYERS[id].label}
                       </>
                     ) : (
                       <span className="text-slate-400">? ? ?</span>
@@ -593,11 +594,11 @@ export function TerrariumBuilder({ seed, reportProgress, finish }: GameProps) {
                 );
               })}
               <li className={cn("game-fun font-bold text-[12px] flex items-center gap-1", decor.length === 3 ? "text-emerald-700" : "text-slate-500")}>
-                <span className="w-4 text-right">4.</span> 🌱 3 {biome.name.toLowerCase()} things
+                <span className="w-4 text-right">4.</span> <Sticker name={biome.art} size={16} /> 3 {biome.name.toLowerCase()} things
                 {decor.length === 3 && <Check size={12} strokeWidth={3} className="ml-auto" />}
               </li>
               <li className={cn("game-fun font-bold text-[12px] flex items-center gap-1", sealed ? "text-emerald-700" : "text-slate-500")}>
-                <span className="w-4 text-right">5.</span> 🫙 Seal the lid
+                <span className="w-4 text-right">5.</span> <Sticker name="jar" size={16} /> Seal the lid
                 {sealed && <Check size={12} strokeWidth={3} className="ml-auto" />}
               </li>
             </ol>
@@ -646,7 +647,7 @@ export function TerrariumBuilder({ seed, reportProgress, finish }: GameProps) {
         {step === "done" && (
           <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
             <div className="bg-emerald-500 text-white rounded-3xl game-panel px-6 py-4 text-center game-bounce-in">
-              <p className="text-5xl">{biome.emoji}</p>
+              <Sticker name={biome.art} size={64} className="mx-auto" />
               <p className="game-pixel text-[11px] mt-2">TERRARIUM {jar + 1} DONE!</p>
               <p className="game-fun font-bold text-sm mt-1">The water keeps cycling, so the plants stay alive.</p>
             </div>
@@ -672,7 +673,7 @@ export function TerrariumBuilder({ seed, reportProgress, finish }: GameProps) {
         )}
         {step === "seal" && (
           <button onClick={seal} disabled={!canPlay} className="game-btn bg-yellow-400 text-slate-900 text-lg sm:text-xl px-8 py-3 flex items-center gap-2 game-pulse">
-            🫙 Put the lid on!
+            <Sticker name="jar" size={28} /> Put the lid on!
           </button>
         )}
         {step === "cycle" && question && (
@@ -705,7 +706,7 @@ export function TerrariumBuilder({ seed, reportProgress, finish }: GameProps) {
             )}
           </div>
         )}
-        {(step === "done" || allDone) && <p className="game-fun font-bold text-lg">{allDone ? "🎉 All done!" : "Next jar coming up..."}</p>}
+        {(step === "done" || allDone) && <p className="game-fun font-bold text-lg">{allDone ? "All done!" : "Next jar coming up..."}</p>}
       </div>
     </div>
   );
@@ -718,12 +719,12 @@ function Hotbar({
   disabled,
   onPick,
 }: {
-  items: { key: string; label: string; emoji: string; picked?: boolean; crossed?: boolean }[];
+  items: { key: string; label: string; art: StickerName; picked?: boolean; crossed?: boolean }[];
   disabled: boolean;
   onPick: (key: string) => void;
 }) {
   return (
-    <div className="flex gap-1.5 sm:gap-2 bg-black/40 p-1.5 rounded-lg">
+    <div className="flex gap-1.5 sm:gap-2 p-1.5 pb-2.5">
       {items.map((it, i) => (
         <button
           key={it.key}
@@ -735,14 +736,18 @@ function Hotbar({
           aria-label={it.label}
           className={cn("game-slot relative w-[58px] h-[74px] sm:w-[78px] sm:h-[82px] flex flex-col items-center justify-center", it.picked && "picked !opacity-100")}
         >
-          <span className="absolute top-0.5 left-1 game-pixel text-[8px] text-white/80 drop-shadow">{i + 1}</span>
-          <span className={cn("text-2xl sm:text-3xl leading-none drop-shadow", it.crossed && "grayscale")}>{it.emoji}</span>
-          <span className="game-fun font-bold text-[10px] sm:text-[11px] text-white mt-1 leading-tight text-center px-0.5 drop-shadow-[0_1px_0_rgba(0,0,0,0.6)]">
+          <span className="absolute top-0.5 left-1.5 game-pixel text-[8px] text-slate-500">{i + 1}</span>
+          <Sticker name={it.art} size={34} className={cn("sm:w-10 sm:h-10", it.crossed && "grayscale opacity-60")} />
+          <span className="game-fun font-bold text-[10px] sm:text-[11px] text-slate-900 mt-1 leading-tight text-center px-0.5">
             {it.label}
           </span>
-          {it.crossed && <span className="absolute inset-0 flex items-center justify-center text-rose-500 text-4xl font-black">✕</span>}
+          {it.crossed && (
+            <span className="absolute inset-0 flex items-center justify-center text-rose-500">
+              <X size={40} strokeWidth={4} />
+            </span>
+          )}
           {it.picked && (
-            <span className="absolute -top-1.5 -right-1.5 bg-emerald-600 rounded-full w-5 h-5 flex items-center justify-center">
+            <span className="absolute -top-1.5 -right-1.5 bg-emerald-500 text-white border-2 border-[#2a1f0c] rounded-full w-5 h-5 flex items-center justify-center">
               <Check size={13} strokeWidth={3} />
             </span>
           )}

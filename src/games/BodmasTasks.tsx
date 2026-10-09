@@ -7,7 +7,8 @@
 // fixed, an emergency meeting asks: whose working breaks BODMAS? Vote them out!
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { AlertTriangle, Delete, Timer } from "lucide-react";
+import { AlertTriangle, Check, Delete, Siren, Timer, X, Zap } from "lucide-react";
+import { Art, Sticker, type ChipName } from "./kit/Art";
 import { cn } from "../components/ui/utils";
 import { STEMBOTS } from "../data/mock";
 import { sfx } from "./kit/audio";
@@ -287,11 +288,11 @@ type SysId = "nav" | "comms" | "engine" | "cooling";
 type RoomId = SysId | "cafe";
 type TaskType = "wires" | "keypad" | "dial";
 
-const SYSTEMS: Record<SysId, { name: string; icon: string; color: string; dark: string; verb: string }> = {
-  nav: { name: "Navigation", icon: "🧭", color: "#38bdf8", dark: "#0369a1", verb: "Course plotted" },
-  comms: { name: "Communication", icon: "📡", color: "#a78bfa", dark: "#6d28d9", verb: "Signal restored" },
-  engine: { name: "Engine", icon: "🚀", color: "#fb923c", dark: "#c2410c", verb: "Engines roaring" },
-  cooling: { name: "Cooling", icon: "❄️", color: "#22d3ee", dark: "#0e7490", verb: "Reactor cooled" },
+const SYSTEMS: Record<SysId, { name: string; icon: ChipName; color: string; dark: string; verb: string }> = {
+  nav: { name: "Navigation", icon: "nav", color: "#38bdf8", dark: "#0369a1", verb: "Course plotted" },
+  comms: { name: "Communication", icon: "comms", color: "#a78bfa", dark: "#6d28d9", verb: "Signal restored" },
+  engine: { name: "Engine", icon: "engine", color: "#fb923c", dark: "#c2410c", verb: "Engines roaring" },
+  cooling: { name: "Cooling", icon: "cooling", color: "#22d3ee", dark: "#0e7490", verb: "Reactor cooled" },
 };
 const SYS_IDS: SysId[] = ["nav", "comms", "engine", "cooling"];
 const TASKS_PER_SYS = 2;
@@ -574,7 +575,7 @@ export function BodmasTasks({ seed, reportProgress, finish }: GameProps) {
       later(() => {
         setPanel(null);
         sfx.levelUp();
-        showFlash(`${SYSTEMS[p.sys].icon} ${SYSTEMS[p.sys].name} ONLINE! +${Math.round(pts)}`);
+        showFlash(`${SYSTEMS[p.sys].name} ONLINE! +${Math.round(pts)}`);
         if (newDone >= TOTAL_TASKS) {
           setSabEnd(sabRef.current);
           setPhase("allFixed");
@@ -667,7 +668,7 @@ export function BodmasTasks({ seed, reportProgress, finish }: GameProps) {
             const done = fixed[s] >= TASKS_PER_SYS;
             return (
               <button key={s} onClick={() => goTo(s)} className={cn("w-full flex items-center gap-1.5 text-[12px] font-semibold py-0.5 text-left", done ? "text-emerald-300" : "text-white")}>
-                <span>{SYSTEMS[s].icon}</span>
+                <Art name={SYSTEMS[s].icon} size={18} />
                 <span className={cn("flex-1 truncate", done && "line-through opacity-80")}>{SYSTEMS[s].name}</span>
                 <span className="text-[10px]">{fixed[s]}/2</span>
               </button>
@@ -713,7 +714,7 @@ export function BodmasTasks({ seed, reportProgress, finish }: GameProps) {
       {phase === "allFixed" && (
         <Overlay>
           <div className="text-center game-bounce-in">
-            <p className="text-6xl mb-3">🛰️✨</p>
+            <Art name="comms" size={80} className="mx-auto mb-3" />
             <p className="game-pixel text-lg sm:text-2xl text-emerald-300 drop-shadow-[0_6px_14px_rgba(0,0,0,0.35)]">ALL SYSTEMS ONLINE!</p>
             <p className="text-white/90 mt-3 font-semibold">Ship safety bonus: +{Math.round(SAB_POINTS * (1 - (sabEnd ?? 0)))}</p>
             <p className="text-amber-300 mt-1 font-bold">But wait… someone broke the ship on purpose…</p>
@@ -730,7 +731,7 @@ export function BodmasTasks({ seed, reportProgress, finish }: GameProps) {
       {phase === "lost" && (
         <Overlay red>
           <div className="text-center game-bounce-in px-4">
-            <p className="text-6xl mb-3">💥</p>
+            <Sticker name="burst" size={80} className="mx-auto mb-3" />
             <p className="game-pixel text-lg sm:text-2xl text-rose-300 drop-shadow-[0_6px_14px_rgba(0,0,0,0.35)]">SHIP SABOTAGED!</p>
             <p className="text-white/90 mt-3 font-semibold">The impostor wins this time. Replay and fix the systems faster!</p>
           </div>
@@ -875,7 +876,9 @@ function ShipMap({
                     {r === "cafe" ? (
                       <div className="w-10 h-10 rounded-full border-4 border-slate-700 shadow-lg" style={{ background: "radial-gradient(circle at 35% 30%, #fca5a5, #dc2626 55%, #7f1d1d)" }} />
                     ) : (
-                      <div className={cn("text-[34px] leading-none", !done && "bt-broken")}>{S!.icon}</div>
+                      <div className={cn("leading-none", !done && "bt-broken")}>
+                        <Art name={S!.icon} size={42} />
+                      </div>
                     )}
                   </div>
                 </Billboard>
@@ -889,7 +892,7 @@ function ShipMap({
                   >
                     {isSys && <span className={cn("inline-block w-2 h-2 rounded-full", done ? "bg-lime-200" : "bg-rose-500 bt-blink")} />}
                     {S ? S.name : meeting ? "Meeting!" : "Cafeteria"}
-                    {isSys && <span className="opacity-80">{done ? "✓" : `${fixed[r as SysId]}/2`}</span>}
+                    {isSys && <span className="opacity-80">{done ? <Check size={12} strokeWidth={3.5} /> : `${fixed[r as SysId]}/2`}</span>}
                   </div>
                 </Billboard>
               </div>
@@ -1012,9 +1015,7 @@ function Bean({ color, size = 40, walking, bob, hat, dead }: { color: string; si
         <rect x="8" y="4" width="27" height="36" rx="13" fill={color} stroke="#111827" strokeWidth="2.5" />
         <rect x="10" y="26" width="23" height="11" rx="5" fill="rgba(0,0,0,0.12)" />
         {dead ? (
-          <text x="27" y="20" fontSize="12" textAnchor="middle">
-            ✖
-          </text>
+          <path d="M23 12l8 8M31 12l-8 8" stroke="#111827" strokeWidth="3" strokeLinecap="round" />
         ) : (
           <>
             <rect x="18" y="10" width="20" height="12" rx="6" fill="#7dd3fc" stroke="#111827" strokeWidth="2.5" />
@@ -1052,12 +1053,8 @@ function Stars() {
           style={{ left: `${s.left}%`, top: `${s.top}%`, width: s.s, height: s.s, animationDelay: `${s.d}s` }}
         />
       ))}
-      <span className="absolute text-5xl opacity-80" style={{ right: "4%", bottom: "8%" }}>
-        🪐
-      </span>
-      <span className="absolute text-2xl opacity-70" style={{ left: "6%", bottom: "14%" }}>
-        🌑
-      </span>
+      <Sticker name="ringed" size={64} className="absolute opacity-90" style={{ right: "4%", bottom: "8%", animation: "game-float 6s ease-in-out infinite" }} />
+      <Sticker name="darkmoon" size={32} className="absolute opacity-80" style={{ left: "6%", bottom: "14%", animation: "game-float 8s ease-in-out infinite" }} />
     </div>
   );
 }
@@ -1119,15 +1116,15 @@ function TaskPanel({
           <span key={c} className={cn("absolute w-2.5 h-2.5 rounded-full bg-slate-400 border border-slate-700", c)} />
         ))}
         <div className="flex items-center gap-2 sm:gap-3 px-4 pt-3 pb-2" style={{ background: `linear-gradient(90deg, ${S.dark}, transparent)` }}>
-          <span className="text-3xl">{S.icon}</span>
+          <Art name={S.icon} size={38} />
           <div className="flex-1 min-w-0">
             <p className="game-pixel text-[8px] sm:text-[9px] text-white/70">
               {S.name.toUpperCase()} · TASK {Math.min(part, 2)}/2
             </p>
             <p className="font-bold text-base sm:text-lg leading-tight">{info.name}</p>
           </div>
-          <button onClick={onClose} className="game-btn bg-rose-500 text-white px-3 py-1.5 text-sm" aria-label="Close task">
-            ✕
+          <button onClick={onClose} className="game-btn bg-rose-500 text-white px-2.5 py-1.5 text-sm" aria-label="Close task">
+            <X size={18} strokeWidth={3} />
           </button>
         </div>
 
@@ -1151,7 +1148,7 @@ function TaskPanel({
         {stamp && (
           <div className="absolute inset-0 flex items-center justify-center bg-emerald-500/25 pointer-events-none">
             <div className="game-bounce-in bg-emerald-500 border-4 border-white text-white game-pixel text-sm sm:text-lg px-5 py-3 rounded-2xl rotate-[-6deg] shadow-2xl">
-              ✔ TASK COMPLETE
+              <Check size={20} strokeWidth={3.5} className="inline -mt-1" /> TASK COMPLETE
             </div>
           </div>
         )}
@@ -1267,7 +1264,7 @@ function WiresTask({ puzzle, wrongs, onWrong, onSolved }: { puzzle: Puzzle; wron
       <div className="mt-3 flex flex-wrap gap-1.5 justify-center min-h-[26px]">
         {log.map((l, i) => (
           <span key={i} className="game-bounce-in bg-emerald-400/20 border border-emerald-300/50 text-emerald-200 rounded-lg px-2 py-0.5 text-xs sm:text-sm font-bold">
-            ⚡ {l}
+            <Zap size={12} strokeWidth={2.6} className="inline -mt-0.5" /> {l}
           </span>
         ))}
         {!log.length && <span className="text-emerald-200/60 text-xs">Which sign do you work out first?</span>}
@@ -1417,7 +1414,9 @@ function Meeting({ suspects, vote, onVote }: { suspects: SuspectInfo[]; vote: nu
     <div className="absolute inset-0 z-30 flex p-2 sm:p-4 overflow-y-auto" style={{ background: "radial-gradient(ellipse at 50% 0%, #7f1d1d, #1e1b4b 70%)" }}>
       <div className="m-auto w-full max-w-[760px]">
       <div className="text-center mb-2 game-bounce-in">
-        <p className="game-pixel text-sm sm:text-xl text-rose-300 drop-shadow-[0_6px_14px_rgba(0,0,0,0.4)]">🚨 EMERGENCY MEETING 🚨</p>
+        <p className="game-pixel text-sm sm:text-xl text-rose-300 drop-shadow-[0_6px_14px_rgba(0,0,0,0.4)] flex items-center justify-center gap-2">
+          <Siren size={22} strokeWidth={2.6} className="bt-blink" /> EMERGENCY MEETING <Siren size={22} strokeWidth={2.6} className="bt-blink" />
+        </p>
         <p className="text-white font-bold text-sm sm:text-base mt-1">Who is the impostor? One crewmate's working breaks BODMAS. Vote them out!</p>
       </div>
       <div className="grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-2 sm:gap-3 w-full max-w-[760px]">

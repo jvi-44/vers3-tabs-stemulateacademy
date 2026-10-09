@@ -7,7 +7,8 @@
 // are their volumes the same?
 
 import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { Flame, Hammer, Minus, Plus, Timer } from "lucide-react";
+import { Check, Flame, Hammer, Minus, Plus, Timer } from "lucide-react";
+import { Art, type ChipName } from "./kit/Art";
 import { cn } from "../components/ui/utils";
 import { STEMBOTS } from "../data/mock";
 import { sfx } from "./kit/audio";
@@ -36,7 +37,7 @@ interface Ticket {
   order: Order;
   who: BotId;
   room: string;
-  emoji: string;
+  art: ChipName;
 }
 
 interface Built {
@@ -45,15 +46,15 @@ interface Built {
   h: number;
 }
 
-const ROOMS = [
-  { room: "bedroom", emoji: "🛏️" },
-  { room: "library", emoji: "📚" },
-  { room: "kitchen", emoji: "🍳" },
-  { room: "pet room", emoji: "🐺" },
-  { room: "music room", emoji: "🎵" },
-  { room: "potion lab", emoji: "🧪" },
-  { room: "storage room", emoji: "📦" },
-  { room: "greenhouse", emoji: "🌱" },
+const ROOMS: { room: string; art: ChipName }[] = [
+  { room: "bedroom", art: "bedroom" },
+  { room: "library", art: "library" },
+  { room: "kitchen", art: "kitchen" },
+  { room: "pet room", art: "petroom" },
+  { room: "music room", art: "musicroom" },
+  { room: "potion lab", art: "potionlab" },
+  { room: "storage room", art: "storage" },
+  { room: "greenhouse", art: "greenhouse" },
 ];
 
 const BOT_COLORS: Record<BotId, string> = {
@@ -429,7 +430,7 @@ export function RoomDesigner({ seed, reportProgress, finish }: GameProps) {
         <div key={`o${idx}`} className={cn("flex-1 min-w-0 bg-white/95 rounded-2xl game-panel px-2 sm:px-3 py-2 flex items-center gap-2 sm:gap-3 game-bounce-in min-h-[88px]")}>
           <div key={`s${shakeId}`} className={cn("relative shrink-0 rounded-2xl p-1", BOT_COLORS[ticket?.who ?? "matthew"], shakeId > 0 && "game-shake")}>
             <img src={bot.avatar} alt={bot.name} className="w-9 h-9 sm:w-14 sm:h-14 object-contain drop-shadow" />
-            <span className="absolute -bottom-1 -right-1 text-lg">{ticket?.emoji ?? "🏆"}</span>
+            <Art name={ticket?.art ?? "trophy"} size={24} className="absolute -bottom-1.5 -right-1.5" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="game-pixel text-[8px] sm:text-[9px] text-slate-500 truncate">
@@ -460,7 +461,7 @@ export function RoomDesigner({ seed, reportProgress, finish }: GameProps) {
                 {ticket?.order.k === "same3" &&
                   sub.map((s, i) => (
                     <span key={i} data-chip className="game-fun font-bold text-[11px] bg-emerald-100 text-emerald-700 rounded-md px-1.5 py-0.5">
-                      ✓ {s.l}×{s.w}×{s.h}
+                      <Check size={11} strokeWidth={3.5} className="inline -mt-0.5" /> {s.l}×{s.w}×{s.h}
                     </span>
                   ))}
               </div>
