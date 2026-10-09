@@ -177,7 +177,7 @@ function VoiceSettings({ voicesApi, onClose }: { voicesApi: ReturnType<typeof us
             onChange={(e) => setVoice(s, { voiceURI: e.target.value })}
             className="flex-1 min-w-0 text-sm bg-input-background border border-border rounded-lg px-2 py-1"
           >
-            <option value="">Default voice</option>
+            <option value="">Automatic</option>
             {systemVoices.map((v) => (
               <option key={v.voiceURI} value={v.voiceURI}>{v.name}</option>
             ))}
@@ -213,7 +213,9 @@ export function ComicStrip({ strip, onFinished }: { strip: ComicStripData; onFin
   const [playing, setPlaying] = useState(false);
   const [showVoices, setShowVoices] = useState(false);
   const voicesApi = useComicVoices();
-  const { speak, stop, supported } = voicesApi;
+  const { speak, stop, supported, synthSupported, isRecorded } = voicesApi;
+  // The voice menu only tunes browser voices, so hide it once every line has a recording.
+  const needsBrowserVoices = synthSupported && strip.panels.some((p) => p.bubbles.some((b) => !isRecorded(b)));
   const playingRef = useRef(playing);
   playingRef.current = playing;
 
@@ -300,7 +302,7 @@ export function ComicStrip({ strip, onFinished }: { strip: ComicStripData; onFin
           {playing ? <Pause size={15} /> : <Play size={15} />}
           {playing ? "Pause" : supported ? "Read to me" : "Auto-play"}
         </button>
-        {supported && (
+        {needsBrowserVoices && (
           <button
             onClick={() => setShowVoices((v) => !v)}
             className={cn("p-2 rounded-xl border-2 border-border hover:bg-accent", showVoices && "bg-accent")}
@@ -312,7 +314,7 @@ export function ComicStrip({ strip, onFinished }: { strip: ComicStripData; onFin
         )}
       </div>
 
-      {showVoices && <VoiceSettings voicesApi={voicesApi} onClose={() => setShowVoices(false)} />}
+      {showVoices && needsBrowserVoices && <VoiceSettings voicesApi={voicesApi} onClose={() => setShowVoices(false)} />}
 
       <div className="relative">
         <AnimatePresence mode="wait" custom={direction} initial={false}>

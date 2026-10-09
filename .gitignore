@@ -11,3 +11,4 @@ server/stemulate.db*
 
 # Local editor/tooling config
 .claude/
+__pycache__/
