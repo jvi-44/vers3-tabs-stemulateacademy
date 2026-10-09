@@ -27,7 +27,7 @@ export const BEATS = [
   {"id":"mm-math-sim","lessonId":"minecraft-masterminds","type":"simulation","subject":"math","title":"Minecraft Room Designer","description":"Design your own Minecraft room! Adjust length, width, and height with sliders. The game calculates floor area and total volume in real time. Challenge: build 3 rooms with the same floor area — are their volumes the same?"},
   {"id":"mm-exit","lessonId":"minecraft-masterminds","type":"exit","subject":null,"title":"Exit Card","description":"Reflect: 3 things you learnt, 2 interesting facts or connections, 1 question you still have."},
   // Mission Millionaire
-  {"id":"mi-intro","lessonId":"mission-millionaire","type":"intro","subject":null,"title":"Intro Story","description":"Timothy needs help managing a property empire — starting with the family's board game night."},
+  {"id":"mi-intro","lessonId":"mission-millionaire","type":"intro","subject":null,"title":"Intro Story","description":"Sophia wins a million dollars on a game show, then watches taxes shrink it. Can the STEMbots teach her to budget before it's gone?"},
   {"id":"mi-math1-video","lessonId":"mission-millionaire","type":"video","subject":"math","title":"Addition & Subtraction with Decimals","description":"Track rent, salaries and bills to the cent as you play through a round of Monopoly."},
   {"id":"mi-math1-quiz","lessonId":"mission-millionaire","type":"quiz","subject":"math","title":"Decimals Quiz","description":"Add and subtract money amounts."},
   {"id":"mi-math2-video","lessonId":"mission-millionaire","type":"video","subject":"math","title":"Percentages, Taxes & Discounts","description":"Work out GST on purchases and calculate the real price after a shop discount."},
@@ -35,7 +35,7 @@ export const BEATS = [
   {"id":"mi-math-sim","lessonId":"mission-millionaire","type":"simulation","subject":"math","title":"Singapore-themed Monopoly","description":"Play a Singapore-themed Monopoly round, budgeting for rent, GST and discounts in real time."},
   {"id":"mi-exit","lessonId":"mission-millionaire","type":"exit","subject":null,"title":"Exit Card","description":"Reflect: 3 things you learnt, 2 interesting facts or connections, 1 question you still have."},
   // Space Busters
-  {"id":"sb-intro","lessonId":"space-busters","type":"intro","subject":null,"title":"Intro Story","description":"The crew's spaceship has lost power — can you restore the engines before the impostor strikes?"},
+  {"id":"sb-intro","lessonId":"space-busters","type":"intro","subject":null,"title":"Intro Story","description":"The SKELD is heading straight for the Sun with almost no fuel. Help the STEMbots mine asteroids for fuel and steer the ship to safety!"},
   {"id":"sb-sci1-video","lessonId":"space-busters","type":"video","subject":"science","title":"Energy","description":"Kinetic vs potential energy — how the ship's engines convert fuel into thrust."},
   {"id":"sb-sci1-quiz","lessonId":"space-busters","type":"quiz","subject":"science","title":"Energy Quiz","description":"Test your understanding of energy transfer."},
   {"id":"sb-sci2-video","lessonId":"space-busters","type":"video","subject":"science","title":"Forces","description":"Push, pull, thrust and gravity — the forces at play when a spaceship launches."},
