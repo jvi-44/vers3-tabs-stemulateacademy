@@ -298,3 +298,8 @@
   from { transform: translateY(-40px); }
   to { transform: translateY(640px); }
 }
+
+@keyframes game-hammer {
+  0%, 100% { transform: rotate(-30deg); }
+  50% { transform: rotate(25deg); }
+}

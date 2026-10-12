@@ -11,7 +11,7 @@ import { cn } from "../../components/ui/utils";
 import { isMuted, onMuteChange, primeAudio, setMuted, sfx, startMusic, stopMusic } from "./audio";
 import { getHighScore, recordScore, seededRandom, starsFor } from "./scores";
 import { useLiveRoom, type LiveRoom, type PlayerIdentity } from "./live";
-import type { BotId, GameDef, GameSummaryItem } from "./types";
+import type { BotId, GameDef, GameSummaryItem, RivalInfo } from "./types";
 import "./games.css";
 
 type Phase = "intro" | "lobby" | "countdown" | "playing" | "results";
@@ -197,25 +197,48 @@ export function GameShell({
     }));
   }, [seed, def.bot]);
 
+  // Solo rivals keep working on their own clock, so you can watch them play.
+  const [botClock, setBotClock] = useState(0);
+  useEffect(() => {
+    if (phase !== "playing" || isLive || def.ownBots) return;
+    const id = setInterval(() => setBotClock((c) => c + 1), 1000);
+    return () => clearInterval(id);
+  }, [phase, isLive, def.ownBots]);
+
+  // Computer players a game runs itself (ownBots), reported by the game.
+  const [gameBots, setGameBots] = useState<Rival[]>([]);
+  const lastBots = useRef("");
+  const reportBots = useCallback((bots: RivalInfo[]) => {
+    const key = JSON.stringify(bots.map((b) => [b.id, b.score, Math.round(b.progress * 50), b.done]));
+    if (key === lastBots.current) return;
+    lastBots.current = key;
+    setGameBots(bots.map((b) => ({ ...b, done: !!b.done, isBot: true })));
+  }, []);
+
   const rivals: Rival[] = useMemo(() => {
     const meRow: Rival = { id: me.id, name: "You", avatar: me.avatar, score: myScore, progress: myProgress, done: phase === "results", isMe: true };
     if (isLive && room) {
-      return room.players.map((p) =>
-        p.id === me.id
-          ? { ...meRow, name: `${p.name} (you)` }
-          : { id: p.id, name: p.name, avatar: p.avatar, score: p.score, progress: p.progress, done: p.done },
-      );
+      return [
+        ...room.players.map((p) =>
+          p.id === me.id
+            ? { ...meRow, name: `${p.name} (you)` }
+            : { id: p.id, name: p.name, avatar: p.avatar, score: p.score, progress: p.progress, done: p.done },
+        ),
+        ...(def.ownBots ? gameBots : []),
+      ];
     }
-    if (def.ownBots) return [meRow];
+    if (def.ownBots) return [meRow, ...gameBots];
     const finished = phase === "results";
     return [
       meRow,
       ...rivalPlan.map((r) => {
-        const prog = finished ? 1 : Math.min(1, myProgress * r.pace);
+        const byClock = Math.max(0, botClock - 3) / ((def.botSeconds ?? 150) * (2 - r.pace));
+        const prog = finished ? 1 : Math.min(0.98, Math.max(myProgress * r.pace, byClock));
         return { id: r.id, name: r.name, avatar: r.avatar, isBot: true, done: finished, progress: prog, score: Math.round(r.target * prog) };
       }),
     ];
-  }, [isLive, room, me, myScore, myProgress, phase, rivalPlan, def.ownBots]);
+  }, [isLive, room, me, myScore, myProgress, phase, rivalPlan, def.ownBots, def.botSeconds, gameBots, botClock]);
+  const others = useMemo<RivalInfo[]>(() => rivals.filter((r) => !r.isMe), [rivals]);
 
   // ── Music / cleanup ──────────────────────────────────────
   useEffect(() => () => stopMusic(), []);
@@ -231,6 +254,8 @@ export function GameShell({
       setMyScore(0);
       setMyProgress(0);
       setRunKey((k) => k + 1);
+      setGameBots([]);
+      lastBots.current = "";
       const msLeft = room.startedAt - Date.now();
       setCount(Math.max(1, Math.min(3, Math.ceil(msLeft / 1000))));
       setPhase("countdown");
@@ -260,6 +285,9 @@ export function GameShell({
     setMyScore(0);
     setMyProgress(0);
     setRunKey((k) => k + 1);
+    setBotClock(0);
+    setGameBots([]);
+    lastBots.current = "";
     setCount(3);
     setPhase("countdown");
   };
@@ -402,6 +430,9 @@ export function GameShell({
                 live={liveApi}
                 reportProgress={phase === "playing" ? reportProgress : () => {}}
                 finish={finish}
+                playing={phase === "playing"}
+                rivals={others}
+                reportBots={reportBots}
               />
             </div>
           )}

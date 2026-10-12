@@ -14,7 +14,7 @@ import { STEMBOTS } from "../data/mock";
 import { sfx } from "./kit/audio";
 import { seededRandom } from "./kit/scores";
 import { BLOCKS, Voxel, VoxelWorld, type BlockColors } from "./kit/Voxel";
-import type { BotId, GameProps } from "./kit/types";
+import type { BotId, GameProps, RivalInfo } from "./kit/types";
 
 // ── Rules & limits ─────────────────────────────────────
 const MAX_LW = 8;
@@ -195,7 +195,7 @@ const FLOWER_SPOTS: [number, number, string][] = [
   [9, 6, "#f472b6"],
 ];
 
-export function RoomDesigner({ seed, reportProgress, finish }: GameProps) {
+export function RoomDesigner({ seed, rivals = [], reportProgress, finish }: GameProps) {
   const tickets = useMemo(() => makeTickets(seed), [seed]);
 
   const [l, setL] = useState(3);
@@ -507,6 +507,16 @@ export function RoomDesigner({ seed, reportProgress, finish }: GameProps) {
           </div>
         )}
 
+        {/* The other builders, each on their own plot next door */}
+        {rivals.length > 0 && (
+          <div className="absolute left-2 top-2 z-10 flex flex-col gap-1.5 pointer-events-none" data-rivals>
+            <p className="game-pixel text-[8px] text-sky-900/70 pl-1 hidden sm:block">NEXT DOOR</p>
+            {rivals.slice(0, 3).map((r, i) => (
+              <NeighbourPlot key={r.id} r={r} i={i} total={tickets.length} />
+            ))}
+          </div>
+        )}
+
         {/* Readouts */}
         <div className="absolute left-2 bottom-2 flex flex-col gap-1.5 z-10">
           <Readout label="FLOOR AREA" color="bg-emerald-500">
@@ -621,6 +631,75 @@ export function RoomDesigner({ seed, reportProgress, finish }: GameProps) {
 }
 
 // ── Pieces ────────────────────────────────────────
+const PLOT_COLORS = [
+  { top: "#fda4af", side: "#e11d48", side2: "#be123c" },
+  { top: "#93c5fd", side: "#2563eb", side2: "#1d4ed8" },
+  { top: "#fde68a", side: "#d97706", side2: "#b45309" },
+];
+
+/** A neighbour's plot: their house grows one floor per room they finish. */
+function NeighbourPlot({ r, i, total }: { r: RivalInfo; i: number; total: number }) {
+  const built = Math.min(total, Math.round(r.progress * total));
+  const floors = Math.min(5, built);
+  const c = PLOT_COLORS[i % PLOT_COLORS.length];
+  const cube = 8;
+  const W = 40;
+  const H = 66;
+  const iso = (x: number, y: number, z: number) => [W / 2 + (x - y) * cube, H - 18 + (x + y) * cube * 0.5 - z * cube * 0.9] as const;
+  const face = (pts: (readonly [number, number])[]) => pts.map((p) => p.join(",")).join(" ");
+  const cubes: ReactNode[] = [];
+  for (let z = 0; z < floors; z++) {
+    for (const [x, y] of [
+      [0, 0],
+      [1, 0],
+      [0, 1],
+      [1, 1],
+    ] as const) {
+      const a = iso(x, y, z + 1);
+      const b = iso(x + 1, y, z + 1);
+      const cc = iso(x + 1, y + 1, z + 1);
+      const d = iso(x, y + 1, z + 1);
+      const b0 = iso(x + 1, y, z);
+      const c0 = iso(x + 1, y + 1, z);
+      const d0 = iso(x, y + 1, z);
+      cubes.push(
+        <g key={`${x}${y}${z}`} stroke="#1e293b" strokeWidth={0.6} strokeLinejoin="round">
+          <polygon points={face([d, cc, c0, d0])} fill={c.side2} />
+          <polygon points={face([b, cc, c0, b0])} fill={c.side} />
+          <polygon points={face([a, b, cc, d])} fill={c.top} />
+        </g>,
+      );
+    }
+  }
+  const g0 = iso(0, 0, 0);
+  const g1 = iso(2, 0, 0);
+  const g2 = iso(2, 2, 0);
+  const g3 = iso(0, 2, 0);
+  return (
+    <div className={cn("flex items-center gap-1.5 bg-white/90 rounded-xl game-panel pl-1 pr-2 py-0.5", r.done && "ring-2 ring-emerald-400")}>
+      <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="shrink-0 overflow-visible">
+        <polygon points={face([g0, g1, g2, g3])} fill="#6fcf3b" stroke="#3f7d22" strokeWidth={0.8} />
+        {cubes}
+        {!r.done && (
+          <g transform={`translate(${iso(2, 1, floors)[0] + 4}, ${iso(2, 1, floors)[1] - 6})`}>
+            <g style={{ transformOrigin: "0px 6px", animation: "game-hammer 0.6s ease-in-out infinite" }}>
+              <rect x={-1} y={0} width={2} height={9} rx={1} fill="#92400e" />
+              <rect x={-4} y={-2} width={8} height={4} rx={1} fill="#64748b" stroke="#1e293b" strokeWidth={0.6} />
+            </g>
+          </g>
+        )}
+      </svg>
+      <img src={r.avatar} alt="" className="w-7 h-7 object-contain shrink-0" />
+      <div className="min-w-0 leading-tight">
+        <p className="game-fun font-bold text-[12px] text-slate-900 truncate max-w-[84px]">{r.name}</p>
+        <p className="game-pixel text-[8px] text-slate-500">
+          {built}/{total} · <span className="text-amber-600">{r.score}</span>
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function Room({ l, w, h, S, fillZ }: { l: number; w: number; h: number; S: number; fillZ: number | null }) {
   const blocks: ReactNode[] = [];
   // Floor (grid offset by 1: row/col 0 is the back walls)

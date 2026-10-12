@@ -8,12 +8,12 @@ import stembotCream from "../assets/stembot_cream.png";
 import stembotRed from "../assets/stembot_red.png";
 import { GAMES_BY_ID } from "../games/registry";
 import { cn } from "./ui/utils";
-import { Terrarium, BoardAndDice, LaunchRocket, TaskConsole } from "./GameArt";
+import { DropFlight, BoardAndDice, AsteroidBlast, TaskConsole } from "./GameArt";
 
 const WINDOWS = [
-  { bot: stembotGreen, name: "Sophia", game: "mm-sci-sim", Prop: Terrarium, tint: "#dcf5c8" },
+  { bot: stembotGreen, name: "Sophia", game: "mm-sci-sim", Prop: DropFlight, tint: "#d3ecfc" },
   { bot: stembotBlue, name: "Timothy", game: "mi-math-sim", Prop: BoardAndDice, tint: "#d3ecfc" },
-  { bot: stembotCream, name: "Emily", game: "sb-sci-sim", Prop: LaunchRocket, tint: "#fdf0c9" },
+  { bot: stembotCream, name: "Emily", game: "sb-sci-sim", Prop: AsteroidBlast, tint: "#e6dcff" },
   { bot: stembotRed, name: "Matthew", game: "sb-math-sim", Prop: TaskConsole, tint: "#ffdcdc" },
 ];
 
@@ -29,7 +29,7 @@ function GameWindow({ w, i }: { w: (typeof WINDOWS)[number]; i: number }) {
       transition={{ delay: 0.05 + i * 0.07, type: "spring", stiffness: 220, damping: 18 }}
       title={game ? `${w.name} hosts ${game.title}` : w.name}
     >
-      <div className="absolute right-[2%] top-[8%] w-[62%]" style={{ aspectRatio: w.Prop === LaunchRocket ? "120/150" : "1" }}>
+      <div className="absolute right-[2%] top-[8%] w-[62%]" style={{ aspectRatio: "1" }}>
         <w.Prop />
       </div>
       <img src={w.bot} alt={w.name} className="absolute left-[-8%] bottom-[-14%] h-[82%] die-cut" />
