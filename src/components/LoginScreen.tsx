@@ -73,14 +73,17 @@ export function LoginScreen({
   }, [loadRefData]);
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center p-4 py-10 bg-[#fffbea] text-[#1b2e1c] overflow-hidden">
+    <div className="min-h-screen relative flex items-center lg:items-start justify-center p-4 py-10 bg-[#fffbea] text-[#1b2e1c] overflow-hidden">
       {/* Same drifting STEMbot pattern as the website's hero */}
       <StembotPattern className="opacity-[0.22]" />
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(60%_70%_at_50%_50%,rgba(255,251,234,0.92)_30%,rgba(255,251,234,0.35)_80%)]" />
 
-      <div className="relative z-10 w-full max-w-5xl grid lg:grid-cols-[1.1fr_1fr] gap-10 items-center">
+      {/* Both columns are pinned to the top (offset to sit mid-screen), so
+          switching to the longer Create account form only grows the card
+          downwards and the welcome side with the STEMbots never moves. */}
+      <div className="relative z-10 w-full max-w-5xl grid lg:grid-cols-[1.1fr_1fr] gap-10 items-start lg:mt-[max(0px,calc(50vh-24rem))]">
         {/* Website-style welcome, desktop only */}
-        <div className="hidden lg:block">
+        <div className="hidden lg:block lg:pt-24">
           <span className="kicker !bg-[#c6ef72] !text-[#1e4a24]">Project STEMulate</span>
           <h1 className="font-display !text-[3.6rem] !leading-[1.02] mt-5 mb-5">
             Learn, play and <span className="mark-pop !bg-[#7c4dff]">collect</span> with the{" "}
