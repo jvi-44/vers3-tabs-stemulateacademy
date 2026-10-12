@@ -1,0 +1,21 @@
+# Render Blueprint: one free web service that runs the STEMulate Academy
+# (at /) and the public STEMulate website (at /site). See DEPLOY.md.
+services:
+  - type: web
+    name: stemulate-academy
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/reference-data
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ADMIN_PASSKEY
+        sync: false
