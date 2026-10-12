@@ -1,0 +1,200 @@
+import type { Episode } from "../types";
+
+// Episode 3 — Lesson 3: Space Busters (energy, forces, BODMAS).
+// The player wakes from cryosleep on the SKELD as it drifts toward the Sun.
+
+const CREW = [
+  { bot: "emily" as const, at: "farleft" as const },
+  { bot: "sophia" as const, at: "left" as const },
+  { bot: "timothy" as const, at: "right" as const },
+  { bot: "matthew" as const, at: "farright" as const },
+];
+
+export const SPACE_EPISODE: Episode = {
+  beatId: "sb-intro",
+  number: 3,
+  title: "Operation Solar Escape",
+  tagline: "You wake up on a spaceship heading straight for the Sun.",
+  music: "spaceship",
+  start: "cryo",
+  nodes: {
+    cryo: {
+      type: "talk",
+      scene: "space-cryo",
+      camera: "wake",
+      lines: [
+        { speaker: "narrator", text: "Cryosleep complete. Your pod hisses open. Cold mist swirls around your feet." },
+        { speaker: "system", text: "Good morning, crewmate. All systems are stable." },
+      ],
+      next: "alarm",
+    },
+    alarm: {
+      type: "talk",
+      scene: "space-alarm",
+      fx: ["alarm"],
+      camera: "shake",
+      cast: CREW.map((c) => ({ ...c, enter: "pop" as const })),
+      lines: [
+        { speaker: "system", text: "WARNING! Trajectory error detected!" },
+        { speaker: "mission", text: "Crew! The SKELD is heading straight toward the Sun!" },
+        { speaker: "sophia", text: "You're awake! Perfect timing. Well, terrible timing. But we need you!" },
+      ],
+      next: "heat",
+    },
+    heat: {
+      type: "choice",
+      scene: "space-cockpit",
+      screen: "TEMP 72°C ▲",
+      fx: ["heat", "alarm"],
+      cast: [{ bot: "sophia", at: "left" }, { bot: "matthew", at: "right" }],
+      prompt: { speaker: "matthew", text: "The control panels are getting so hot I could fry an egg on them!" },
+      options: [
+        { text: "Why is it getting so hot in here?", say: "Why is it getting so hot in here?", set: { style: "curious" }, next: "whyHot", tag: "Curious" },
+        { text: "Never mind why. How do we stop it?!", say: "Never mind why. How do we stop it?!", set: { style: "bold" }, next: "noFuel", tag: "Action" },
+      ],
+    },
+    whyHot: {
+      type: "talk",
+      scene: "space-sun",
+      fx: ["heat"],
+      cast: [{ bot: "sophia", at: "center", enter: "pop" }],
+      lines: [
+        { speaker: "sophia", text: "The Sun gives off light energy and heat energy. Light travels in waves, all the way to us." },
+        { speaker: "sophia", text: "And heat always flows from hotter things to cooler things. The Sun is way hotter than our ship!" },
+        { speaker: "sophia", text: "So the closer we get, the more heat pours in. Great question, crewmate." },
+      ],
+      next: "noFuel",
+    },
+    noFuel: {
+      type: "talk",
+      scene: "space-cockpit",
+      screen: "FUEL 3% ▼",
+      fx: ["alarm"],
+      cast: [{ bot: "emily", at: "left", enter: "left" }, { bot: "timothy", at: "right", enter: "right" }],
+      lines: [
+        { speaker: "emily", text: "Easy fix. We fire the engines and steer away. Simple!" },
+        { speaker: "mission", text: "Negative. The SKELD does NOT have enough fuel." },
+        { speaker: "timothy", text: "Fuel stores chemical energy. Burn it, and it turns into kinetic energy to move us. No fuel, no moving." },
+        { speaker: "matthew", text: "Wait. Scanners show an asteroid field nearby. Those rocks are packed with fuel!" },
+      ],
+      next: "leader",
+    },
+    leader: {
+      type: "choice",
+      scene: "space-asteroids",
+      cast: CREW,
+      prompt: { speaker: "mission", text: "Mining mission approved. Who's leading it?" },
+      options: [
+        { text: "Matthew, the asteroids are full of maths codes!", say: "Matthew, you lead. You're the maths expert!", set: { lead: "matthew" }, next: "mine", tag: "Math" },
+        { text: "Emily, she knows the mining drills", say: "Emily, you know the drills best!", set: { lead: "emily" }, next: "mine", tag: "Engineering" },
+        { text: "Me. I've got this!", say: "I'll lead. Follow me, crew!", set: { lead: "you" }, next: "mine", tag: "Leader" },
+      ],
+    },
+    mine: {
+      type: "game",
+      game: "asteroidMiner",
+      scene: "space-asteroids",
+      hands: "wrench",
+      intro: [
+        { speaker: "matthew", text: "Every asteroid is locked with a BODMAS code. Brackets first, then orders, divide, multiply, add, subtract!", when: { lead: "matthew" } },
+        { speaker: "emily", text: "Drills ready! Each asteroid is locked with a BODMAS code. Brackets first, then orders, divide, multiply, add, subtract!", when: { lead: "emily" } },
+        { speaker: "matthew", text: "Lead the way, captain! Each code is BODMAS: brackets first, then orders, divide, multiply, add, subtract!", when: { lead: "you" } },
+      ],
+      win: [{ speaker: "system", text: "Fuel tanks full. Engines charged." }],
+      lose: [{ speaker: "system", text: "Fuel tanks at sixty percent. Engines charged." }],
+      setOnWin: { minerWon: true },
+      next: "twist",
+    },
+    twist: {
+      type: "talk",
+      scene: "space-alarm",
+      fx: ["dim"],
+      camera: "pushIn",
+      lines: [
+        { speaker: "narrator", text: "The lights flicker. Then they go out. A shadow moves across the control room..." },
+        { speaker: "impostor", text: "You think you can escape the Sun? I already changed your course." },
+        { speaker: "system", text: "Unauthorised navigation change detected." },
+      ],
+      next: "chase",
+    },
+    chase: {
+      type: "choice",
+      scene: "space-alarm",
+      fx: ["alarm"],
+      cast: CREW,
+      prompt: { speaker: "sophia", text: "Someone sabotaged the ship on purpose! What do we do?" },
+      options: [
+        { text: "Chase the shadow!", say: "After it! Don't let it get away!", set: { choice: "chase" }, next: "chased", tag: "Brave" },
+        { text: "Fix the engines first. Save the ship!", say: "Forget the shadow. Save the ship first!", set: { choice: "engines" }, next: "engines", tag: "Smart" },
+      ],
+    },
+    chased: {
+      type: "talk",
+      scene: "space-alarm",
+      camera: "panRight",
+      cast: [{ bot: "timothy", at: "right", enter: "right" }],
+      lines: [
+        { speaker: "narrator", text: "You sprint after the shadow. It dives into a vent and vanishes." },
+        { speaker: "timothy", text: "It got away. But I grabbed its access code! Now let's save this ship." },
+      ],
+      next: "thrust",
+    },
+    engines: {
+      type: "talk",
+      scene: "space-cockpit",
+      screen: "TEMP 98°C ▲▲",
+      fx: ["heat"],
+      cast: [{ bot: "emily", at: "left" }, { bot: "sophia", at: "right" }],
+      lines: [
+        { speaker: "emily", text: "Good call. We can catch that shadow later. Right now, we fly!" },
+      ],
+      next: "thrust",
+    },
+    thrust: {
+      type: "game",
+      game: "thrustEscape",
+      scene: "space-sun",
+      fx: ["heat"],
+      intro: [
+        { speaker: "emily", text: "To escape, thrust must beat weight and drag! Hold to fire the engines and keep us in the green zone." },
+      ],
+      win: [{ speaker: "system", text: "The SKELD has escaped the Sun." }],
+      lose: [{ speaker: "emily", text: "Phew! We scraped clear, just barely. Good flying!" }],
+      setOnWin: { thrustWon: true },
+      next: "finale",
+    },
+    finale: {
+      type: "talk",
+      scene: "space-calm",
+      camera: "pullOut",
+      fx: ["sparkle"],
+      cast: CREW,
+      lines: [
+        { speaker: "mission", text: "Mission successful. The SKELD is safe." },
+        { speaker: "impostor", text: "This... isn't over..." },
+        { speaker: "timothy", text: "And thanks to you, we've got the impostor's access code.", when: { choice: "chase" } },
+        { speaker: "timothy", text: "Someone on board tried to stop us. We still have work to do." },
+        { speaker: "matthew", text: "Today we'll learn about energy, forces and BODMAS, so we're ready for whatever comes next." },
+      ],
+      next: "end",
+    },
+    end: {
+      type: "end",
+      scene: "space-calm",
+      fx: ["sparkle"],
+      cast: CREW,
+      lines: [{ speaker: "all", text: "Your next mission starts now!" }],
+    },
+  },
+  recap: [
+    { when: { style: "curious" }, text: "You asked why the ship was heating up, and learned about heat energy." },
+    { when: { style: "bold" }, text: "You skipped straight to action." },
+    { when: { lead: "matthew" }, text: "You put Matthew in charge of the mining mission." },
+    { when: { lead: "emily" }, text: "You put Emily in charge of the mining mission." },
+    { when: { lead: "you" }, text: "You led the mining mission yourself, captain." },
+    { when: { minerWon: true }, text: "You cracked the BODMAS codes and filled the fuel tanks." },
+    { when: { choice: "chase" }, text: "You chased the impostor and grabbed its access code." },
+    { when: { choice: "engines" }, text: "You put the ship first. The impostor is still out there..." },
+    { when: { thrustWon: true }, text: "You piloted the SKELD away from the Sun." },
+  ],
+};

@@ -122,6 +122,9 @@ router.get("/me/export", (req, res) => {
   const reflections = db
     .prepare("SELECT beat_id, caption, created_at FROM reflections WHERE user_id = ? ORDER BY id")
     .all(req.userId);
+  const storyChoices = db
+    .prepare("SELECT beat_id, choices, updated_at FROM story_choices WHERE user_id = ?")
+    .all(req.userId);
 
   res.setHeader("Content-Disposition", `attachment; filename="stemulate-${profile.username}-data.json"`);
   res.json({
@@ -131,6 +134,7 @@ router.get("/me/export", (req, res) => {
     gameScores,
     cards,
     reflections,
+    storyChoices,
     friends,
     messagesSent: messages,
     loginHistory,

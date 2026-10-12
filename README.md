@@ -181,15 +181,18 @@ npm run build
 npm start      # serves the built site and the API together on one port
 ```
 
-## Comic voices
+## Intro episodes and their voices
 
-Every speech bubble in the lesson intro comics is pre-recorded in its
-STEMbot's voice (`public/comic-audio/`), using the same Kokoro voices as the
-lesson videos. After editing a line in `src/data/comicStrips.ts`, re-record:
+Each lesson opens with an interactive episode (`src/episodes/`): a first-person
+animated story where the player makes choices and plays mini-games with the
+STEMbots. Stories live in `src/episodes/stories/`, mini-games in
+`src/episodes/minigames/`. Every spoken line is pre-recorded in its STEMbot's
+voice (`public/story-audio/`), using the same Kokoro voices as the lesson
+videos. After editing a story line, re-record:
 
 ```bash
-npm run comic:lines --silent | python3 scripts/comic-voices/generate.py --models ~/kokoro
+npm run story:lines --silent | python3 scripts/story-voices/generate.py --models ~/kokoro
 ```
 
-Setup steps are at the top of `scripts/comic-voices/generate.py`. Until a line
-is re-recorded, the comic reads it with the browser's built-in voice.
+Setup steps are at the top of `scripts/story-voices/generate.py`. Until a line
+is re-recorded, the episode reads it with the browser's built-in voice.
