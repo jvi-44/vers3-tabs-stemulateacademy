@@ -57,6 +57,7 @@ export const deleteUserCompletely = db.transaction((userId) => {
   db.prepare("DELETE FROM user_cards WHERE user_id = ?").run(userId);
   db.prepare("DELETE FROM reflections WHERE user_id = ?").run(userId);
   db.prepare("DELETE FROM beat_replays WHERE user_id = ?").run(userId);
+  db.prepare("DELETE FROM story_choices WHERE user_id = ?").run(userId);
   db.prepare("DELETE FROM login_attempts WHERE username = ? COLLATE NOCASE").run(user.username);
   db.prepare("UPDATE conversations SET created_by = NULL WHERE created_by = ?").run(userId);
   db.prepare("DELETE FROM users WHERE user_id = ?").run(userId);

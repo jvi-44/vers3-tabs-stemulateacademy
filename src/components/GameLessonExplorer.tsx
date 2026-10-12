@@ -17,8 +17,8 @@ import { cn } from "./ui/utils";
 import type { GameLesson, LessonBeat } from "../data/lessonContent";
 import { pointsFor } from "../data/lessonContent";
 import { SpeechBubbles } from "./SpeechBubble";
-import { ComicStrip } from "./comic/ComicStrip";
-import { COMIC_STRIPS } from "../data/comicStrips";
+import { IntroEpisodeCard } from "../episodes/IntroEpisode";
+import { EPISODE_BY_BEAT } from "../episodes/stories";
 import { AskStembots } from "./AskStembots";
 import { LessonGame } from "../games/LessonGame";
 import { botFor } from "./StembotDialogue";
@@ -393,8 +393,8 @@ export function BeatPlayer({
             />
           </motion.header>
 
-          {/* Dialogue: intro beats with a comic tell the story in panels instead */}
-          {activeBeat.dialogue && activeBeat.dialogue.length > 0 && !COMIC_STRIPS[activeBeat.id] && (
+          {/* Dialogue: intro beats with an episode tell the story inside it instead */}
+          {activeBeat.dialogue && activeBeat.dialogue.length > 0 && !EPISODE_BY_BEAT[activeBeat.id] && (
             <SpeechBubbles lines={activeBeat.dialogue} />
           )}
 
@@ -497,10 +497,10 @@ function BeatContent({
   host: Host;
 }) {
   if (beat.type === "intro") {
-    const comic = COMIC_STRIPS[beat.id];
+    const episode = EPISODE_BY_BEAT[beat.id];
+    if (episode) return <IntroEpisodeCard episode={episode} done={done} onFinish={() => onFinish()} />;
     return (
       <div className="space-y-6">
-        {comic && <ComicStrip strip={comic} />}
         <div className="sticker p-6 sm:p-8 relative overflow-hidden">
           <div className="absolute -right-4 -top-4 w-24 h-24 motif-icon opacity-50 rotate-12" aria-hidden />
           <p className="kicker kicker-3 mb-3">The story so far</p>

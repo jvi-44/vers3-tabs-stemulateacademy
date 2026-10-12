@@ -63,6 +63,7 @@ function makeClient(base) {
     post: (p, body = {}) => call("POST", p, body),
     del: (p, body) => call("DELETE", p, body),
     patch: (p, body = {}) => call("PATCH", p, body),
+    put: (p, body = {}) => call("PUT", p, body),
     get cookie() {
       return cookie;
     },

@@ -37,6 +37,7 @@ import {
 import accountRoutes from "./routes/account.js";
 import socialRoutes from "./routes/social.js";
 import adminRoutes from "./routes/admin.js";
+import storyRoutes from "./routes/story.js";
 import { registerGameRoutes } from "./gameRooms.js";
 
 // Overridable so the model can be changed without a code edit.
@@ -708,6 +709,7 @@ app.post("/api/chat", requireUser, chatLimiter, async (req, res) => {
 app.use("/api/admin", adminRoutes);
 app.use("/api", accountRoutes);
 app.use("/api", socialRoutes);
+app.use("/api", storyRoutes);
 registerGameRoutes(app, db);
 
 // ---------------------------------------------------------

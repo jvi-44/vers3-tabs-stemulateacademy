@@ -1,0 +1,360 @@
+/* Interactive intro episodes: dark-outlined, chunky Academy style. */
+
+.ep-root {
+  font-family: var(--font-body);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ep-card {
+  background: #fffaf0;
+  color: #1f1a17;
+  border: 4px solid #1f1a17;
+  border-radius: 24px;
+  box-shadow: 6px 6px 0 #1f1a17;
+  padding: 1.25rem 1.25rem 1.1rem;
+}
+
+.ep-kicker {
+  font: 800 0.72rem/1 var(--font-body);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #a1501a;
+  margin-bottom: 0.35rem;
+}
+
+.ep-chip {
+  flex-shrink: 0;
+  font: 800 0.7rem/1 var(--font-body);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #1f1a17;
+  background: #facc15;
+  border: 2px solid #1f1a17;
+  border-radius: 999px;
+  padding: 0.3rem 0.6rem;
+}
+
+.ep-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  font: 700 1.05rem/1.15 var(--font-head);
+  color: #1f1a17;
+  border: 3px solid #1f1a17;
+  border-radius: 16px;
+  padding: 0.7rem 1rem;
+  box-shadow: 0 4px 0 #1f1a17;
+  transition: transform 0.08s, box-shadow 0.08s;
+}
+.ep-btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #1f1a17;
+}
+.ep-btn:disabled {
+  cursor: default;
+}
+.ep-btn-go {
+  background: #22c55e;
+  color: #fff;
+  font-size: 1.2rem;
+  text-shadow: 1px 1px 0 #1f1a17;
+}
+.ep-btn-go:hover {
+  background: #16a34a;
+}
+
+.ep-countdown {
+  font: 700 clamp(5rem, 22vw, 10rem) / 1 var(--font-head);
+  color: #fff;
+  -webkit-text-stroke: 4px #1f1a17;
+  paint-order: stroke fill;
+  text-shadow: 6px 6px 0 #1f1a17;
+}
+
+.ep-banner {
+  font: 700 clamp(2.4rem, 9vw, 4.5rem) / 1 var(--font-head);
+  border: 4px solid #1f1a17;
+  border-radius: 24px;
+  padding: 0.6rem 1.6rem;
+  box-shadow: 6px 6px 0 #1f1a17;
+  transform: rotate(-3deg);
+}
+.ep-banner-win {
+  background: #facc15;
+  color: #1f1a17;
+}
+.ep-banner-try {
+  background: #93c5fd;
+  color: #1f1a17;
+}
+
+/* Dialogue box */
+.ep-dialog,
+.ep-narration {
+  position: relative;
+  border: 4px solid #1f1a17;
+  border-radius: 22px;
+  box-shadow: 5px 5px 0 #1f1a17;
+  padding: 1.3rem 2.6rem 1rem 1.2rem;
+}
+.ep-dialog {
+  background: #fffaf0;
+  color: #1f1a17;
+}
+.ep-dialog-you {
+  background: #fef3c7;
+  text-align: right;
+  padding: 1.3rem 1.2rem 1rem 2.6rem;
+}
+.ep-dialog-you .ep-next {
+  left: 0.8rem;
+  right: auto;
+  transform: scaleX(-1);
+}
+.ep-dialog-dark {
+  background: #1e1b2e;
+  color: #f1f5f9;
+}
+.ep-narration {
+  background: rgba(15, 12, 30, 0.82);
+  color: #f8fafc;
+  font: italic 600 1.05rem/1.4 var(--font-body);
+  border-color: #f8fafc;
+  box-shadow: none;
+  text-align: center;
+  padding: 0.9rem 2.4rem;
+}
+.ep-name {
+  position: absolute;
+  top: -1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font: 700 0.95rem/1 var(--font-head);
+  color: #1f1a17;
+  border: 3px solid #1f1a17;
+  border-radius: 999px;
+  padding: 0.35rem 0.8rem;
+  box-shadow: 2px 2px 0 #1f1a17;
+}
+.ep-next {
+  position: absolute;
+  right: 0.8rem;
+  bottom: 0.7rem;
+  animation: ep-nudge 0.9s ease-in-out infinite;
+}
+
+/* Choices */
+.ep-choice {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  text-align: left;
+  font: 700 1.05rem/1.25 var(--font-head);
+  color: #1f1a17;
+  background: #fffaf0;
+  border: 3px solid #1f1a17;
+  border-radius: 999px;
+  padding: 0.75rem 0.9rem 0.75rem 1.3rem;
+  box-shadow: 0 4px 0 #1f1a17;
+}
+.ep-choice:hover {
+  background: #fef08a;
+}
+.ep-tag {
+  flex-shrink: 0;
+  font: 800 0.66rem/1 var(--font-body);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: #1f1a17;
+  color: #fef08a;
+  border-radius: 999px;
+  padding: 0.3rem 0.55rem;
+}
+
+.ep-toast {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+  font: 800 0.88rem/1 var(--font-body);
+  color: #1f1a17;
+  background: #a7f3d0;
+  border: 3px solid #1f1a17;
+  border-radius: 999px;
+  padding: 0.45rem 0.9rem;
+  box-shadow: 3px 3px 0 #1f1a17;
+}
+
+/* The scene fills the screen; on tall phones it becomes a 4:5 window (so the
+   middle of the picture isn't cropped away) over a blurred copy of itself. */
+.ep-scene {
+  position: absolute;
+  inset: 0;
+}
+.ep-scene-blur {
+  display: none;
+}
+@media (max-aspect-ratio: 4/5) {
+  .ep-scene {
+    top: auto;
+    bottom: 9vh;
+    height: 125vw;
+    -webkit-mask-image: linear-gradient(transparent, #000 14%, #000 88%, transparent);
+    mask-image: linear-gradient(transparent, #000 14%, #000 88%, transparent);
+  }
+  .ep-scene-blur {
+    display: block;
+    filter: blur(14px) saturate(1.1);
+    transform: scale(1.1);
+  }
+}
+
+/* Feels like you are standing there: gentle breathing sway and bobbing bots. */
+.ep-sway {
+  animation: ep-sway 7s ease-in-out infinite;
+}
+.ep-bob {
+  animation: ep-bob 2.8s ease-in-out infinite;
+}
+.ep-float {
+  animation: ep-float 0.9s ease-out forwards;
+}
+
+/* Effects */
+.ep-alarm {
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(239, 68, 68, 0.6) 100%);
+  animation: ep-pulse 1s ease-in-out infinite;
+}
+.ep-heat {
+  background: linear-gradient(0deg, rgba(249, 115, 22, 0.45), rgba(250, 204, 21, 0.08) 60%, transparent);
+  animation: ep-shimmer 2.4s ease-in-out infinite;
+}
+.ep-rain {
+  background-image: repeating-linear-gradient(105deg, transparent 0 18px, rgba(191, 219, 254, 0.55) 18px 20px, transparent 20px 46px);
+  background-size: 200px 200px;
+  animation: ep-rain 0.45s linear infinite;
+}
+.ep-snow {
+  background-image:
+    radial-gradient(circle, #fff 1.6px, transparent 2.4px),
+    radial-gradient(circle, rgba(255, 255, 255, 0.8) 1.2px, transparent 2px);
+  background-size:
+    70px 70px,
+    45px 45px;
+  background-position:
+    0 0,
+    20px 30px;
+  animation: ep-snow 5s linear infinite;
+}
+.ep-sparkle {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: #fef08a;
+  clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+  animation: ep-twinkle 2s ease-in-out infinite;
+}
+
+@keyframes ep-sway {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate(-0.4%, 0.6%) rotate(-0.25deg);
+  }
+}
+@keyframes ep-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3.5%);
+  }
+}
+@keyframes ep-nudge {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(4px);
+  }
+}
+@keyframes ep-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes ep-shimmer {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes ep-rain {
+  to {
+    background-position: -40px 200px;
+  }
+}
+@keyframes ep-snow {
+  to {
+    background-position:
+      30px 70px,
+      40px 75px;
+  }
+}
+@keyframes ep-twinkle {
+  0%,
+  100% {
+    transform: scale(0.3) rotate(0deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1) rotate(45deg);
+    opacity: 1;
+  }
+}
+@keyframes ep-float {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-40px);
+    opacity: 0;
+  }
+}
+@keyframes ep-shake {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-3px, 2px);
+  }
+  75% {
+    transform: translate(3px, -2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ep-sway,
+  .ep-bob,
+  .ep-rain,
+  .ep-snow,
+  .ep-sparkle,
+  .ep-alarm {
+    animation: none;
+  }
+}
