@@ -82,9 +82,11 @@ export interface EpisodePlayerProps {
   onFinish: (flags: Flags) => void;
   /** Closed early (skipped). */
   onClose: () => void;
+  /** Text on the button after the recap. */
+  finishLabel?: string;
 }
 
-export function EpisodePlayer({ episode, carried, playerName, onFinish, onClose }: EpisodePlayerProps) {
+export function EpisodePlayer({ episode, carried, playerName, onFinish, onClose, finishLabel = "Start the lesson" }: EpisodePlayerProps) {
   const [nodeId, setNodeId] = useState(episode.start);
   const [flags, setFlags] = useState<Flags>(() => ({ ...carried }));
   const [view, setView] = useState<View>({ kind: "title" });
@@ -204,7 +206,7 @@ export function EpisodePlayer({ episode, carried, playerName, onFinish, onClose 
 
   const speaker = line?.speaker;
   const helper: BotId = useMemo(() => {
-    for (const k of ["buddy", "lifeline", "lead"]) if (isBot(flags[k])) return flags[k] as BotId;
+    for (const k of ["lifeline", "lead", "buddy"]) if (isBot(flags[k])) return flags[k] as BotId;
     return node.type === "game" ? DEFAULT_HELPER[node.game] : "sophia";
   }, [flags, node]);
   const Game = node.type === "game" ? MINI_GAMES[node.game] : null;
@@ -219,17 +221,23 @@ export function EpisodePlayer({ episode, carried, playerName, onFinish, onClose 
       {/* The world, seen through your eyes */}
       <motion.div key={nodeId} className="absolute inset-0 origin-center" initial={false} animate={CAMERA[node.camera ?? "still"]}>
         <div className="ep-sway absolute inset-0">
-          <SceneArt scene={node.scene} screen={node.screen} />
+          {/* On tall phone screens the scene is a wide window with a soft blur of itself around it. */}
+          <div className="ep-scene-blur absolute inset-0" aria-hidden>
+            <SceneArt scene={node.scene} stretch />
+          </div>
+          <div className="ep-scene">
+            <SceneArt scene={node.scene} screen={node.screen} />
+          </div>
           <Cast cast={cast} speaker={speaker} entered={prevCast.current} />
         </div>
       </motion.div>
 
       <FxLayer fx={node.fx ?? []} />
-      {node.camera === "wake" && <Eyelids key={nodeId} />}
+      {node.camera === "wake" && <Eyelids key={`lids-${nodeId}`} />}
       {view.kind === "lines" && <PovHands hands={node.hands ?? "none"} />}
 
       {/* Top bar */}
-      <div className="absolute inset-x-0 top-0 z-[60] flex items-center gap-2 p-2 sm:p-3 bg-gradient-to-b from-black/60 to-transparent">
+      <div className="absolute inset-x-0 top-0 z-[70] flex items-center gap-2 p-2 sm:p-3 bg-gradient-to-b from-black/60 to-transparent">
         <span className="ep-chip">Episode {episode.number}</span>
         <span className="truncate font-display font-semibold text-white text-sm sm:text-base drop-shadow">{episode.title}</span>
         <span className="flex-1" />
@@ -247,7 +255,7 @@ export function EpisodePlayer({ episode, carried, playerName, onFinish, onClose 
 
       {/* Mini-game */}
       {view.kind === "game" && Game && (
-        <div className="absolute inset-0 z-50 bg-black/30 pt-12 sm:pt-14">
+        <div className="absolute inset-0 z-50 bg-[#0b0a14]/55 pt-12 sm:pt-14">
           <div className="relative w-full h-full">
             <Game key={nodeId} helper={helper} onDone={gameDone} />
           </div>
@@ -335,6 +343,9 @@ export function EpisodePlayer({ episode, carried, playerName, onFinish, onClose 
               <button autoFocus onClick={start} className="ep-btn ep-btn-go w-full">
                 <Play size={20} fill="currentColor" /> Start episode
               </button>
+              <button onClick={onClose} className="mt-2 text-sm font-bold text-[#6b5a3a] underline underline-offset-2 hover:text-[#1f1a17]">
+                Maybe later
+              </button>
             </motion.div>
           </motion.div>
         )}
@@ -367,7 +378,7 @@ export function EpisodePlayer({ episode, carried, playerName, onFinish, onClose 
                 ))}
               </ul>
               <button autoFocus onClick={() => onFinish(flags)} className="ep-btn ep-btn-go w-full">
-                Start the lesson <ChevronRight size={20} />
+                {finishLabel} <ChevronRight size={20} />
               </button>
             </motion.div>
           </motion.div>
@@ -534,15 +545,15 @@ function PovHands({ hands }: { hands: Hands }) {
             </g>
           )}
           {hands === "tablet" && <rect x="14" y="14" width="72" height="56" rx="8" fill="#1e293b" stroke="#1f1a17" strokeWidth="4" />}
-          {/* Glove */}
-          <path
-            d="M24 70 Q22 58 34 58 H66 Q78 58 76 70 L74 96 Q72 106 60 106 H40 Q28 106 26 96 Z"
-            fill="#f97316"
-            stroke="#1f1a17"
-            strokeWidth="4"
-            strokeLinejoin="round"
-          />
-          <path d="M34 70 H66 M34 80 H66" stroke="#1f1a17" strokeWidth="3" strokeLinecap="round" opacity="0.5" />
+          {/* Gloved fist gripping the prop */}
+          <g stroke="#1f1a17" strokeWidth="4" strokeLinejoin="round">
+            <rect x="30" y="94" width="48" height="16" rx="4" fill="#c2410c" />
+            <rect x="24" y="62" width="60" height="36" rx="14" fill="#f97316" />
+            {[34, 48, 62, 76].map((x) => (
+              <circle key={x} cx={x} cy={64} r="8" fill="#f97316" />
+            ))}
+            <rect x="16" y="72" width="40" height="15" rx="7.5" fill="#fb923c" transform="rotate(-8 36 80)" />
+          </g>
         </svg>
       </div>
     </motion.div>

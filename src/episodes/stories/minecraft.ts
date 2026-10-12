@@ -129,7 +129,7 @@ export const MINECRAFT_EPISODE: Episode = {
     sorter: {
       type: "game",
       game: "matterSorter",
-      scene: "mc-biomes",
+      scene: "mc-dry",
       intro: [
         { speaker: "sophia", text: "Tap solid, liquid or gas for each block before it floats away. You've got this!", when: { buddy: "sophia" } },
         { speaker: "timothy", text: "Tap solid, liquid or gas for each block before it floats away. Rebooting in three, two, one!", when: { buddy: "timothy" } },
@@ -248,7 +248,7 @@ export const MINECRAFT_EPISODE: Episode = {
     },
     end: {
       type: "end",
-      scene: "mc-biomes",
+      scene: "mc-forest",
       fx: ["sparkle"],
       cast: [
         { bot: "emily", at: "farleft" },

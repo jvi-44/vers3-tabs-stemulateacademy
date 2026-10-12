@@ -155,7 +155,7 @@ export function BudgetCatch({ onDone, helper }: MiniGameProps) {
             <div
               className={`rounded-xl border-[3px] p-1 shadow-[2px_2px_0_#1f1a17] ${d.kind.good ? "border-[#1f1a17] bg-white" : "border-[#b91c1c] bg-[#fee2e2]"}`}
             >
-              <Art name={d.kind.art} size={34} />
+              <Art name={d.kind.art} size={44} />
             </div>
             <span
               className={`mt-0.5 rounded-md px-1 text-[10px] sm:text-xs font-black ${d.kind.good ? "bg-[#bbf7d0] text-[#14532d]" : "bg-[#fecaca] text-[#7f1d1d]"}`}

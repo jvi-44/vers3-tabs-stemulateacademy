@@ -100,7 +100,6 @@ export function MiniGameFrame({
               <h3 className="font-display font-bold text-2xl sm:text-3xl mb-2">{title}</h3>
               <div className="text-[0.98rem] font-semibold leading-snug text-[#3b2f1a] space-y-1.5">{howTo}</div>
               <button
-                autoFocus
                 onClick={() => {
                   sfx.click();
                   setPhase("countdown");
@@ -179,7 +178,7 @@ export function HelperTip({ bot, text, className = "" }: { bot: BotId; text: str
   const b = STEMBOTS[bot];
   return (
     <div className={`absolute z-20 flex items-end gap-1.5 pointer-events-none ${className}`}>
-      <img src={b.avatar} alt={b.name} className="w-12 h-12 sm:w-16 sm:h-16 object-contain drop-shadow-lg" />
+      <img src={b.avatar} alt={b.name} className="w-16 h-16 sm:w-20 sm:h-20 object-contain drop-shadow-lg" />
       <AnimatePresence mode="wait">
         {text && (
           <motion.span

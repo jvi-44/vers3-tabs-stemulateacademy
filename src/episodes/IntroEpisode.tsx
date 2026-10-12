@@ -12,7 +12,17 @@ import { loadChoices, rememberChoices } from "./storyChoices";
 import type { Episode, Flags } from "./types";
 
 /** Full-screen episode with the player's earlier choices loaded and new ones saved. */
-export function EpisodeOverlay({ episode, onFinish, onClose }: { episode: Episode; onFinish: () => void; onClose: () => void }) {
+export function EpisodeOverlay({
+  episode,
+  onFinish,
+  onClose,
+  finishLabel,
+}: {
+  episode: Episode;
+  onFinish: () => void;
+  onClose: () => void;
+  finishLabel?: string;
+}) {
   const player = useGamePlayer();
   const [carried, setCarried] = useState<Flags | null>(null);
 
@@ -40,6 +50,7 @@ export function EpisodeOverlay({ episode, onFinish, onClose }: { episode: Episod
       carried={carried}
       playerName={player.userId === undefined ? undefined : player.name}
       onClose={onClose}
+      finishLabel={finishLabel}
       onFinish={(flags) => {
         rememberChoices(player.userId, episode.beatId, flags);
         onFinish();

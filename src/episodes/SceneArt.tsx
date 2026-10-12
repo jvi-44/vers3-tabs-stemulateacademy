@@ -190,9 +190,9 @@ function ControlConsole({ screen, warn }: { screen?: string; warn: boolean }) {
   );
 }
 
-export function SceneArt({ scene, screen }: { scene: SceneId; screen?: string }) {
+export function SceneArt({ scene, screen, stretch }: { scene: SceneId; screen?: string; stretch?: boolean }) {
   return (
-    <svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" className="absolute inset-0 w-full h-full" aria-hidden="true">
+    <svg viewBox="0 0 400 300" preserveAspectRatio={stretch ? "none" : "xMidYMid slice"} className="absolute inset-0 w-full h-full" aria-hidden="true">
       {renderScene(scene, screen)}
     </svg>
   );

@@ -76,6 +76,8 @@ import { getLeaderboard, sendFriendRequest } from "../api/social";
 import { useColourTheme, THEMES, type ThemeId } from "../lib/theme";
 import { ProfileDetails, PrivacyAndAccount, ThemePicker } from "../components/ProfileSettings";
 import { AdminPage } from "../components/AdminPage";
+import { EpisodeOverlay } from "../episodes/IntroEpisode";
+import { EPISODES } from "../episodes/stories";
 import { startLobbyMusic, stopLobbyMusic, toggleLobbyMusic, onMusicChange, isLobbyMusicPlaying, musicEnabled, lobbyMusicUnlocked } from "../lib/lobbyMusic";
 import { avatarFor } from "../components/FriendsTab";
 import {
@@ -121,6 +123,7 @@ function getSingaporeGreeting() {
 
 const DARK_MODE_KEY = "stemulate_dark_mode";
 const BEATS_KEY_PREFIX = "stemulate_beats_"; // fallback local cache per user
+const FIRST_EPISODE_KEY_PREFIX = "stemulate_episode1_seen_";
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>("home");
@@ -135,6 +138,13 @@ export default function App() {
   const [userCards, setUserCards] = useState<Record<string, number>>({});
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [completedBeats, setCompletedBeats] = useState<Record<string, boolean>>({});
+  // Episode 1 plays straight after a student's first sign-in (and for guests),
+  // once we know they haven't played it yet.
+  const [progressLoaded, setProgressLoaded] = useState(false);
+  const [firstEpisodeDismissed, setFirstEpisodeDismissed] = useState(false);
+  const firstEpisode = EPISODES[0];
+  const showFirstEpisode =
+    isLoggedIn && progressLoaded && !firstEpisodeDismissed && !completedBeats[firstEpisode.beatId] && currentPage !== "lesson";
   const [darkMode, setDarkMode] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [certModuleId, setCertModuleId] = useState<string | null>(null);
@@ -164,9 +174,9 @@ export default function App() {
   // comes back (if it was playing and hasn't been switched off).
   useEffect(() => {
     if (!isLoggedIn) return;
-    if (currentPage === "lesson" || currentPage === "games") stopLobbyMusic();
+    if (currentPage === "lesson" || currentPage === "games" || showFirstEpisode) stopLobbyMusic();
     else if (lobbyMusicUnlocked() && musicEnabled()) startLobbyMusic();
-  }, [currentPage, isLoggedIn]);
+  }, [currentPage, isLoggedIn, showFirstEpisode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---- Dark mode ----
   useEffect(() => {
@@ -200,6 +210,8 @@ export default function App() {
       avatar: u.avatar ? avatarToUrl(u.avatar) : MOCK_USER.avatar,
     }));
     setIsLoggedIn(true);
+    setProgressLoaded(false);
+    setFirstEpisodeDismissed(localStorage.getItem(FIRST_EPISODE_KEY_PREFIX + u.userId) === "1");
 
     // Fill in organisation / school level for the profile page.
     getMe()
@@ -218,11 +230,13 @@ export default function App() {
           if (p.status === "completed") map[p.lesson_id] = true;
         });
         setCompletedBeats(map);
+        setProgressLoaded(true);
       })
       .catch(() => {
         if (gen !== authGen.current) return;
         const cached = localStorage.getItem(BEATS_KEY_PREFIX + u.userId);
         if (cached) setCompletedBeats(JSON.parse(cached));
+        setProgressLoaded(true);
       });
 
     // Owned cards live in SQLite too (see POST /api/packs/open).
@@ -257,6 +271,8 @@ export default function App() {
     authGen.current += 1;
     setUser(MOCK_USER);
     setCompletedBeats({});
+    setProgressLoaded(false);
+    setFirstEpisodeDismissed(false);
     setUserCards({});
     setSelectedLessonId(null);
     setSelectedBeatId(null);
@@ -281,6 +297,7 @@ export default function App() {
     setUser({ ...MOCK_USER, username: "Guest", xp: 0, level: 1, atoms: 0, badges: [] });
     setGamePlayer({ id: "guest", name: "Guest", avatar: MOCK_USER.avatar });
     setIsGuest(true);
+    setProgressLoaded(true);
     setIsLoggedIn(true);
   };
 
@@ -440,6 +457,16 @@ export default function App() {
     toast.success("Your account and all its data have been deleted.");
   };
 
+  const dismissFirstEpisode = () => {
+    setFirstEpisodeDismissed(true);
+    if (authUser) localStorage.setItem(FIRST_EPISODE_KEY_PREFIX + authUser.userId, "1");
+  };
+  const finishFirstEpisode = () => {
+    dismissFirstEpisode();
+    const beat = GAME_LESSONS.flatMap((l) => l.beats).find((b) => b.id === firstEpisode.beatId);
+    if (beat) handleBeatComplete(beat);
+  };
+
   if (isAdminRoute) return <AdminPage onExit={() => (window.location.hash = "")} />;
 
   if (!isLoggedIn)
@@ -506,6 +533,9 @@ export default function App() {
   return (
     <div className="h-screen w-screen flex overflow-hidden bg-background text-foreground">
       <Toaster position="top-center" />
+      {showFirstEpisode && (
+        <EpisodeOverlay episode={firstEpisode} onClose={dismissFirstEpisode} onFinish={finishFirstEpisode} finishLabel="Into the Academy!" />
+      )}
 
       <Sidebar
         avatar={user.avatar}

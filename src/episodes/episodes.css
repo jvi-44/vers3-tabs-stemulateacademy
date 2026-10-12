@@ -187,6 +187,30 @@
   box-shadow: 3px 3px 0 #1f1a17;
 }
 
+/* The scene fills the screen; on tall phones it becomes a 4:5 window (so the
+   middle of the picture isn't cropped away) over a blurred copy of itself. */
+.ep-scene {
+  position: absolute;
+  inset: 0;
+}
+.ep-scene-blur {
+  display: none;
+}
+@media (max-aspect-ratio: 4/5) {
+  .ep-scene {
+    top: auto;
+    bottom: 9vh;
+    height: 125vw;
+    -webkit-mask-image: linear-gradient(transparent, #000 14%, #000 88%, transparent);
+    mask-image: linear-gradient(transparent, #000 14%, #000 88%, transparent);
+  }
+  .ep-scene-blur {
+    display: block;
+    filter: blur(14px) saturate(1.1);
+    transform: scale(1.1);
+  }
+}
+
 /* Feels like you are standing there: gentle breathing sway and bobbing bots. */
 .ep-sway {
   animation: ep-sway 7s ease-in-out infinite;

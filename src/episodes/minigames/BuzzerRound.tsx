@@ -77,6 +77,7 @@ export function BuzzerRound({ onDone, helper }: MiniGameProps) {
 
   useFrame(
     (dt) => {
+      if (rivalRef.current >= 1) return; // already buzzed in
       const v = Math.min(1, rivalRef.current + dt / RIVAL_SECONDS);
       rivalRef.current = v;
       setRival(v);
