@@ -27,6 +27,22 @@ export interface GameProps {
   reportProgress: (score: number, progress: number) => void;
   /** Call once when the run ends. `score` is normalised 0–100. */
   finish: (score: number, summary?: GameSummaryItem[]) => void;
+  /** True once the countdown is over and the run has really started. */
+  playing?: boolean;
+  /** Everyone else in this run: live players, or the shell's rival STEMbots in solo play. */
+  rivals?: RivalInfo[];
+  /** Games with their own computer players (`ownBots`) report them here so the scoreboard lists them. */
+  reportBots?: (bots: RivalInfo[]) => void;
+}
+
+export interface RivalInfo {
+  id: string;
+  name: string;
+  avatar: string;
+  score: number;
+  progress: number;
+  done?: boolean;
+  isBot?: boolean;
 }
 
 export interface GameDef {
@@ -46,5 +62,7 @@ export interface GameDef {
   icon: string;
   /** The game brings its own computer opponents, so the shell adds no rival bots. */
   ownBots?: boolean;
+  /** Solo rival STEMbots finish in about this many seconds even if you're slower (default 150). */
+  botSeconds?: number;
   Component: ComponentType<GameProps>;
 }

@@ -13,7 +13,7 @@ import { cn } from "../components/ui/utils";
 import { STEMBOTS } from "../data/mock";
 import { sfx } from "./kit/audio";
 import { seededRandom } from "./kit/scores";
-import type { GameProps } from "./kit/types";
+import type { GameProps, RivalInfo } from "./kit/types";
 
 // ── BODMAS engine (token based) ─────────────────────────────────────────
 
@@ -325,6 +325,13 @@ const SUSPECTS = [
   { name: "Pink", color: "#f472b6" },
 ];
 const PLAYER_COLOR = "#f97316";
+// The 3 other players (STEMbots or live friends) and where they stand in a room
+const RIVAL_BEANS = ["#3b82f6", "#a855f7", "#ef4444"];
+const RIVAL_SPOTS = [
+  [-14, -6],
+  [16, 2],
+  [-2, 30],
+];
 
 const KEY_DIR: Record<string, RoomId> = {
   ArrowUp: "comms",
@@ -355,7 +362,7 @@ const STRAT_MISTAKE: Record<Strategy, string> = {
 
 // ── Main component ──────────────────────────────────────────────────────
 
-export function BodmasTasks({ seed, reportProgress, finish }: GameProps) {
+export function BodmasTasks({ seed, rivals = [], reportProgress, finish }: GameProps) {
   const data = useMemo(() => {
     const rnd = seededRandom(seed * 7 + 13);
     const puzzles = LEVELS.map((cfg) => makePuzzle(cfg, rnd));
@@ -657,6 +664,7 @@ export function BodmasTasks({ seed, reportProgress, finish }: GameProps) {
           facing={facing}
           fixed={fixed}
           wander={wander}
+          rivals={rivals}
           onRoom={goTo}
           meeting={phase === "meeting" || phase === "eject" || phase === "done"}
         />
@@ -749,6 +757,7 @@ function ShipMap({
   facing,
   fixed,
   wander,
+  rivals,
   onRoom,
   meeting,
 }: {
@@ -757,6 +766,7 @@ function ShipMap({
   facing: 1 | -1;
   fixed: Record<SysId, number>;
   wander: RoomId[];
+  rivals: RivalInfo[];
   onRoom: (r: RoomId) => void;
   meeting: boolean;
 }) {
@@ -909,6 +919,33 @@ function ShipMap({
                 </Billboard>
               );
             })}
+
+          {/* The other players: each walks from system to system as they fix tasks */}
+          {rivals.slice(0, 3).map((r, i) => {
+            const tasks = Math.min(TOTAL_TASKS, Math.round(r.progress * TOTAL_TASKS));
+            const room: RoomId = r.done || tasks >= TOTAL_TASKS || meeting ? "cafe" : SYS_IDS[(tasks + i * 2) % SYS_IDS.length];
+            const c = CENTER(room);
+            const [dx, dy] = RIVAL_SPOTS[i];
+            return (
+              <Billboard key={r.id} x={c.x + dx} y={c.y + dy + 14} z={ROOM_Z} moving slow>
+                <div className="flex flex-col items-center" data-rival={r.name}>
+                  <span className="flex items-center gap-0.5 whitespace-nowrap bg-white/95 text-slate-900 rounded-full pl-0.5 pr-1.5 mb-0.5 shadow border border-slate-700">
+                    <img src={r.avatar} alt="" className="w-4 h-4 object-contain" />
+                    <span className="game-fun font-bold text-[10px] leading-4">{r.name}</span>
+                    <span className="game-pixel text-[7px] text-amber-600">{tasks}/{TOTAL_TASKS}</span>
+                  </span>
+                  <div className="relative">
+                    <Bean color={RIVAL_BEANS[i]} size={36} bob={room !== "cafe"} />
+                    {room !== "cafe" && !meeting && (
+                      <span className="absolute -right-1 top-1 bt-blink">
+                        <Zap size={14} className="text-yellow-300 fill-yellow-300 drop-shadow" />
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </Billboard>
+            );
+          })}
 
           {/* Player */}
           <Billboard x={p.x} y={p.y + 18} z={ROOM_Z} moving>

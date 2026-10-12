@@ -114,6 +114,12 @@ export const sfx = {
   click: () => tone(880, 0.05, { vol: 0.15 }),
   tick: () => tone(1200, 0.03, { type: "triangle", vol: 0.12 }),
   pop: () => tone(500, 0.08, { type: "triangle", vol: 0.3, slide: 900 }),
+  flap: () => tone(420, 0.09, { type: "sine", vol: 0.22, slide: 760 }),
+  laser: () => tone(1500, 0.09, { type: "square", vol: 0.08, slide: 380 }),
+  bonk: () => {
+    tone(150, 0.12, { type: "square", vol: 0.2, slide: 70 });
+    noise(0.08, { vol: 0.15, hp: 1500 });
+  },
   place: () => {
     tone(160, 0.08, { type: "square", vol: 0.2, slide: 90 });
     noise(0.05, { vol: 0.15, hp: 2000 });
