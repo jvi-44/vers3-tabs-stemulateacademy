@@ -715,10 +715,17 @@ registerGameRoutes(app, db);
 // origin as the API, with an SPA fallback for client-side routes.
 // ---------------------------------------------------------
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// The public STEMulate website (website/, plain HTML) is served at /site, so
+// one hosted address gives members both the website and the Academy.
+const WEBSITE_DIR = path.join(__dirname, "../website");
+app.get(/^\/site$/, (_req, res) => res.redirect(301, "/site/"));
+app.use("/site", express.static(WEBSITE_DIR, { redirect: false }));
+
 const DIST_DIR = path.join(__dirname, "../dist");
 if (fs.existsSync(path.join(DIST_DIR, "index.html"))) {
   app.use(express.static(DIST_DIR));
-  app.get(/^(?!\/api).*/, (_req, res) => res.sendFile(path.join(DIST_DIR, "index.html")));
+  app.get(/^(?!\/(api|site)(\/|$)).*/, (_req, res) => res.sendFile(path.join(DIST_DIR, "index.html")));
 }
 
 // Unknown API routes get a JSON 404 (not Express's HTML page).

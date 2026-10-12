@@ -22,5 +22,5 @@ Preview locally with `python3 -m http.server 8000` from this folder, then open h
   the `m-initial` span with `<img class="m-photo-img" src="assets/team/name.jpg" alt="">`.
 - **Workshop slides** live in `assets/slides/<workshop>/`, named by slide number
   in the original deck.
-- **Academy link:** set `LIVE_ACADEMY_URL` at the top of `script.js` once the Academy is deployed. Opened locally, the buttons already go to the Academy app at http://localhost:5173.
+- **Academy link:** `LIVE_ACADEMY_URL` at the top of `script.js` is the hosted Academy. Hosted at `/site/` (see `DEPLOY.md` in the repo root), the buttons open the Academy on the same address. Opened locally, they go to the Academy app at http://localhost:5173.
 - Slogan options are in `SLOGANS.md`.

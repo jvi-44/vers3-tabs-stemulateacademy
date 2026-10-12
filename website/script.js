@@ -2,15 +2,16 @@
 // answer reveals, slide decks with a full-screen viewer, number count-ups and
 // gentle scroll-in animations. Shared by every page. No dependencies.
 
-// ─── Set this to the live STEMulate Academy address once it's deployed. ───
-// Every "Enter STEMulate Academy" button on the site uses it. While it's
-// empty, those buttons go to the Academy section on the home page instead.
-// When you open the website on your own computer (localhost), the buttons
-// go to the Academy app running locally with `npm run dev:all`.
-const LIVE_ACADEMY_URL = "";
+// ─── The live STEMulate Academy address (hosted on Render, see DEPLOY.md). ───
+// Every "Enter STEMulate Academy" button on the site uses it. When the site is
+// served by the Academy itself (at /site), the buttons open that same host.
+// When you open the website on your own computer (localhost:8000 or a file),
+// the buttons go to the Academy app running locally with `npm run dev:all`.
+const LIVE_ACADEMY_URL = "https://stemulate-academy.onrender.com";
 const LOCAL_ACADEMY_URL = "http://localhost:5173";
-const isLocal = ["localhost", "127.0.0.1"].includes(location.hostname) || location.protocol === "file:";
-const ACADEMY_URL = LIVE_ACADEMY_URL || (isLocal ? LOCAL_ACADEMY_URL : "");
+const servedByAcademy = location.pathname.startsWith("/site/");
+const isLocal = !servedByAcademy && (["localhost", "127.0.0.1"].includes(location.hostname) || location.protocol === "file:");
+const ACADEMY_URL = servedByAcademy ? location.origin + "/" : isLocal ? LOCAL_ACADEMY_URL : LIVE_ACADEMY_URL;
 
 document.documentElement.classList.add("js");
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
