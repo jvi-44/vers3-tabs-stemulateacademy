@@ -1,6 +1,27 @@
-# Render Blueprint: one free web service that runs the STEMulate Academy
-# (at /) and the public STEMulate website (at /site). See DEPLOY.md.
+# Render Blueprint: two services from this repo. Setup steps are in DEPLOY.md.
+#
+#   stemulate-website  The public website (website/, plain HTML) on Render's
+#                      CDN at https://projstemulate.com. Render adds
+#                      www.projstemulate.com as a redirect to it.
+#   stemulate-academy  The Academy app and its API (Node/Express) at
+#                      https://academy.projstemulate.com. Students' data lives
+#                      in Supabase (supabase/schema.sql), not on Render.
+#
+# Render asks for each `sync: false` value once, when the Blueprint is first
+# created. To change one later, use the service's Environment tab.
 services:
+  - type: web
+    name: stemulate-website
+    runtime: static
+    # Plain HTML: nothing to build, and no need to install the app's packages.
+    buildCommand: echo "website/ has no build step"
+    staticPublishPath: ./website
+    domains:
+      - projstemulate.com
+    envVars:
+      - key: SKIP_INSTALL_DEPS
+        value: "true"
+
   - type: web
     name: stemulate-academy
     runtime: node
@@ -10,6 +31,8 @@ services:
     buildCommand: npm ci --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /api/reference-data
+    domains:
+      - academy.projstemulate.com
     envVars:
       - key: NODE_VERSION
         value: "22"
@@ -19,3 +42,18 @@ services:
         generateValue: true
       - key: ADMIN_PASSKEY
         sync: false
+      # Supabase > Project Settings > API Keys: the project URL and a secret
+      # key (sb_secret_...). Never the publishable key.
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: APP_ORIGIN
+        value: https://academy.projstemulate.com
+      # Old /site links on the Academy's address go to the website.
+      - key: WEBSITE_URL
+        value: https://projstemulate.com
+      # A whole class signs in from one centre's Wi-Fi, i.e. one IP address.
+      # Each username still locks after 5 wrong PINs.
+      - key: AUTH_RATE_LIMIT_PER_MIN
+        value: "200"

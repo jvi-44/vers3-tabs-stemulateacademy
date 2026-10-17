@@ -4,10 +4,11 @@
 
 // ─── The live STEMulate Academy address (hosted on Render, see DEPLOY.md). ───
 // Every "Enter STEMulate Academy" button on the site uses it. When the site is
-// served by the Academy itself (at /site), the buttons open that same host.
-// When you open the website on your own computer (localhost:8000 or a file),
-// the buttons go to the Academy app running locally with `npm run dev:all`.
-const LIVE_ACADEMY_URL = "https://stemulate-academy.onrender.com";
+// served by the Academy itself (at /site, on your own computer), the buttons
+// open that same host. When you open the website on its own on your computer
+// (localhost:8000 or a file), they go to the Academy running locally with
+// `npm run dev:all`.
+const LIVE_ACADEMY_URL = "https://academy.projstemulate.com";
 const LOCAL_ACADEMY_URL = "http://localhost:5173";
 const servedByAcademy = location.pathname.startsWith("/site/");
 const isLocal = !servedByAcademy && (["localhost", "127.0.0.1"].includes(location.hostname) || location.protocol === "file:");
@@ -126,14 +127,33 @@ if (lightbox && typeof lightbox.showModal === "function") {
     img.alt = src.alt;
     cap.textContent = `${at + 1} / ${list.length} · ${fig.dataset.caption}`;
   };
+  const openDeck = (deck, i = 0) => {
+    if (!deck?._slides) return;
+    list = deck._slides;
+    show(i);
+    lightbox.showModal();
+  };
   document.querySelectorAll(".slide-open").forEach((btn) => {
     btn.addEventListener("click", () => {
       const deck = btn.closest(".deck");
-      list = deck._slides;
-      show(list.indexOf(btn.closest(".slide")));
-      lightbox.showModal();
+      openDeck(deck, deck._slides.indexOf(btn.closest(".slide")));
     });
   });
+  // "Full screen" on a deck starts at the slide in view
+  document.querySelectorAll(".deck-full").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const deck = btn.closest(".deck");
+      openDeck(deck, Number(deck.querySelector(".deck-count b").textContent) - 1);
+    });
+  });
+  // The deck covers at the top of the curriculum page, and links such as
+  // curriculum.html#open-minecraft from the home page, open a deck from slide 1
+  const deckNamed = (name) => document.querySelector(`.deck[data-deck="${CSS.escape(name)}"]`);
+  document.querySelectorAll("[data-open-deck]").forEach((btn) => {
+    btn.addEventListener("click", () => openDeck(deckNamed(btn.dataset.openDeck)));
+  });
+  const fromLink = /^#open-([a-z]+)$/.exec(location.hash);
+  if (fromLink) openDeck(deckNamed(fromLink[1]));
   lightbox.querySelector(".lb-prev").addEventListener("click", () => show(at - 1));
   lightbox.querySelector(".lb-next").addEventListener("click", () => show(at + 1));
   lightbox.querySelector(".lb-close").addEventListener("click", () => lightbox.close());
@@ -163,7 +183,7 @@ function countUp(el) {
 // a safety timer reveals the rest so no section can stay blank (for example
 // in previews and screenshots that never scroll).
 const revealTargets = document.querySelectorAll(
-  ".section-head, .fact, .prog, .bot-card, .flow, .lesson-info, .lesson-side, .curr, .totals, .tile, .timeline li, .quote, .join, .stat, .steps li, .mgroup, .member, .value, .milestones li, .growth, .deck, .ws-card"
+  ".intro, .intro-centred, .wcard, .number, .rhythm li, .partner, .partner-row, .deck-cover, .screens figure, .bots-row li, .pullquote, .quote, .split-photo, .year, .way, .member, .methods li, .growth, .deck, .ws-card, .curr, .total, .faq details, .cta-band, .steps-3 li, .poster"
 );
 const counters = document.querySelectorAll("[data-count]");
 if ("IntersectionObserver" in window && !reduceMotion) {

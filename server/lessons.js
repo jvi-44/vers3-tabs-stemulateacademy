@@ -74,7 +74,8 @@ export function pointsFor(beat, score = null) {
 export const REPLAY_REWARD = { xp: 10, atoms: 5 };
 export const REPLAYS_PER_DAY = 3;
 
-export const levelForXp = (xp) => Math.floor(xp / 1000) + 1;
+// The level (one per 1000 XP) is worked out by the database when rewards are
+// paid: stem_add_rewards() in supabase/schema.sql.
 
 const BOT_NAMES = { sophia: "Sophia", timothy: "Timothy", emily: "Emily", matthew: "Matthew" };
 

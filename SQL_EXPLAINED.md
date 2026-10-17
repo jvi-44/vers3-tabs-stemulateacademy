@@ -1,149 +1,110 @@
 # How the database works (a plain-English walkthrough)
 
 You don't need to know SQL to run STEMulate Academy, but here's what's
-actually happening under the hood, since you asked.
+happening under the hood.
 
 ## 1. What kind of database is this?
 
-It's **SQLite** — the whole database is just **one file on disk**, not a
-server you install separately. That file lives at:
+It's **Postgres**, one of the most widely used databases. It runs in two places:
 
-```
-server/stemulate.db
-```
+- **On the host (Render):** in a **Supabase** project, Supabase's hosted Postgres
+  in Singapore. Accounts and progress survive restarts and redeploys there.
+- **On your own computer and in the tests:** in **PGlite**, a complete copy of
+  Postgres that runs inside the server process and keeps its data in the
+  `server/.pglite/` folder (or only in memory, for the tests). Nothing to install.
 
-It's created **automatically** the very first time you run `npm run server`
-or `npm run dev:all`. You don't create it by hand. Look at `server/db.js`:
+The server picks one when it starts (`server/db.js`):
 
-```js
-const DB_PATH = path.join(__dirname, "stemulate.db");
-export const db = new Database(DB_PATH);
-```
+- `SUPABASE_URL` and `SUPABASE_SECRET_KEY` set (the host): Supabase.
+- Neither set (your laptop): PGlite.
 
-That single line either opens the existing file or creates a brand new,
-empty one if it doesn't exist yet.
+## 2. Where the tables come from
 
-## 2. How the tables get created
+Everything lives in one file: **`supabase/schema.sql`**. It has:
 
-Right after opening the file, `db.js` runs everything inside
-`server/schema.sql`:
+1. `CREATE TABLE IF NOT EXISTS ...` for every table. Think of each table as a
+   spreadsheet and each `CREATE TABLE` as its column headers.
+2. The fixed lists for the sign-up form (centres, school levels, recovery
+   colours and subjects).
+3. The **functions** (section 3).
+4. The locks (section 5).
 
-```js
-const schema = fs.readFileSync(path.join(__dirname, "schema.sql"), "utf8");
-db.exec(schema);
-```
-
-`schema.sql` is just a list of `CREATE TABLE IF NOT EXISTS ...` statements —
-think of each table as a spreadsheet, and each `CREATE TABLE` as defining the
-column headers for that spreadsheet. Because every statement says
-`IF NOT EXISTS`, it's safe to run every time the server starts — it only
-creates tables the first time, and does nothing on later restarts.
-
-The tables, in plain English:
+On your laptop the server runs this file itself every time it starts. On
+Supabase you paste it into the **SQL Editor** and press Run, and again whenever
+it changes. It's safe to run more than once: it never deletes students' data.
 
 | Table | What it stores | One row = |
 |---|---|---|
-| `users` | Every account | One student — name, username, **hashed** PIN, school level, organisation, and their current `xp`, `level`, `atoms`, `avatar` |
-| `lesson_progress` | Progress per lesson/beat | One (student, lesson) pair — its status (`not_started` / `in_progress` / `completed`) and score |
-| `login_attempts` | A security log | One login attempt, success or fail |
-| `organisations`, `school_levels`, `recovery_colours`, `recovery_subjects` | Dropdown reference lists | The options shown in the sign-up form |
+| `users` | Every account | One student: first name, username, **hashed** PIN, school level, centre, XP, level, atoms, avatar |
+| `sessions` | Who is signed in | One signed-in browser (only a scrambled copy of the cookie is kept) |
+| `login_attempts` | A security log | One sign-in or Forgot-PIN try, used for the "5 wrong tries, wait 15 minutes" rule |
+| `lesson_progress` | Progress per activity | One (student, activity) pair: `in_progress` or `completed`, and the score |
+| `game_scores`, `beat_replays` | Games | Best score per game; replays that paid a small reward |
+| `user_cards` | Card albums | How many of each card a student owns |
+| `reflections` | The Gallery | One exit-card reflection |
+| `story_choices` | Intro episodes | The choices a student made in an episode |
+| `friend_requests`, `friendships`, `conversations`, `conversation_members`, `messages` | Friends and chats | Requests, friendships, chats and their messages |
+| `organisations`, `school_levels`, `recovery_colours`, `recovery_subjects` | Sign-up lists | The options in the sign-up form |
 
-## 3. How a new account gets saved
+## 3. The functions: every read and write has a name
 
-When someone signs up (`POST /api/signup` in `server/index.js`):
+The server never writes SQL itself. Each job is a Postgres function in
+`schema.sql`, named `stem_...`, and the server calls it by name:
 
-1. The 4-digit PIN is **hashed** with bcrypt (`bcrypt.hash(pin, 10)`) —
-   the real PIN is never written to disk, only an irreversible scrambled
-   version. This is why forgetting your PIN needs a recovery flow instead of
-   "show my password".
-2. A new row is inserted into `users`:
-   ```sql
-   INSERT INTO users (full_name, username, pin_hash, school_level_id, org_id, recovery_colour_id, recovery_subject_id)
-   VALUES (?, ?, ?, ?, ?, ?, ?)
-   ```
-   The `?`s are placeholders that better-sqlite3 fills in safely (this
-   prevents SQL injection — never string-concatenate user input into SQL).
-3. That row now has default `xp = 0`, `level = 1`, `atoms = 0`.
-
-## 4. How progress and points get saved
-
-Every time you finish a beat (intro story, video, quiz, simulation, exit
-card) in the app, two things happen automatically (see
-`src/app/api/progress.ts` and the handlers in `App.tsx`):
-
-- **`POST /api/progress`** writes/updates a row in `lesson_progress`:
-  ```sql
-  INSERT INTO lesson_progress (user_id, lesson_id, status, score, ...)
-  VALUES (?, ?, ?, ?, ...)
-  ON CONFLICT(user_id, lesson_id) DO UPDATE SET status = excluded.status, ...
-  ```
-  The `ON CONFLICT ... DO UPDATE` part means: if that student already has a
-  row for that exact lesson, update it in place instead of creating a
-  duplicate. That's how a lesson can go from `in_progress` to `completed`.
-
-- **`POST /api/user/xp`** updates the student's running totals directly on
-  their `users` row:
-  ```sql
-  UPDATE users SET xp = ?, level = ?, atoms = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?
-  ```
-
-So: **lesson-by-lesson completion** lives in `lesson_progress`, and
-**running totals** (XP/level/Atoms shown in the top bar and profile ring)
-live directly on the `users` row.
-
-## 5. How logging in "remembers" you
-
-`getUser(userId)` (`GET /api/user/:userId`) just re-reads that one row from
-`users`. The frontend only stores the numeric `userId` in the browser's
-`localStorage` (nothing sensitive) — on refresh, it asks the server "give me
-the current data for this id", so XP/atoms/progress are always fresh from
-the database, never stale in the browser.
-
-## 6. How to look at the database yourself
-
-Since it's a single file, you have a few easy options:
-
-**Option A — a free GUI app (easiest):**
-Download **[DB Browser for SQLite](https://sqlitebrowser.org/)** (free, Mac/Windows/Linux),
-open it, and choose "Open Database" → pick `server/stemulate.db`. You'll see
-every table, and can click "Browse Data" to view every user, their XP,
-Atoms, and lesson progress in a spreadsheet-like view. You can even edit
-values directly here if you ever need to.
-
-**Option B — command line (`sqlite3`):**
-```bash
-# from the project root, after the server has run at least once
-sqlite3 server/stemulate.db
-
-.tables                          -- lists every table
-.headers on
-.mode column
-SELECT * FROM users;             -- every account + their XP/level/atoms
-SELECT * FROM lesson_progress WHERE user_id = 1;   -- one student's progress
-.quit
+```js
+// server/routes/story.js
+const rows = await rpc("stem_story_choices", { p_user_id: req.userId });
 ```
-(If `sqlite3` isn't installed: macOS usually has it already; otherwise
-`brew install sqlite3` on Mac, or `apt install sqlite3` on Linux.)
 
-**Option C — VS Code extension:**
-Install the "SQLite Viewer" or "SQLite" extension in VS Code, then just
-click on `server/stemulate.db` in the file explorer to browse it visually.
+On Supabase, `rpc` goes through `supabase-js` over HTTPS; on your laptop it calls
+PGlite directly. Either way the same function runs. Some examples:
 
-## 7. Resetting everything
+| Function | What it does |
+|---|---|
+| `stem_signup` | Checks the form's choices exist and the username is free, then saves the new account |
+| `stem_user_for_login` | Finds an account by username (ignoring capital letters) for signing in |
+| `stem_progress_save` | Records progress and pays XP and atoms only the first time an activity is completed |
+| `stem_pack_open` | Takes the atoms for a card pack and adds the cards, all at once or not at all |
+| `stem_user_delete` | "Delete my account": removes the student and everything tied to them |
 
-Since the whole database is one file, wiping it is one delete:
-```bash
-rm server/stemulate.db
-```
-The next time the server starts, it recreates empty tables from
-`schema.sql` — every account and every student's progress will be gone, so
-only do this in testing, not in production with real workshop attendees.
+Doing each job inside one function means it happens all at once: two quick
+taps can't pay a reward twice, and a pack can't be paid for without its cards.
 
-## 8. A note on "every user"
+## 4. How a new account gets saved
 
-There is currently no admin dashboard — "every user" means every row in the
-`users` table, viewable with either option above. If down the line you want
-a proper in-app admin view (e.g. a teacher's dashboard listing every
-attendee and their progress), that would be a new page that calls a new
-`GET /api/admin/users` endpoint returning all rows — happy to build that if
-it'd be useful for running the workshop.
+When someone signs up (`POST /api/signup` in `server/app.js`):
+
+1. The 4-digit PIN is **hashed** with bcrypt. Only an irreversible scrambled
+   version is stored, which is why a forgotten PIN needs the Forgot-PIN
+   questions rather than "show my PIN".
+2. `stem_signup` inserts the row into `users`, starting at 0 XP, level 1 and
+   0 atoms.
+3. A session is created and the browser gets an httpOnly cookie, so the student
+   stays signed in for 30 days without the page ever seeing a password or token.
+
+## 5. Who can see the data
+
+On Supabase every table has **Row Level Security** switched on with no rules,
+and the browser's roles may not use the tables or call the functions. So the
+project's **publishable key** (the one that's safe to put in a website) can't
+read or change anything. Only the server, using the **secret key** kept in
+Render, can reach students' data. `server/test/database.test.js` checks this on
+every test run.
+
+## 6. How to look at the data yourself
+
+- **On Supabase:** open the project → **Table Editor**, pick a table. You can
+  also run queries in the **SQL Editor**, for example:
+  ```sql
+  SELECT username, xp, level, atoms FROM users ORDER BY xp DESC;
+  ```
+- **The admin page:** set `ADMIN_PASSKEY`, open `/#/admin` in the Academy and
+  enter the passkey to see every student and their progress.
+- **On your laptop:** the local database is a folder, not a file you can open.
+  The easiest view is the admin page above.
+
+## 7. Resetting your local data
+
+Stop the server and delete the `server/.pglite` folder. The next start creates
+empty tables again. This only affects your own computer; the Supabase data is
+untouched.

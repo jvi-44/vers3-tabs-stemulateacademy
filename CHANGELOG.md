@@ -1,3 +1,38 @@
+# What changed in this update (round 4: Supabase, going online, new website)
+
+## Database: Supabase
+- Students' data now lives in Postgres: a Supabase project on the host (set
+  `SUPABASE_URL` and `SUPABASE_SECRET_KEY`), PGlite on your own computer
+  (nothing to install). SQLite and its migration files are gone.
+- Every table and every database job is in `supabase/schema.sql`, as `stem_*`
+  functions the server calls by name. Paste it into Supabase's SQL Editor once,
+  and again whenever it changes. How it works: SQL_EXPLAINED.md.
+- Only the server can reach the data: every table is locked to the secret key,
+  and the publishable key can't read or change anything.
+- The API behaves exactly as before: 39 new endpoint tests were written against
+  the SQLite version first, and all 115 server tests now pass twice, against the
+  local database and through supabase-js.
+- `npm run db:check` shows which database the server reaches.
+
+## Going online
+- `render.yaml` now deploys two services: the website at projstemulate.com and
+  the Academy at academy.projstemulate.com. Step by step, including the domain:
+  DEPLOY.md.
+- The server stops with a clear message if the database settings are missing
+  or wrong (for example the publishable key), instead of saving accounts to a
+  disk that's wiped on every restart.
+- Sign-in limit raised to 200 a minute per address for workshops, where a whole
+  centre shares one Wi-Fi address.
+
+## Website
+- Redesigned around real photos from our sessions, in the same colours. The
+  STEM x workshops are collectible cards, like the ones in the Academy.
+- New Workshops page; partners shown with their logos and what we do with each;
+  the slide decks open full screen in one click; the story so far, 2023 to 2026.
+- The visible "Name to add" placeholders and empty metric rows are gone.
+- Search-engine basics: page descriptions, link previews, `robots.txt`,
+  `sitemap.xml` and a 404 page.
+
 # What changed in this update (round 3)
 
 ## Login page

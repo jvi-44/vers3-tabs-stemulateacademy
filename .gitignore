@@ -1,7 +1,9 @@
 node_modules/
 dist/
 
-# SQLite database files (generated at runtime)
+# The local database (PGlite, created when the server runs without Supabase)
+server/.pglite/
+# Database files from the old SQLite version
 server/stemulate.db*
 
 # Local env — API keys live here, on your own computer only. Never commit them.

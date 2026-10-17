@@ -41,15 +41,17 @@ or centre (see `otherUser()` in `server/users.js`).
    longer needed, and consent can be withdrawn. *Done:* **Delete my account**
    (with an "are you sure?" pop-up and the PIN) permanently removes the user and
    every row tied to them: progress, sessions, sign-in attempts, friends,
-   requests and sent messages (`deleteUserCompletely()` in `server/users.js`).
+   requests and sent messages (`stem_user_delete()` in `supabase/schema.sql`,
+   called by `deleteUserCompletely()` in `server/users.js`).
    Admins can delete an account from the admin page in the same way.
    *To do:* decide how long inactive accounts are kept (for example, delete
    after 12 months without a sign-in) and when a centre leaves.
 5. **Protection.** Children's data needs a higher standard of care. *Done:*
    PINs and session tokens are hashed, chat and friend data need a signed-in
    session, friend requests only go to real accounts, and chats are only
-   possible between accepted friends. *To do:* HTTPS everywhere when deployed,
-   and keep the database in the Singapore region (see the Supabase guide).
+   possible between accepted friends. HTTPS everywhere on Render, students' data in a
+   Supabase project in Singapore that only the server can reach (every table is
+   locked to the server's secret key; see DEPLOY.md and SQL_EXPLAINED.md).
 6. **Data breach notification.** A notifiable breach must be reported to the
    PDPC (and usually the affected people) within 3 calendar days of assessing
    it as notifiable. *To do:* name who handles this.
