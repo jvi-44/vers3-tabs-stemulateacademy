@@ -1,7 +1,10 @@
 # STEMulate Academy
 
-React + Vite + Tailwind frontend, with a Node/Express + SQLite backend for
-real accounts and progress tracking (replacing the old mock login).
+React + Vite + Tailwind frontend, with a Node/Express backend for real accounts
+and progress tracking. Students' data is stored in Postgres: a Supabase project on
+the host, and PGlite (a copy of Postgres inside the server) on your own computer.
+How the database works: [SQL_EXPLAINED.md](SQL_EXPLAINED.md). Putting it online:
+[DEPLOY.md](DEPLOY.md).
 
 ## Setup
 
@@ -27,10 +30,13 @@ the frontend.
 | `GEMINI_MODEL` | Chat model | `gemini-2.5-flash` |
 | `SESSION_SECRET` | Signing the login cookie (32+ random bytes) | random per start (everyone is signed out on restart) |
 | `APP_ORIGIN` | CORS: the only origin allowed to call the API with the login cookie | `http://localhost:5173` |
-| `DB_PATH` | Where the SQLite file lives | `server/stemulate.db` |
+| `SUPABASE_URL` | The Supabase project to save students' data in (on the host) | none (the local database is used) |
+| `SUPABASE_SECRET_KEY` | That project's secret key (`sb_secret_...`), server-only. Never the publishable key | none |
+| `DB_PATH` | Folder for the local database when Supabase isn't set (`memory://` keeps it in memory) | `server/.pglite` |
 | `PORT` | API port | `4000` |
 | `ADMIN_PASSKEY` | The admin page at `/#/admin` (use something long) | none (admin page switched off) |
 | `AUTH_RATE_LIMIT_PER_MIN` | Per-IP sign-in / sign-up / Forgot PIN / admin-login requests per minute | `20` |
+| `WEBSITE_URL` | On the host: where old `/site` links redirect (the public website) | none (`/site` serves `website/`) |
 
 ### Gemini (STEMbot chat)
 
@@ -63,11 +69,12 @@ npm run dev      # starts Vite on http://localhost:5173
 Vite proxies `/api/*` requests to the Express server (see `vite.config.ts`),
 so the frontend just calls fetch("/api/...") without needing to know the port.
 
-The SQLite database file is created automatically at `server/stemulate.db`
-(or `DB_PATH`) the first time the server starts — no manual setup needed.
-`server/schema.sql` runs first, then every file in `server/migrations/` in
-filename order (see `server/db.js`). Delete the database file to reset all
-accounts and progress during testing.
+Without Supabase settings the server keeps its data in a local Postgres
+(PGlite) in `server/.pglite/`, created on the first start with every table from
+`supabase/schema.sql`. Nothing to install. Delete that folder to reset all
+accounts and progress during testing. With `SUPABASE_URL` and
+`SUPABASE_SECRET_KEY` in your `.env`, it uses that Supabase project instead;
+`npm run db:check` shows which database it reaches.
 
 ## Lesson games
 
@@ -90,8 +97,9 @@ with saved high scores, and rival STEMbots for solo play.
 - **`server/`** — Express API (`server/app.js`): `/api/signup`, `/api/login`,
   `/api/logout`, `/api/recover/verify`, `/api/recover/reset`, `/api/user/me`,
   `/api/progress`, `/api/cards`, `/api/packs/open`, `/api/reflections`,
-  `/api/leaderboard`, `/api/chat`. Schema lives in `server/schema.sql` plus
-  `server/migrations/`; PINs are bcrypt-hashed, never stored in plaintext.
+  `/api/leaderboard`, `/api/chat`. Every table and query lives in
+  `supabase/schema.sql` (as `stem_*` functions the server calls by name); PINs
+  are bcrypt-hashed, never stored in plaintext.
 - **`src/components/LoginScreen.tsx`** — replaces the old mock login with
   Sign In / Create Account / Forgot PIN, wired to the API above.
 - **`src/components/StembotPattern.tsx`** — the tiled STEMbot background.
@@ -103,7 +111,8 @@ with saved high scores, and rival STEMbots for solo play.
 
 ```bash
 npm test             # both suites
-npm run test:server  # node:test against a throwaway SQLite file (server/test/)
+npm run test:server  # node:test against a throwaway Postgres (PGlite), then again
+                     # through supabase-js and a stand-in for Supabase's API
 npm run test:client  # vitest + Testing Library (src/__tests__/)
 npm run typecheck
 ```
@@ -126,30 +135,18 @@ npm run typecheck
 
 ## Deploy
 
-The Express server can serve the built frontend and the API from one origin.
+The website (`website/`) and the Academy go on Render, with students' data in
+Supabase: step-by-step in [DEPLOY.md](DEPLOY.md), including the
+projstemulate.com and academy.projstemulate.com domains. In short:
 
-1. **Build** the frontend:
-   ```bash
-   npm ci
-   npm run build        # writes dist/
-   ```
-2. **Set env vars** on the host (not in the repo):
-   - `NODE_ENV=production` (secure cookies, trusts the host's proxy for client IPs)
-   - `SESSION_SECRET=<32+ random bytes>`
-   - `APP_ORIGIN=<your site URL, e.g. https://stemulate.example>`
-   - `DB_PATH=<path on a persistent disk>` — e.g. `/var/data/stemulate.db`
-   - `GEMINI_API_KEY=<restricted key>` (optional; chat shows a "resting"
-     message without it)
-3. **Attach a persistent disk/volume** and point `DB_PATH` at it. Most hosts
-   (Render, Railway, ...) wipe the app folder on every deploy, which would
-   delete every account.
-4. **Start** the server:
-   ```bash
-   npm start            # node server/index.js — app + API on $PORT (default 4000)
-   ```
+1. Run `supabase/schema.sql` in the Supabase project's SQL Editor.
+2. Create the Render Blueprint from `render.yaml` and give it `SUPABASE_URL`,
+   `SUPABASE_SECRET_KEY` and `ADMIN_PASSKEY`.
+3. Point the domains at Render.
 
-Before launch, remove `<meta name="robots" content="noindex, nofollow" />`
-from `index.html` if the site should appear in search results.
+`npm start` serves the built app and the API on one port (`npm run build` first).
+In production the server refuses to start without a database setting, so
+accounts can't silently land on a temporary disk.
 
 ## Admin page
 

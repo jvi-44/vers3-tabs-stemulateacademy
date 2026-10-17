@@ -3,7 +3,7 @@
 // browser in a signed, httpOnly cookie. Every protected route derives the
 // user from that cookie — the client never gets to say who it is.
 import crypto from "crypto";
-import db from "./db.js";
+import { rpc } from "./db.js";
 
 export const SESSION_COOKIE = "stem_session";
 const SESSION_TTL_MS = 30 * 864e5; // 30 days
@@ -31,16 +31,16 @@ function cookieOptions() {
 }
 
 /** Creates a session row for `userId` and sets the session cookie on `res`. */
-export function createSession(res, userId) {
+export async function createSession(res, userId) {
   const token = crypto.randomBytes(32).toString("hex");
   const now = Date.now();
-  // Opportunistic clean-up so the table doesn't grow forever.
-  db.prepare("DELETE FROM sessions WHERE expires_at <= ?").run(now);
-  db.prepare("INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)").run(
-    hashToken(token),
-    userId,
-    now + SESSION_TTL_MS,
-  );
+  // Also clears out expired sessions so the table doesn't grow forever.
+  await rpc("stem_session_create", {
+    p_token: hashToken(token),
+    p_user_id: userId,
+    p_expires_at: now + SESSION_TTL_MS,
+    p_now: now,
+  });
   res.cookie(SESSION_COOKIE, token, { ...cookieOptions(), signed: true, maxAge: SESSION_TTL_MS });
 }
 
@@ -51,19 +51,16 @@ function sessionToken(req) {
 }
 
 /** The signed-in user's id, or null if there's no valid, unexpired session. */
-export function userIdFromRequest(req) {
+export async function userIdFromRequest(req) {
   const token = sessionToken(req);
   if (!token) return null;
-  const row = db
-    .prepare("SELECT user_id FROM sessions WHERE token = ? AND expires_at > ?")
-    .get(hashToken(token), Date.now());
-  return row ? row.user_id : null;
+  return rpc("stem_session_user", { p_token: hashToken(token), p_now: Date.now() });
 }
 
 /** Express middleware: 401 unless the request carries a valid session. */
-export function requireUser(req, res, next) {
+export async function requireUser(req, res, next) {
   try {
-    const userId = userIdFromRequest(req);
+    const userId = await userIdFromRequest(req);
     if (!userId) {
       return res.status(401).json({ error: "Please sign in again." });
     }
@@ -75,13 +72,8 @@ export function requireUser(req, res, next) {
 }
 
 /** Deletes the current session (if any) and clears the cookie. */
-export function destroySession(req, res) {
+export async function destroySession(req, res) {
   const token = sessionToken(req);
-  if (token) db.prepare("DELETE FROM sessions WHERE token = ?").run(hashToken(token));
+  if (token) await rpc("stem_session_delete", { p_token: hashToken(token) });
   res.clearCookie(SESSION_COOKIE, cookieOptions());
-}
-
-/** Signs a user out everywhere (e.g. after a PIN reset or account deletion). */
-export function destroyAllSessionsFor(userId) {
-  db.prepare("DELETE FROM sessions WHERE user_id = ?").run(userId);
 }

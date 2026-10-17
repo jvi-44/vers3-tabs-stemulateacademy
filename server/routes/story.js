@@ -1,5 +1,6 @@
 import express from "express";
-import db from "../db.js";
+import { rpc } from "../db.js";
+import { route } from "../route.js";
 import { requireUser } from "../auth.js";
 
 // Choices made in the interactive intro episodes (src/episodes). Each episode
@@ -30,8 +31,8 @@ function cleanFlags(input) {
   return out;
 }
 
-router.get("/story", (req, res) => {
-  const rows = db.prepare("SELECT beat_id, choices FROM story_choices WHERE user_id = ?").all(req.userId);
+router.get("/story", route(async (req, res) => {
+  const rows = await rpc("stem_story_choices", { p_user_id: req.userId });
   const choices = {};
   for (const r of rows) {
     try {
@@ -41,18 +42,15 @@ router.get("/story", (req, res) => {
     }
   }
   res.json({ choices });
-});
+}));
 
-router.put("/story/:beatId", (req, res) => {
+router.put("/story/:beatId", route(async (req, res) => {
   const { beatId } = req.params;
   if (!EPISODE_BEATS.has(beatId)) return res.status(400).json({ error: "Unknown episode." });
   const flags = cleanFlags(req.body?.choices);
   if (!flags) return res.status(400).json({ error: "Choices must be a small map of simple values." });
-  db.prepare(
-    `INSERT INTO story_choices (user_id, beat_id, choices, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-     ON CONFLICT(user_id, beat_id) DO UPDATE SET choices = excluded.choices, updated_at = CURRENT_TIMESTAMP`,
-  ).run(req.userId, beatId, JSON.stringify(flags));
+  await rpc("stem_story_save", { p_user_id: req.userId, p_beat_id: beatId, p_choices: JSON.stringify(flags) });
   res.json({ success: true, choices: flags });
-});
+}));
 
 export default router;

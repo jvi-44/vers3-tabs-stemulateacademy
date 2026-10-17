@@ -4,276 +4,227 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>About us · Project STEMulate</title>
-  <meta name="description" content="Project STEMulate was started in 2023 by Raffles Institution students. Meet our EXCO, batch by batch." />
-  <meta name="theme-color" content="#7cc242" />
+  <meta name="description" content="Project STEMulate was started in 2023 by Raffles Institution students. Our mission, our story so far, the current committee, STEMulate chapters and answers to common questions." />
+  <link rel="canonical" href="https://projstemulate.com/about.html" />
+  <meta name="theme-color" content="#1e4a24" />
   <link rel="icon" href="assets/logo.png" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Project STEMulate" />
   <meta property="og:title" content="About us · Project STEMulate" />
-  <meta property="og:description" content="Project STEMulate was started in 2023 by Raffles Institution students. Meet our EXCO, batch by batch." />
-  <meta property="og:image" content="assets/screens/home.jpg" />
+  <meta property="og:description" content="Started by students in 2023. Built for every child." />
+  <meta property="og:url" content="https://projstemulate.com/about.html" />
+  <meta property="og:image" content="https://projstemulate.com/assets/photos/founding-team.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <!-- Small SVG icon sprite used across the page -->
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
     <defs>
-      <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></symbol>
-      <symbol id="i-quiz" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 14.5a1.2 1.2 0 1 1 0-2.4 1.2 1.2 0 0 1 0 2.4Zm1.4-5.1c-.6.4-.9.7-.9 1.3v.4h-2v-.5c0-1.2.6-1.9 1.4-2.4.7-.5 1.1-.8 1.1-1.4 0-.7-.6-1.2-1.4-1.2-.9 0-1.5.5-1.6 1.4l-2-.3C8.2 8.1 9.8 6.9 11.7 6.9c2 0 3.5 1.2 3.5 3 0 1.2-.7 1.9-1.8 2.5Z" fill="currentColor"/></symbol>
-      <symbol id="i-game" viewBox="0 0 24 24"><path d="M7 7h10a5 5 0 0 1 4.9 6l-.8 3.8a2.6 2.6 0 0 1-4.5 1.2L14.5 16h-5L7.4 18a2.6 2.6 0 0 1-4.5-1.2L2.1 13A5 5 0 0 1 7 7Zm1 3v1.5H6.5v2H8V15h2v-1.5h1.5v-2H10V10H8Zm8 .2a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4Zm-2 2.6a1.2 1.2 0 1 0 0 2.4 1.2 1.2 0 0 0 0-2.4Z" fill="currentColor"/></symbol>
-      <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5.5C6.5 4.3 9.3 4.4 12 6c2.7-1.6 5.5-1.7 8-.5v13c-2.5-1.2-5.3-1.1-8 .5-2.7-1.6-5.5-1.7-8-.5v-13Zm7 2.2C9.2 6.7 7.6 6.5 6 7v8.9c1.6-.3 3.3-.1 5 .7V7.7Zm2 8.9c1.7-.8 3.4-1 5-.7V7c-1.6-.5-3.2-.3-5 .7v8.9Z" fill="currentColor"/></symbol>
-      <symbol id="i-pen" viewBox="0 0 24 24"><path d="m15.2 4.6 4.2 4.2L9 19.2 4 20l.8-5 10.4-10.4Zm0 2.8-8.6 8.6-.3 1.7 1.7-.3 8.6-8.6-1.4-1.4Z" fill="currentColor"/></symbol>
       <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M13.3 5.3 20 12l-6.7 6.7-1.4-1.4 4.3-4.3H4v-2h12.2l-4.3-4.3 1.4-1.4Z" fill="currentColor"/></symbol>
       <symbol id="i-out" viewBox="0 0 24 24"><path d="M14 4h6v6h-2V7.4l-7.3 7.3-1.4-1.4L16.6 6H14V4ZM5 6h6v2H6v10h10v-5h2v6a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Z" fill="currentColor"/></symbol>
-      <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3 2.6 5.5 6 .8-4.4 4.1 1.1 6L12 16.5 6.7 19.4l1.1-6L3.4 9.3l6-.8z" fill="currentColor"/></symbol>
-      <symbol id="i-atom" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2" fill="currentColor"/><ellipse cx="12" cy="12" rx="9.5" ry="3.8" fill="none" stroke="currentColor" stroke-width="1.8"/><ellipse cx="12" cy="12" rx="9.5" ry="3.8" transform="rotate(60 12 12)" fill="none" stroke="currentColor" stroke-width="1.8"/><ellipse cx="12" cy="12" rx="9.5" ry="3.8" transform="rotate(120 12 12)" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
-      <symbol id="i-chev-l" viewBox="0 0 24 24"><path d="M15.4 5.4 9.8 11l5.6 5.6-1.4 1.4-7-7 7-7 1.4 1.4Z" fill="currentColor" transform="translate(0 1)"/></symbol>
-      <symbol id="i-chev-r" viewBox="0 0 24 24"><path d="m8.6 5.4 1.4-1.4 7 7-7 7-1.4-1.4 5.6-5.6-5.6-5.6Z" fill="currentColor" transform="translate(0 1)"/></symbol>
-      <symbol id="i-close" viewBox="0 0 24 24"><path d="M6.4 5 12 10.6 17.6 5 19 6.4 13.4 12l5.6 5.6-1.4 1.4-5.6-5.6L6.4 19 5 17.6l5.6-5.6L5 6.4 6.4 5Z" fill="currentColor"/></symbol>
-      <symbol id="i-expand" viewBox="0 0 24 24"><path d="M4 4h6v2H7.4l3.3 3.3-1.4 1.4L6 7.4V10H4V4Zm10 0h6v6h-2V7.4l-3.3 3.3-1.4-1.4L16.6 6H14V4ZM4 14h2v2.6l3.3-3.3 1.4 1.4L7.4 18H10v2H4v-6Zm14 2.6V14h2v6h-6v-2h2.6l-3.3-3.3 1.4-1.4 3.3 3.3Z" fill="currentColor"/></symbol>
-      <symbol id="i-clock" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18Zm0 2a7 7 0 1 0 0 14 7 7 0 0 0 0-14Zm1 2v4.6l3.2 2-1 1.7L11 12.7V7h2Z" fill="currentColor"/></symbol>
-      <symbol id="i-flask" viewBox="0 0 24 24"><path d="M9 3h6v2h-1v4.4l5.6 9.3A1.5 1.5 0 0 1 18.3 21H5.7a1.5 1.5 0 0 1-1.3-2.3L10 9.4V5H9V3Zm3 7.5L9.4 15h5.2L12 10.5Z" fill="currentColor"/></symbol>
-      <symbol id="i-check" viewBox="0 0 24 24"><path d="m9.5 16.2-4.2-4.2-1.4 1.4 5.6 5.6L20.1 8.4 18.7 7 9.5 16.2Z" fill="currentColor"/></symbol>
+      <symbol id="i-mail" viewBox="0 0 24 24"><path d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Zm1 3.2V17h14V8.2l-7 4.9-7-4.9ZM6.4 7l5.6 3.9L17.6 7H6.4Z" fill="currentColor"/></symbol>
     </defs>
   </svg>
 
-
   <a class="skip" href="#main">Skip to content</a>
 
-  <!-- Announcement strip: the quick route into the Academy -->
-  <div class="topbar">
-    <p><strong>New:</strong> Workshops end. Curiosity doesn't. Meet STEMulate Academy!</p>
-    <a data-academy-link href="index.html#academy">Enter STEMulate Academy <svg class="ico"><use href="#i-arrow"/></svg></a>
-  </div>
-
-  <header class="nav" id="top">
-    <a class="brand" href="index.html" aria-label="Project STEMulate home">
-      <img src="assets/logo.png" alt="" width="44" height="40" />
-      <span>Project <b>STEMulate</b></span>
-    </a>
-    <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links" aria-label="Open menu">
-      <span></span><span></span><span></span>
-    </button>
-    <nav id="nav-links" class="nav-links" aria-label="Main">
-      <a href="about.html" aria-current="page">About us</a>
-      <a href="curriculum.html">Curriculum</a>
-      <a href="impact.html">Impact</a>
-      <a href="index.html#lessons">Lessons</a>
-      <a href="index.html#join">Get involved</a>
-      <a class="btn btn-grape btn-sm" data-academy-link href="index.html#academy">
-        STEMulate Academy <svg class="ico"><use href="#i-out"/></svg>
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="index.html" aria-label="Project STEMulate home">
+        <img src="assets/logo.png" alt="" width="46" height="40" />
+        <span class="brand-name">Project <b>STEMulate</b></span>
       </a>
-    </nav>
+      <button class="nav-toggle" aria-expanded="false" aria-controls="nav-links" aria-label="Open menu">
+        <span></span><span></span><span></span>
+      </button>
+      <nav id="nav-links" class="nav-links" aria-label="Main">
+        <a href="workshops.html">Workshops</a>
+        <a href="curriculum.html">Curriculum</a>
+        <a href="impact.html#partners">Partners</a>
+        <a href="impact.html">Impact</a>
+        <a href="about.html" aria-current="page">About us</a>
+        <a href="index.html#join">Get involved</a>
+        <a class="btn btn-lime btn-sm" data-academy-link href="index.html#academy">STEMulate Academy <svg class="ico"><use href="#i-out"/></svg></a>
+      </nav>
+    </div>
   </header>
 
   <main id="main">
-    <!-- ───────── PAGE HERO ───────── -->
-    <section class="page-hero">
-      <div class="hero-pattern" aria-hidden="true"></div>
+    <section class="page-hero" aria-labelledby="page-title">
       <div class="wrap page-hero-grid">
         <div>
-          <span class="kicker">About us</span>
-          <h1>Started by students. Built for every child.</h1>
-          <p class="lead">Project STEMulate is a ground-up, youth-led community of volunteers. We bring free, hands-on STEM to primary schoolers aged 7 to 12 from less-privileged backgrounds, so that curiosity never depends on what a family can afford.</p>
+          <span class="crumb">About us</span>
+          <h1 id="page-title">Started by students. Built for every child.</h1>
+          <p class="lead">Project STEMulate is a student-initiated volunteering programme that runs STEM enrichment for primary school students from less-fortunate families in Singapore.</p>
         </div>
-        <img class="page-hero-bot" src="assets/bots/stembot_cream.png" alt="" />
+        <figure class="page-hero-photo">
+          <img src="assets/photos/founding-team.jpg" alt="Seven Raffles Institution students in school uniform, the team behind Project STEMulate" width="1000" height="698" />
+          <img class="bot" src="assets/bots/stembot_cream.png" alt="" />
+          <figcaption>Some of the Raffles Institution students behind Project STEMulate.</figcaption>
+        </figure>
       </div>
     </section>
 
-    <!-- ───────── STORY ───────── -->
-    <section class="section section-tight">
-      <div class="wrap about-grid">
-        <div>
-          <span class="kicker">Our story</span>
-          <h2>Curiosity has no price tag.</h2>
-          <p>In 2023, a group of Raffles Institution students noticed that many children from disadvantaged families miss out on the experiments, coding clubs and science trips their peers take for granted. So we started running our own.</p>
-          <p>Our workshops turn games children already love into science and maths lessons. When children kept asking for “one more video” or “one more game” after the session ended, we built STEMulate Academy so the learning could carry on at home.</p>
-        </div>
-        <ol class="milestones">
-          <li><span class="when">2023</span><b>Project STEMulate is founded</b></li>
-          <li><span class="when">May – Jul 2024</span><b>STEM sessions at Canossaville</b></li>
-          <li><span class="when">Jan 2025</span><b>Weekly 1-to-1 sessions with VIVA begin</b></li>
-          <li><span class="when">2026</span><b>STEMulate Academy goes online</b></li>
-        </ol>
-      </div>
-    </section>
-
-    <!-- ───────── VALUES ───────── -->
-    <section class="section section-butter section-tight">
+    <section class="section" aria-labelledby="mission-title">
       <div class="wrap">
-        <div class="section-head">
-          <span class="kicker">What we believe</span>
-          <h2>Four promises, one for each letter</h2>
-        </div>
-        <div class="values">
-          <article class="value sticker tilt-l" style="--bot:#3aa35b;--bot-l:#e4f8cf"><span class="bot-letter">S</span><h3>Stay curious</h3><p>Every “why?” deserves a proper answer, or a fun experiment to find one.</p></article>
-          <article class="value sticker tilt-r" style="--bot:#2b7fc1;--bot-l:#e0f0ff"><span class="bot-letter">T</span><h3>Together</h3><p>Children learn in teams, and volunteers learn alongside them.</p></article>
-          <article class="value sticker tilt-l2" style="--bot:#b7791f;--bot-l:#fff4d1"><span class="bot-letter">E</span><h3>Everyone's welcome</h3><p>Free sessions, household materials, no prior knowledge needed.</p></article>
-          <article class="value sticker tilt-r2" style="--bot:#d64545;--bot-l:#ffe4e4"><span class="bot-letter">M</span><h3>Make it fun</h3><p>If it doesn't feel like play, we haven't finished designing it.</p></article>
-        </div>
+        <h2 id="mission-title">Our mission</h2>
+        <p class="mission">To empower underprivileged children by inculcating an interest in STEM, fostering curiosity and confidence, and guiding them in discovering their own potential, bringing about positive change to society.</p>
+        <p class="lead">With a passion for STEM and a drive to make a difference in the lives of under-served children and their families, a group of Raffles Institution students formed Project STEMulate in 2023. We tackle educational inequality in Singapore by giving primary schoolers from disadvantaged backgrounds equal learning opportunities in STEM.</p>
       </div>
     </section>
 
-    <!-- ───────── EXCO ───────── -->
-    <section class="section" id="exco">
+    <section class="section band-butter" aria-labelledby="story-title">
       <div class="wrap">
-        <div class="section-head">
-          <span class="kicker kicker-grape">Our EXCO</span>
-          <h2>The humans behind the STEMbots</h2>
-          <p class="section-sub">Each batch of our executive committee passes the goggles to the next. Here's everyone who has led Project STEMulate, batch by batch.</p>
+        <div class="intro">
+          <h2 id="story-title">Our story so far</h2>
+          <p>From one partner and our first workshops to ten partner organisations and an online academy.</p>
         </div>
-        <div class="tabs" role="tablist" aria-label="EXCO batches">
-          <button role="tab" id="tab-b1" aria-controls="panel-b1" aria-selected="false" tabindex="-1" class="tab"><span>Founding batch</span>Batch 1</button>
-          <button role="tab" id="tab-b2" aria-controls="panel-b2" aria-selected="false" tabindex="-1" class="tab"><span>Year to confirm</span>Batch 2</button>
-          <button role="tab" id="tab-b3" aria-controls="panel-b3" aria-selected="true" class="tab"><span>Current EXCO</span>Batch 3</button>
+        <div class="years">
+          <section class="year" aria-labelledby="y2023">
+            <h3 id="y2023">2023</h3>
+            <ul>
+              <li class="is-partner">Partnership with Beyond Social Services</li>
+              <li>Our first workshops</li>
+              <li>Learning journeys</li>
+              <li>Volunteer recruitment</li>
+            </ul>
+          </section>
+          <section class="year" aria-labelledby="y2024">
+            <h3 id="y2024">2024</h3>
+            <ul>
+              <li>Volunteer recruitment</li>
+              <li>Monthly enrichment activities</li>
+              <li class="is-partner">Partnership with Canossaville</li>
+              <li>Learning journeys</li>
+              <li class="is-partner">Partnership with CDAC</li>
+            </ul>
+          </section>
+          <section class="year" aria-labelledby="y2025">
+            <h3 id="y2025">2025</h3>
+            <ul>
+              <li class="is-partner">Weekly 1-to-1 sessions with VIVA Foundation</li>
+              <li class="is-partner">Brighton Connection, Caritas Singapore, FaithActs, Sheng Hong and New Life join us</li>
+              <li>Volunteer recruitment</li>
+            </ul>
+          </section>
+          <section class="year" aria-labelledby="y2026">
+            <h3 id="y2026">2026</h3>
+            <ul>
+              <li>Building STEMulate Academy, our online learning world</li>
+            </ul>
+          </section>
         </div>
-
-        <div class="batch" role="tabpanel" id="panel-b1" aria-labelledby="tab-b1" hidden>
-          <div class="batch-head">
-            <h3>Batch 1 <span class="chip chip-leaf">Founding batch</span></h3>
-            <p><b>2023</b> · The Raffles Institution students who started it all.</p>
-          </div>
-          <ul class="members">
-            <li class="member member-tbc" style="--bot:#3aa35b;--bot-l:#e4f8cf">
-              <div class="m-photo"><img src="assets/bots/stembot_green.png" alt="" /></div>
-              <b>Name to add</b><span>President</span>
-            </li>
-            <li class="member member-tbc" style="--bot:#2b7fc1;--bot-l:#e0f0ff">
-              <div class="m-photo"><img src="assets/bots/stembot_blue.png" alt="" /></div>
-              <b>Name to add</b><span>Vice-President</span>
-            </li>
-            <li class="member member-tbc" style="--bot:#b7791f;--bot-l:#fff4d1">
-              <div class="m-photo"><img src="assets/bots/stembot_cream.png" alt="" /></div>
-              <b>Name to add</b><span>Secretary</span>
-            </li>
-            <li class="member member-tbc" style="--bot:#d64545;--bot-l:#ffe4e4">
-              <div class="m-photo"><img src="assets/bots/stembot_red.png" alt="" /></div>
-              <b>Name to add</b><span>Treasurer</span>
-            </li>
-            <li class="member member-tbc" style="--bot:#3aa35b;--bot-l:#e4f8cf">
-              <div class="m-photo"><img src="assets/bots/stembot_green.png" alt="" /></div>
-              <b>Name to add</b><span>Curriculum</span>
-            </li>
-            <li class="member member-tbc" style="--bot:#2b7fc1;--bot-l:#e0f0ff">
-              <div class="m-photo"><img src="assets/bots/stembot_blue.png" alt="" /></div>
-              <b>Name to add</b><span>Outreach</span>
-            </li>
-          </ul>
-        </div>
-
-        <div class="batch" role="tabpanel" id="panel-b2" aria-labelledby="tab-b2" hidden>
-          <div class="batch-head">
-            <h3>Batch 2 </h3>
-            <p><b>Year to confirm</b> · Grew our partner network and the volunteer team.</p>
-          </div>
-          <ul class="members">
-            <li class="member member-tbc" style="--bot:#3aa35b;--bot-l:#e4f8cf">
-              <div class="m-photo"><img src="assets/bots/stembot_green.png" alt="" /></div>
-              <b>Name to add</b><span>President</span>
-            </li>
-            <li class="member member-tbc" style="--bot:#2b7fc1;--bot-l:#e0f0ff">
-              <div class="m-photo"><img src="assets/bots/stembot_blue.png" alt="" /></div>
-              <b>Name to add</b><span>Vice-President</span>
-            </li>
-            <li class="member member-tbc" style="--bot:#b7791f;--bot-l:#fff4d1">
-              <div class="m-photo"><img src="assets/bots/stembot_cream.png" alt="" /></div>
-              <b>Name to add</b><span>Secretary</span>
-            </li>
-            <li class="member member-tbc" style="--bot:#d64545;--bot-l:#ffe4e4">
-              <div class="m-photo"><img src="assets/bots/stembot_red.png" alt="" /></div>
-              <b>Name to add</b><span>Treasurer</span>
-            </li>
-            <li class="member member-tbc" style="--bot:#3aa35b;--bot-l:#e4f8cf">
-              <div class="m-photo"><img src="assets/bots/stembot_green.png" alt="" /></div>
-              <b>Name to add</b><span>Curriculum</span>
-            </li>
-            <li class="member member-tbc" style="--bot:#2b7fc1;--bot-l:#e0f0ff">
-              <div class="m-photo"><img src="assets/bots/stembot_blue.png" alt="" /></div>
-              <b>Name to add</b><span>Outreach</span>
-            </li>
-          </ul>
-        </div>
-
-        <div class="batch" role="tabpanel" id="panel-b3" aria-labelledby="tab-b3">
-          <div class="batch-head">
-            <h3>Batch 3 <span class="chip chip-leaf">Current EXCO</span></h3>
-            <p><b>Batch number to confirm</b> · The team building STEMulate Academy.</p>
-          </div>
-          <ul class="members">
-            <li class="member" style="--bot:#3aa35b;--bot-l:#e4f8cf">
-              <div class="m-photo"><span class="m-initial" aria-hidden="true">J</span><img class="m-bot" src="assets/bots/stembot_green.png" alt="" /></div>
-              <b>Janhvi</b><span>President · Dev Team</span>
-            </li>
-            <li class="member" style="--bot:#2b7fc1;--bot-l:#e0f0ff">
-              <div class="m-photo"><span class="m-initial" aria-hidden="true">E</span><img class="m-bot" src="assets/bots/stembot_blue.png" alt="" /></div>
-              <b>Eryn</b><span>Operations & Events</span>
-            </li>
-            <li class="member" style="--bot:#b7791f;--bot-l:#fff4d1">
-              <div class="m-photo"><span class="m-initial" aria-hidden="true">E</span><img class="m-bot" src="assets/bots/stembot_cream.png" alt="" /></div>
-              <b>Eunice</b><span>Operations & Events</span>
-            </li>
-            <li class="member" style="--bot:#d64545;--bot-l:#ffe4e4">
-              <div class="m-photo"><span class="m-initial" aria-hidden="true">R</span><img class="m-bot" src="assets/bots/stembot_red.png" alt="" /></div>
-              <b>Riddhi</b><span>Operations & Events</span>
-            </li>
-            <li class="member" style="--bot:#3aa35b;--bot-l:#e4f8cf">
-              <div class="m-photo"><span class="m-initial" aria-hidden="true">D</span><img class="m-bot" src="assets/bots/stembot_green.png" alt="" /></div>
-              <b>Debbie</b><span>Curriculum</span>
-            </li>
-            <li class="member" style="--bot:#2b7fc1;--bot-l:#e0f0ff">
-              <div class="m-photo"><span class="m-initial" aria-hidden="true">C</span><img class="m-bot" src="assets/bots/stembot_blue.png" alt="" /></div>
-              <b>Cecilia</b><span>Curriculum</span>
-            </li>
-            <li class="member" style="--bot:#b7791f;--bot-l:#fff4d1">
-              <div class="m-photo"><span class="m-initial" aria-hidden="true">A</span><img class="m-bot" src="assets/bots/stembot_cream.png" alt="" /></div>
-              <b>Atreyi</b><span>Graphics</span>
-            </li>
-            <li class="member" style="--bot:#d64545;--bot-l:#ffe4e4">
-              <div class="m-photo"><span class="m-initial" aria-hidden="true">J</span><img class="m-bot" src="assets/bots/stembot_red.png" alt="" /></div>
-              <b>Julia</b><span>Publicity & Partnerships</span>
-            </li>
-            <li class="member" style="--bot:#3aa35b;--bot-l:#e4f8cf">
-              <div class="m-photo"><span class="m-initial" aria-hidden="true">Y</span><img class="m-bot" src="assets/bots/stembot_green.png" alt="" /></div>
-              <b>Yichen</b><span>Publicity & Partnerships</span>
-            </li>
-            <li class="member" style="--bot:#2b7fc1;--bot-l:#e0f0ff">
-              <div class="m-photo"><span class="m-initial" aria-hidden="true">G</span><img class="m-bot" src="assets/bots/stembot_blue.png" alt="" /></div>
-              <b>Gabrielle</b><span>Publicity & Partnerships</span>
-            </li>
-          </ul>
-        </div>
+        <p class="years-key"><span>Programmes and people</span><span class="k-partner">New partners</span></p>
       </div>
     </section>
 
-    <!-- ───────── JOIN ───────── -->
-    <section class="section section-tight">
-      <div class="wrap cta-band sticker">
-        <img src="assets/bots/stembot_green.png" alt="" />
-        <div>
-          <h2>Want to be in the next batch?</h2>
-          <p>We recruit student volunteers for curriculum, graphics, dev, operations and partnerships every year.</p>
+    <section class="section" id="exco" aria-labelledby="exco-title">
+      <div class="wrap">
+        <div class="intro">
+          <h2 id="exco-title">The current committee</h2>
+          <p>Each year's executive committee passes the goggles to the next. This is the team building STEMulate Academy.</p>
         </div>
-        <a class="btn btn-grape" href="index.html#join">Get involved <svg class="ico"><use href="#i-arrow"/></svg></a>
+        <ul class="members">
+          <li class="member" style="--bot:#3f7d20"><span class="m-initial" aria-hidden="true">J</span><div><b>Janhvi</b><span>President · Dev Team</span></div></li>
+          <li class="member" style="--bot:#1f6fb0"><span class="m-initial" aria-hidden="true">E</span><div><b>Eryn</b><span>Operations &amp; Events</span></div></li>
+          <li class="member" style="--bot:#1f6fb0"><span class="m-initial" aria-hidden="true">E</span><div><b>Eunice</b><span>Operations &amp; Events</span></div></li>
+          <li class="member" style="--bot:#1f6fb0"><span class="m-initial" aria-hidden="true">R</span><div><b>Riddhi</b><span>Operations &amp; Events</span></div></li>
+          <li class="member" style="--bot:#8a5a00"><span class="m-initial" aria-hidden="true">D</span><div><b>Debbie</b><span>Curriculum</span></div></li>
+          <li class="member" style="--bot:#8a5a00"><span class="m-initial" aria-hidden="true">C</span><div><b>Cecilia</b><span>Curriculum</span></div></li>
+          <li class="member" style="--bot:#b03a5f"><span class="m-initial" aria-hidden="true">A</span><div><b>Atreyi</b><span>Graphics</span></div></li>
+          <li class="member" style="--bot:#5a2fd8"><span class="m-initial" aria-hidden="true">J</span><div><b>Julia</b><span>Publicity &amp; Partnerships</span></div></li>
+          <li class="member" style="--bot:#5a2fd8"><span class="m-initial" aria-hidden="true">Y</span><div><b>Yichen</b><span>Publicity &amp; Partnerships</span></div></li>
+          <li class="member" style="--bot:#5a2fd8"><span class="m-initial" aria-hidden="true">G</span><div><b>Gabrielle</b><span>Publicity &amp; Partnerships</span></div></li>
+        </ul>
+        <p class="mt-lg muted">We recruit student volunteers for curriculum, graphics, dev, operations and partnerships every year. <a class="text-link" href="mailto:proj.stemulate@gmail.com?subject=Joining%20the%20Project%20STEMulate%20team">Ask about joining <svg class="ico"><use href="#i-mail"/></svg></a></p>
+      </div>
+    </section>
+
+    <section class="section band-forest on-dark" id="chapter" aria-labelledby="chapter-title">
+      <div class="wrap split">
+        <div>
+          <h2 id="chapter-title">Start a STEMulate chapter</h2>
+          <p class="lead">A STEMulate chapter is a branch of Project STEMulate that bridges the gap in STEM access where you live. Students aged 15 and above can apply on their own, as a group or as a school club.</p>
+          <p>Chapters join our international network to share resources and work across countries, and each gets a STEMulate mentor and our full resource library to help it get started.</p>
+          <ol class="steps-3">
+            <li><b>Prepare</b><span>Find a few like-minded friends. If your chapter will be based in a school, get your school's approval.</span></li>
+            <li><b>Apply</b><span>Every team member fills in the chapter application form. You'll hear back within a week.</span></li>
+            <li><b>Interview</b><span>Once your application is approved, we'll schedule a chat about you and your chapter plans.</span></li>
+          </ol>
+          <div class="cta-row">
+            <a class="btn btn-lime" href="https://forms.gle/hVamwo17bEeovGHa7" target="_blank" rel="noopener">Chapter application form <svg class="ico"><use href="#i-out"/></svg></a>
+            <a class="btn btn-outline" href="mailto:proj.stemulate@gmail.com?subject=Starting%20a%20STEMulate%20chapter"><svg class="ico"><use href="#i-mail"/></svg> Ask a question</a>
+          </div>
+        </div>
+        <figure class="poster">
+          <img src="assets/photos/chapter-poster.jpg" alt="Project STEMulate chapter application poster: Hey you! Yes, you! Start your own chapter of Project STEMulate" loading="lazy" width="700" height="990" />
+        </figure>
+      </div>
+    </section>
+
+    <section class="section" id="faq" aria-labelledby="faq-title">
+      <div class="wrap">
+        <h2 id="faq-title">Questions we get asked</h2>
+        <div class="faq">
+          <details>
+            <summary>What is Project STEMulate?</summary>
+            <p>A student-initiated volunteering programme that carries out STEM enrichment activities for primary school students from less-fortunate families.</p>
+          </details>
+          <details>
+            <summary>Who can volunteer?</summary>
+            <p>Any enthusiastic youth volunteers who are passionate about STEM and eager to make a positive difference in the lives of underprivileged children and their families are welcome to join.</p>
+          </details>
+          <details>
+            <summary>What kinds of activities do you run?</summary>
+            <p>Hands-on workshops, interactive experiments, personal 1-to-1 sessions, learning journeys and a range of events, all designed to get children exploring STEM.</p>
+          </details>
+          <details>
+            <summary>How often are the activities held?</summary>
+            <p>1-to-1 sessions run weekly. Other event dates are on this website and in our monthly newsletter.</p>
+          </details>
+          <details>
+            <summary>I have another question.</summary>
+            <p>Email us at <a href="mailto:proj.stemulate@gmail.com">proj.stemulate@gmail.com</a> and we'll get back to you within a few days.</p>
+          </details>
+        </div>
       </div>
     </section>
   </main>
 
-  <footer class="site-footer">
+  <footer class="site-footer on-dark">
     <div class="wrap footer-grid">
       <div class="footer-brand">
-        <img src="assets/logo.png" alt="" width="52" height="47" />
+        <img src="assets/logo.png" alt="" width="58" height="50" />
         <div>
           <b>Project STEMulate</b>
-          <p><span class="footer-tag">Curiosity for all.</span> A student-initiated volunteering programme bringing hands-on STEM to every child in Singapore.</p>
+          <span class="footer-slogan">STEMpowering students, discovering potential.</span>
+          <p>A student-initiated volunteering programme bringing hands-on STEM to primary schoolers in Singapore.</p>
         </div>
       </div>
-      <nav class="footer-links" aria-label="Footer">
-        <a href="index.html">Home</a><a href="about.html">About us</a><a href="curriculum.html">Curriculum</a><a href="impact.html">Impact</a><a href="index.html#academy">Academy</a><a href="index.html#join">Get involved</a>
-      </nav>
-      <a class="btn btn-lime btn-sm" data-academy-link href="index.html#academy">STEMulate Academy <svg class="ico"><use href="#i-out"/></svg></a>
+      <div class="footer-col">
+        <h2>Explore</h2>
+        <ul>
+          <li><a href="workshops.html">Workshops</a></li>
+          <li><a href="curriculum.html">Curriculum and slides</a></li>
+          <li><a href="impact.html">Impact and partners</a></li>
+          <li><a href="about.html">About us</a></li>
+          <li><a data-academy-link href="index.html#academy">STEMulate Academy</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h2>Say hello</h2>
+        <ul>
+          <li><a href="mailto:proj.stemulate@gmail.com">proj.stemulate@gmail.com</a></li>
+          <li><a href="https://www.instagram.com/proj.stemulate/" target="_blank" rel="noopener">Instagram: @proj.stemulate</a></li>
+          <li><a href="https://forms.gle/DpEq8HYnEuSbjvJ57" target="_blank" rel="noopener">Monthly newsletter</a></li>
+          <li><a href="#chapter">Start a chapter</a></li>
+        </ul>
+      </div>
     </div>
-    <p class="wrap copyright">© 2026 Project STEMulate. STEMbot characters, card art and workshop slides belong to Project STEMulate.</p>
+    <p class="wrap copyright">© 2026 Project STEMulate. Photos, STEMbot characters, card art and workshop slides belong to Project STEMulate.</p>
   </footer>
 
   <script src="script.js"></script>

@@ -42,7 +42,7 @@ test("story choices are saved per student and checked", async (t) => {
     assert.equal(exp.json.storyChoices.length, 2);
     const del = await kid.del("/api/me", { pin: signed.body.pin });
     assert.equal(del.status, 200);
-    const left = srv.db.prepare("SELECT COUNT(*) AS n FROM story_choices").get().n;
+    const [{ n: left }] = await srv.sql("SELECT count(*)::int AS n FROM story_choices");
     assert.equal(left, 0);
   });
 });

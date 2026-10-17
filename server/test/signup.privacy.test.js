@@ -29,9 +29,10 @@ test("sign-up limits, organisations, reflections, leaderboard and account deleti
   await t.test("'Others' stores free text and never adds to the dropdown", async () => {
     const res = await signUp(srv.client(), { orgId: undefined, orgOther: "Little Stars Centre" });
     assert.equal(res.status, 201);
-    const row = srv.db
-      .prepare("SELECT u.org_other, o.org_name FROM users u JOIN organisations o ON o.org_id = u.org_id WHERE u.user_id = ?")
-      .get(res.json.user.userId);
+    const [row] = await srv.sql(
+      "SELECT u.org_other, o.org_name FROM users u JOIN organisations o ON o.org_id = u.org_id WHERE u.user_id = $1",
+      [res.json.user.userId],
+    );
     assert.deepEqual(row, { org_other: "Little Stars Centre", org_name: "Other" });
 
     const names = (await srv.client().get("/api/reference-data")).json.organisations.map((o) => o.name);
@@ -41,7 +42,7 @@ test("sign-up limits, organisations, reflections, leaderboard and account deleti
   });
 
   await t.test("unknown organisation ids are rejected", async () => {
-    const otherId = srv.db.prepare("SELECT org_id FROM organisations WHERE org_name = 'Other'").get().org_id;
+    const [{ org_id: otherId }] = await srv.sql("SELECT org_id FROM organisations WHERE org_name = 'Other'");
     assert.equal((await signUp(srv.client(), { orgId: 999 })).status, 400);
     assert.equal((await signUp(srv.client(), { orgId: otherId })).status, 400);
   });
@@ -71,7 +72,7 @@ test("sign-up limits, organisations, reflections, leaderboard and account deleti
   });
 
   await t.test("leaderboard is backed by users.xp", async () => {
-    srv.db.prepare("UPDATE users SET xp = 4321 WHERE user_id = ?").run(userId);
+    await srv.sql("UPDATE users SET xp = 4321 WHERE user_id = $1", [userId]);
     const { entries } = (await kid.get("/api/leaderboard")).json;
     assert.ok(entries.length <= 50);
     assert.equal(entries[0].xp, 4321);
@@ -81,7 +82,7 @@ test("sign-up limits, organisations, reflections, leaderboard and account deleti
 
   await t.test("DELETE /api/me needs the PIN and removes the student's rows", async () => {
     await kid.post("/api/progress", { lessonId: "mm-intro", status: "completed" });
-    srv.db.prepare("UPDATE users SET atoms = 100 WHERE user_id = ?").run(userId);
+    await srv.sql("UPDATE users SET atoms = 100 WHERE user_id = $1", [userId]);
     await kid.post("/api/packs/open", { albumKey: "phenomena", packId: "phen-p1" });
 
     assert.equal((await kid.del("/api/me", { pin: "0000" })).status, 401);
@@ -89,7 +90,7 @@ test("sign-up limits, organisations, reflections, leaderboard and account deleti
     const res = await kid.del("/api/me", { pin: "1234" });
     assert.equal(res.status, 200);
     for (const table of ["users", "lesson_progress", "user_cards", "reflections", "sessions", "beat_replays", "game_scores"]) {
-      const { n } = srv.db.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE user_id = ?`).get(userId);
+      const [{ n }] = await srv.sql(`SELECT count(*)::int AS n FROM ${table} WHERE user_id = $1`, [userId]);
       assert.equal(n, 0, table);
     }
     assert.equal((await kid.get("/api/user/me")).status, 401);

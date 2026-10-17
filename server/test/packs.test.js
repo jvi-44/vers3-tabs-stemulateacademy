@@ -33,7 +33,7 @@ test("opening a pack deducts atoms and persists cards; insufficient atoms return
   });
 
   await t.test("opening a pack charges the cost and stores the cards", async () => {
-    srv.db.prepare("UPDATE users SET atoms = 200 WHERE user_id = ?").run(userId);
+    await srv.sql("UPDATE users SET atoms = 200 WHERE user_id = $1", [userId]);
 
     const res = await kid.post("/api/packs/open", { albumKey: "phenomena", packId: "phen-p1" });
     assert.equal(res.status, 200);

@@ -6,13 +6,15 @@
 // needs no extra packages and works through the Vite /api proxy.
 //
 // Rooms live in memory: they only matter while a match is being played.
-// High scores are stored in SQLite (game_scores table in schema.sql).
+// High scores are stored in the database (game_scores in supabase/schema.sql).
 //
 // Every route needs a signed-in student. A player's id, name and avatar come
 // from their account on the server, never from the request, so nobody can
 // act as someone else or show a made-up name or picture to other children.
 
 import { requireUser } from "./auth.js";
+import { rpc } from "./db.js";
+import { route } from "./route.js";
 
 const MAX_PLAYERS = 4;
 const MAX_ROOMS = 200;
@@ -69,8 +71,8 @@ function broadcastRoom(room) {
 
 /** The live-play identity for the signed-in student. `avatar` is a stored
  *  avatar key (the client turns it into an image). */
-function playerFor(db, userId) {
-  const row = db.prepare("SELECT username, avatar FROM users WHERE user_id = ?").get(userId);
+async function playerFor(userId) {
+  const row = await rpc("stem_user", { p_user_id: userId });
   return row ? { id: String(userId), name: row.username, avatar: row.avatar ?? "" } : null;
 }
 
@@ -86,40 +88,29 @@ setInterval(() => {
   }
 }, 30_000).unref();
 
-export function registerGameRoutes(app, db) {
+export function registerGameRoutes(app) {
   // ── High scores (0–100 per game) ──────────────────────────
   // Signed-in player only (the user comes from the session cookie).
-  app.get("/api/game-scores", requireUser, (req, res) => {
-    const rows = db
-      .prepare("SELECT game_id, best_score, plays FROM game_scores WHERE user_id = ?")
-      .all(req.userId);
-    res.json({ scores: rows });
-  });
+  app.get("/api/game-scores", requireUser, route(async (req, res) => {
+    res.json({ scores: await rpc("stem_game_scores", { p_user_id: req.userId }) });
+  }));
 
-  app.post("/api/game-scores", requireUser, (req, res) => {
-    const userId = req.userId;
+  app.post("/api/game-scores", requireUser, route(async (req, res) => {
     const { gameId, score } = req.body || {};
     const s = Math.max(0, Math.min(100, Math.round(Number(score))));
     if (typeof gameId !== "string" || !GAME_ID_REGEX.test(gameId) || Number.isNaN(s)) {
       return res.status(400).json({ error: "Missing fields." });
     }
-    const known = db.prepare("SELECT 1 FROM game_scores WHERE user_id = ? AND game_id = ?").get(userId, gameId);
-    if (!known) {
-      const { n } = db.prepare("SELECT COUNT(*) AS n FROM game_scores WHERE user_id = ?").get(userId);
-      if (n >= MAX_GAMES_PER_USER) return res.status(400).json({ error: "Unknown game." });
-    }
-    db.prepare(
-      `INSERT INTO game_scores (user_id, game_id, best_score) VALUES (?, ?, ?)
-       ON CONFLICT(user_id, game_id) DO UPDATE SET
-         best_score = MAX(best_score, excluded.best_score),
-         plays = plays + 1,
-         updated_at = datetime('now')`,
-    ).run(userId, gameId, s);
-    const row = db
-      .prepare("SELECT best_score, plays FROM game_scores WHERE user_id = ? AND game_id = ?")
-      .get(userId, gameId);
-    res.json({ best: row.best_score, plays: row.plays });
-  });
+    // Keeps the best score and counts plays; null once a student has MAX_GAMES_PER_USER games.
+    const row = await rpc("stem_game_score_record", {
+      p_user_id: req.userId,
+      p_game_id: gameId,
+      p_score: s,
+      p_max_games: MAX_GAMES_PER_USER,
+    });
+    if (!row) return res.status(400).json({ error: "Unknown game." });
+    res.json({ best: row.best, plays: row.plays });
+  }));
 
   // ── Live rooms ────────────────────────────────────────────
   app.use("/api/game-rooms", requireUser);
@@ -132,9 +123,9 @@ export function registerGameRoutes(app, db) {
     res.json({ rooms: open });
   });
 
-  app.post("/api/game-rooms", (req, res) => {
+  app.post("/api/game-rooms", route(async (req, res) => {
     const { gameId } = req.body || {};
-    const p = playerFor(db, req.userId);
+    const p = await playerFor(req.userId);
     if (typeof gameId !== "string" || !GAME_ID_REGEX.test(gameId) || !p) {
       return res.status(400).json({ error: "Missing game or player." });
     }
@@ -163,12 +154,12 @@ export function registerGameRoutes(app, db) {
     };
     rooms.set(code, room);
     res.json({ room: publicRoom(room) });
-  });
+  }));
 
-  app.post("/api/game-rooms/:code/join", (req, res) => {
+  app.post("/api/game-rooms/:code/join", route(async (req, res) => {
     const room = findRoom(req.params.code);
     if (!room) return res.status(404).json({ error: "No game with that code. Check it and try again." });
-    const p = playerFor(db, req.userId);
+    const p = await playerFor(req.userId);
     if (!p) return res.status(400).json({ error: "Missing player." });
     const existing = room.players.find((x) => x.id === p.id);
     if (!existing) {
@@ -178,7 +169,7 @@ export function registerGameRoutes(app, db) {
     }
     broadcastRoom(room);
     res.json({ room: publicRoom(room) });
-  });
+  }));
 
   app.get("/api/game-rooms/:code/events", (req, res) => {
     const room = findRoom(req.params.code);

@@ -1,19 +1,28 @@
-// Shared test harness: boots the real Express app against a throwaway SQLite
-// file and gives each test a tiny fetch client with its own cookie jar.
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
+// Shared test harness: boots the real Express app against a throwaway database
+// and gives each test a tiny fetch client with its own cookie jar.
+//
+// By default the database is an in-memory PGlite. With TEST_DB=supabase
+// (npm run test:server runs both) the server instead talks to a stand-in for
+// Supabase over HTTP through supabase-js, exactly as it does on the host.
+import { startFakeSupabase, TEST_SECRET_KEY } from "./fakeSupabase.js";
 
 export async function startServer() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "stemulate-test-"));
-  process.env.DB_PATH = path.join(dir, "test.db");
   process.env.SESSION_SECRET ||= "test-secret-not-for-production";
-  // Never call the real Gemini API from tests (dotenv won't override this).
+  // Never call the real Gemini API, or a real Supabase project, from tests.
+  // Empty rather than unset, because dotenv won't override an empty value.
   process.env.GEMINI_API_KEY = "";
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "";
 
-  // Imported only after DB_PATH is set, because db.js opens the file on load.
+  const fake = process.env.TEST_DB === "supabase" ? await startFakeSupabase() : null;
+  process.env.SUPABASE_URL = fake ? fake.url : "";
+  process.env.SUPABASE_SECRET_KEY = fake ? TEST_SECRET_KEY : "";
+  process.env.DB_PATH = "memory://";
+
+  // Imported only now, because db.js picks the database when it loads.
   const { default: app } = await import("../app.js");
-  const { default: db } = await import("../db.js");
+  const database = await import("../db.js");
+  await database.ready;
+  const db = fake ? fake.db : database.localDatabase();
 
   const server = await new Promise((resolve) => {
     const s = app.listen(0, "127.0.0.1", () => resolve(s));
@@ -22,12 +31,14 @@ export async function startServer() {
 
   return {
     base,
-    db,
+    /** Runs SQL straight against the test database (Postgres, $1-style
+     *  parameters) and returns the rows. For setting up and checking state. */
+    sql: async (text, params = []) => (await db.query(text, params)).rows,
     client: () => makeClient(base),
     async close() {
       await new Promise((resolve) => server.close(resolve));
-      db.close();
-      fs.rmSync(dir, { recursive: true, force: true });
+      await database.closeDatabase();
+      await fake?.close();
     },
   };
 }

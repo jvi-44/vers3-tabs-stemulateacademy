@@ -8,32 +8,20 @@ import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import db, { ORGANISATIONS, OTHER_ORG_NAME } from "./db.js";
+import { rpc } from "./db.js";
+import { route } from "./route.js";
 import {
   BEATS_BY_ID,
   LESSONS,
   REPLAY_REWARD,
   REPLAYS_PER_DAY,
   botNameForBeat,
-  levelForXp,
   pointsFor,
 } from "./lessons.js";
 import { findPack, rollPack } from "./cards.js";
 import { AVATAR_KEYS } from "./avatars.js";
-import {
-  COOKIE_SECRET,
-  createSession,
-  destroySession,
-  destroyAllSessionsFor,
-  requireUser,
-} from "./auth.js";
-import {
-  PIN_REGEX,
-  USERNAME_REGEX,
-  USERNAME_RULE,
-  publicUser,
-  usernameTaken,
-} from "./users.js";
+import { COOKIE_SECRET, createSession, destroySession, requireUser } from "./auth.js";
+import { PIN_REGEX, USERNAME_REGEX, USERNAME_RULE, publicUser } from "./users.js";
 import accountRoutes from "./routes/account.js";
 import socialRoutes from "./routes/social.js";
 import adminRoutes from "./routes/admin.js";
@@ -98,23 +86,13 @@ function consumeResetToken(username, token) {
   return a.length === b.length && crypto.timingSafeEqual(a, b) && entry.expiresAt > Date.now();
 }
 
-function logAttempt(username, success) {
-  db.prepare("INSERT INTO login_attempts (username, success) VALUES (?, ?)").run(
-    username,
-    success ? 1 : 0,
-  );
-}
+const logAttempt = (username, success) =>
+  rpc("stem_log_attempt", { p_username: username, p_success: success });
 
 /** True once a username has 5+ failed sign-in/recovery attempts in 15 minutes.
  *  Case-insensitive, like sign-in, so changing the case can't reset the count. */
-function isLockedOut(username) {
-  const { n } = db
-    .prepare(
-      `SELECT COUNT(*) AS n FROM login_attempts
-       WHERE username = ? COLLATE NOCASE AND success = 0 AND attempted_at > datetime('now','-15 minutes')`,
-    )
-    .get(username);
-  return n >= LOCKOUT_FAILURES;
+async function isLockedOut(username) {
+  return (await rpc("stem_recent_failures", { p_username: username })) >= LOCKOUT_FAILURES;
 }
 
 /** A username that could belong to an account. Others are rejected without
@@ -126,47 +104,22 @@ function plausibleUsername(username) {
 /** Positive integer from a number or numeric string, else null. */
 function toId(value) {
   const n = typeof value === "string" && value.trim() !== "" ? Number(value) : value;
-  return Number.isInteger(n) && n > 0 ? n : null;
-}
-
-/** Account for a typed username: exact match first, then ignoring case. */
-function findUserByUsername(username) {
-  return (
-    db.prepare("SELECT * FROM users WHERE username = ?").get(username) ??
-    db.prepare("SELECT * FROM users WHERE username = ? COLLATE NOCASE").get(username)
-  );
-}
-
-function getUserRow(userId) {
-  return db.prepare("SELECT * FROM users WHERE user_id = ?").get(userId);
+  return Number.isSafeInteger(n) && n > 0 ? n : null;
 }
 
 // ---------------------------------------------------------
-// Reference data for the sign-up dropdowns
+// Reference data for the sign-up dropdowns (also the host's health check)
 // ---------------------------------------------------------
-const ORG_PLACEHOLDERS = ORGANISATIONS.map(() => "?").join(", ");
-
-app.get("/api/reference-data", (req, res) => {
-  // Only the fixed list of centres. "Others" is a separate option on the form,
-  // and anything added by the old public POST /api/organisations is hidden.
-  const organisations = db
-    .prepare(
-      `SELECT org_id AS id, org_name AS name FROM organisations
-       WHERE org_name IN (${ORG_PLACEHOLDERS}) ORDER BY org_id`,
-    )
-    .all(...ORGANISATIONS);
-  const schoolLevels = db
-    .prepare("SELECT level_id AS id, level_name AS name FROM school_levels ORDER BY level_id")
-    .all();
-  const recoveryColours = db
-    .prepare("SELECT colour_id AS id, colour_name AS name FROM recovery_colours ORDER BY colour_id")
-    .all();
-  const recoverySubjects = db
-    .prepare("SELECT subject_id AS id, subject_name AS name FROM recovery_subjects ORDER BY subject_id")
-    .all();
-
-  res.json({ organisations, schoolLevels, recoveryColours, recoverySubjects });
-});
+app.get("/api/reference-data", route(async (req, res) => {
+  // The fixed list of centres; "Others" is a separate option on the form.
+  const data = await rpc("stem_reference_data");
+  res.json({
+    organisations: data.organisations,
+    schoolLevels: data.schoolLevels,
+    recoveryColours: data.recoveryColours,
+    recoverySubjects: data.recoverySubjects,
+  });
+}));
 
 // ---------------------------------------------------------
 // Sign up
@@ -206,9 +159,8 @@ app.post("/api/signup", async (req, res) => {
       return res.status(400).json({ error: "PIN must be exactly 4 digits." });
     }
 
-    // "Others (please specify)": keep the typed name as free text on the user
-    // and point org_id at the fixed "Other" row.
-    let organisationId;
+    // "Others (please specify)": keep the typed name as free text on the user;
+    // the database points org_id at the fixed "Other" row.
     let orgOtherText = null;
     if (typeof orgOther === "string" && orgOther.trim()) {
       orgOtherText = orgOther.trim();
@@ -217,57 +169,37 @@ app.post("/api/signup", async (req, res) => {
           error: `Organisation name must be ${NAME_MAX} characters or fewer.`,
         });
       }
-      organisationId = db
-        .prepare("SELECT org_id FROM organisations WHERE org_name = ?")
-        .get(OTHER_ORG_NAME)?.org_id;
-    } else {
-      const id = toId(orgId);
-      organisationId =
-        id &&
-        db
-          .prepare(`SELECT org_id FROM organisations WHERE org_id = ? AND org_name IN (${ORG_PLACEHOLDERS})`)
-          .get(id, ...ORGANISATIONS)?.org_id;
     }
 
+    const organisationId = orgOtherText ? null : toId(orgId);
     const levelId = toId(schoolLevelId);
     const colourId = toId(recoveryColourId);
     const subjectId = toId(recoverySubjectId);
-    if (!levelId || !organisationId || !colourId || !subjectId) {
+    if (!levelId || (!orgOtherText && !organisationId) || !colourId || !subjectId) {
       return res.status(400).json({ error: "Please complete all fields." });
-    }
-    const refsExist =
-      db.prepare("SELECT 1 FROM school_levels WHERE level_id = ?").get(levelId) &&
-      db.prepare("SELECT 1 FROM recovery_colours WHERE colour_id = ?").get(colourId) &&
-      db.prepare("SELECT 1 FROM recovery_subjects WHERE subject_id = ?").get(subjectId);
-    if (!refsExist) {
-      return res.status(400).json({ error: "Please complete all fields." });
-    }
-
-    if (usernameTaken(username)) {
-      return res.status(409).json({ error: "That username is already taken." });
     }
 
     const pinHash = await bcrypt.hash(pin, 10);
-    const info = db
-      .prepare(
-        `INSERT INTO users
-          (full_name, username, pin_hash, school_level_id, org_id, org_other, recovery_colour_id, recovery_subject_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      )
-      .run(
-        fullName.trim(),
-        username,
-        pinHash,
-        levelId,
-        organisationId,
-        orgOtherText,
-        colourId,
-        subjectId,
-      );
+    // Checks the drop-down ids exist and the username is free, then saves the account.
+    const result = await rpc("stem_signup", {
+      p_full_name: fullName.trim(),
+      p_username: username,
+      p_pin_hash: pinHash,
+      p_school_level_id: levelId,
+      p_org_id: organisationId,
+      p_org_other: orgOtherText,
+      p_recovery_colour_id: colourId,
+      p_recovery_subject_id: subjectId,
+    });
+    if (result.error === "taken") {
+      return res.status(409).json({ error: "That username is already taken." });
+    }
+    if (result.error) {
+      return res.status(400).json({ error: "Please complete all fields." });
+    }
 
-    const user = getUserRow(info.lastInsertRowid);
-    createSession(res, user.user_id);
-    res.status(201).json({ user: publicUser(user) });
+    await createSession(res, result.user.user_id);
+    res.status(201).json({ user: publicUser(result.user) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Something went wrong creating the account." });
@@ -284,27 +216,28 @@ app.post("/api/login", async (req, res) => {
       return res.status(400).json({ error: "Enter your username and PIN." });
     }
     if (!username || !pin) {
-      if (username && plausibleUsername(username)) logAttempt(username, false);
+      if (username && plausibleUsername(username)) await logAttempt(username, false);
       return res.status(400).json({ error: "Enter your username and PIN." });
     }
     if (!plausibleUsername(username)) {
       return res.status(401).json({ error: "Incorrect username or PIN." });
     }
 
-    if (isLockedOut(username)) {
+    if (await isLockedOut(username)) {
       return res.status(429).json({ error: LOCKOUT_MESSAGE });
     }
 
-    const user = findUserByUsername(username);
-    const ok = user && PIN_REGEX.test(pin) && (await bcrypt.compare(pin, user.pin_hash));
+    // The account (exact name first, then ignoring case) and its PIN hash.
+    const found = await rpc("stem_user_for_login", { p_username: username });
+    const ok = found && PIN_REGEX.test(pin) && (await bcrypt.compare(pin, found.pin_hash));
     if (!ok) {
-      logAttempt(user?.username ?? username, false);
+      await logAttempt(found?.user.username ?? username, false);
       return res.status(401).json({ error: "Incorrect username or PIN." });
     }
 
-    logAttempt(user.username, true);
-    createSession(res, user.user_id);
-    res.json({ user: publicUser(user) });
+    await logAttempt(found.user.username, true);
+    await createSession(res, found.user.user_id);
+    res.json({ user: publicUser(found.user) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Something went wrong. Please try again." });
@@ -314,15 +247,15 @@ app.post("/api/login", async (req, res) => {
 // ---------------------------------------------------------
 // Sign out
 // ---------------------------------------------------------
-app.post("/api/logout", (req, res) => {
-  destroySession(req, res);
+app.post("/api/logout", route(async (req, res) => {
+  await destroySession(req, res);
   res.json({ success: true });
-});
+}));
 
 // ---------------------------------------------------------
 // Forgot PIN — step 1: verify recovery answers
 // ---------------------------------------------------------
-app.post("/api/recover/verify", (req, res) => {
+app.post("/api/recover/verify", route(async (req, res) => {
   const { username, recoveryColourId, recoverySubjectId } = req.body || {};
   if (typeof username !== "string") {
     return res.status(400).json({ error: "Please complete all fields." });
@@ -336,19 +269,19 @@ app.post("/api/recover/verify", (req, res) => {
     return res.status(401).json({ error: "Those answers don't match our records." });
   }
 
-  if (isLockedOut(username)) {
+  if (await isLockedOut(username)) {
     return res.status(429).json({ error: LOCKOUT_MESSAGE });
   }
 
-  const user = db.prepare("SELECT * FROM users WHERE username = ?").get(username);
+  const user = await rpc("stem_recovery_answers", { p_username: username });
   if (!user || user.recovery_colour_id !== colourId || user.recovery_subject_id !== subjectId) {
-    logAttempt(username, false);
+    await logAttempt(username, false);
     return res.status(401).json({ error: "Those answers don't match our records." });
   }
 
   const token = issueResetToken(username);
   res.json({ resetToken: token });
-});
+}));
 
 // ---------------------------------------------------------
 // Forgot PIN — step 2: set new PIN
@@ -374,12 +307,8 @@ app.post("/api/recover/reset", async (req, res) => {
     }
 
     const pinHash = await bcrypt.hash(newPin, 10);
-    const user = db.prepare("SELECT user_id FROM users WHERE username = ?").get(username);
-    db.prepare(
-      "UPDATE users SET pin_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE username = ?",
-    ).run(pinHash, username);
-    // A new PIN signs the account out of every other device.
-    if (user) destroyAllSessionsFor(user.user_id);
+    // A new PIN also signs the account out of every other device.
+    await rpc("stem_set_pin_for_username", { p_username: username, p_pin_hash: pinHash });
 
     res.json({ success: true });
   } catch (err) {
@@ -394,81 +323,31 @@ app.post("/api/recover/reset", async (req, res) => {
 // ---------------------------------------------------------
 // Lesson progress (always for the signed-in user)
 // ---------------------------------------------------------
-app.get("/api/progress", requireUser, (req, res) => {
-  const rows = db
-    .prepare("SELECT lesson_id, status, score FROM lesson_progress WHERE user_id = ?")
-    .all(req.userId);
-  res.json({ progress: rows });
-});
+app.get("/api/progress", requireUser, route(async (req, res) => {
+  res.json({ progress: await rpc("stem_progress_list", { p_user_id: req.userId }) });
+}));
 
 const PROGRESS_STATUSES = new Set(["in_progress", "completed"]);
 
-/** Adds XP/atoms to a user and recomputes their level (call inside a transaction). */
-function addRewards(userId, { xp, atoms }) {
-  if (!xp && !atoms) return;
-  const row = db.prepare("SELECT xp, atoms FROM users WHERE user_id = ?").get(userId);
-  const newXp = row.xp + xp;
-  db.prepare(
-    "UPDATE users SET xp = ?, level = ?, atoms = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
-  ).run(newXp, levelForXp(newXp), row.atoms + atoms, userId);
-}
-
-// Records progress; rewards are granted only the first time a beat is completed.
-const saveProgressTx = db.transaction((userId, beat, status, score) => {
-  const existing = db
-    .prepare("SELECT status FROM lesson_progress WHERE user_id = ? AND lesson_id = ?")
-    .get(userId, beat.id);
-  const alreadyDone = existing?.status === "completed";
-  const newStatus = alreadyDone ? "completed" : status;
-
-  db.prepare(
-    `INSERT INTO lesson_progress (user_id, lesson_id, status, score, last_accessed, completed_at)
-     VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CASE WHEN ? = 'completed' THEN CURRENT_TIMESTAMP ELSE NULL END)
-     ON CONFLICT(user_id, lesson_id) DO UPDATE SET
-       status = excluded.status,
-       score = COALESCE(excluded.score, lesson_progress.score),
-       last_accessed = CURRENT_TIMESTAMP,
-       completed_at = COALESCE(lesson_progress.completed_at, excluded.completed_at)`,
-  ).run(userId, beat.id, newStatus, score, newStatus);
-
-  if (newStatus !== "completed" || alreadyDone) return { xp: 0, atoms: 0 };
-  const awarded = pointsFor(beat, score);
-  addRewards(userId, awarded);
-  return awarded;
-});
-
-// Replaying a finished game: small top-up, at most REPLAYS_PER_DAY per game per 24 h.
-const replayTx = db.transaction((userId, beat) => {
-  const done = db
-    .prepare(
-      "SELECT 1 FROM lesson_progress WHERE user_id = ? AND lesson_id = ? AND status = 'completed'",
-    )
-    .get(userId, beat.id);
-  if (!done) return null;
-  const { n } = db
-    .prepare(
-      `SELECT COUNT(*) AS n FROM beat_replays
-       WHERE user_id = ? AND beat_id = ? AND replayed_at > datetime('now','-1 day')`,
-    )
-    .get(userId, beat.id);
-  if (n >= REPLAYS_PER_DAY) return { xp: 0, atoms: 0 };
-  db.prepare("INSERT INTO beat_replays (user_id, beat_id) VALUES (?, ?)").run(userId, beat.id);
-  addRewards(userId, REPLAY_REWARD);
-  return { ...REPLAY_REWARD };
-});
-
-app.post("/api/progress", requireUser, (req, res) => {
+app.post("/api/progress", requireUser, route(async (req, res) => {
   const { lessonId, status, score, replay } = req.body || {};
   const beat = typeof lessonId === "string" ? BEATS_BY_ID.get(lessonId) : undefined;
   if (!beat) return res.status(400).json({ error: "Unknown lesson." });
 
-  let awarded;
+  let result;
   if (replay === true) {
     if (beat.type !== "simulation") {
       return res.status(400).json({ error: "Only games can be replayed for rewards." });
     }
-    awarded = replayTx(req.userId, beat);
-    if (!awarded) return res.status(400).json({ error: "Finish this game once before replaying it." });
+    // Replaying a finished game: small top-up, at most REPLAYS_PER_DAY per game per 24 h.
+    result = await rpc("stem_progress_replay", {
+      p_user_id: req.userId,
+      p_lesson_id: beat.id,
+      p_max_per_day: REPLAYS_PER_DAY,
+      p_xp: REPLAY_REWARD.xp,
+      p_atoms: REPLAY_REWARD.atoms,
+    });
+    if (!result) return res.status(400).json({ error: "Finish this game once before replaying it." });
   } else {
     if (!PROGRESS_STATUSES.has(status)) {
       return res.status(400).json({ error: "Missing required fields." });
@@ -477,30 +356,37 @@ app.post("/api/progress", requireUser, (req, res) => {
       typeof score === "number" && Number.isFinite(score)
         ? Math.max(0, Math.min(100, Math.round(score)))
         : null;
-    awarded = saveProgressTx(req.userId, beat, status, safeScore);
+    // Rewards are granted only the first time a beat is completed.
+    const points = pointsFor(beat, safeScore);
+    result = await rpc("stem_progress_save", {
+      p_user_id: req.userId,
+      p_lesson_id: beat.id,
+      p_status: status,
+      p_score: safeScore,
+      p_xp: points.xp,
+      p_atoms: points.atoms,
+    });
   }
 
-  res.json({ success: true, awarded, user: publicUser(getUserRow(req.userId)) });
-});
+  res.json({ success: true, awarded: result.awarded, user: publicUser(result.user) });
+}));
 
-app.post("/api/user/avatar", requireUser, (req, res) => {
+app.post("/api/user/avatar", requireUser, route(async (req, res) => {
   const { avatar } = req.body || {};
   if (typeof avatar !== "string" || !AVATAR_KEYS.includes(avatar)) {
     return res.status(400).json({ error: "Please pick one of the avatars." });
   }
 
-  db.prepare(
-    "UPDATE users SET avatar = ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
-  ).run(avatar, req.userId);
+  await rpc("stem_set_avatar", { p_user_id: req.userId, p_avatar: avatar });
 
   res.json({ success: true });
-});
+}));
 
 // ---------------------------------------------------------
 // Exit-card reflections (shown in the Gallery to signed-in students).
 // Only the author's first name and avatar are shared.
 // ---------------------------------------------------------
-app.post("/api/reflections", requireUser, (req, res) => {
+app.post("/api/reflections", requireUser, route(async (req, res) => {
   const { beatId, caption } = req.body || {};
   const beat = typeof beatId === "string" ? BEATS_BY_ID.get(beatId) : undefined;
   if (!beat || beat.type !== "exit") return res.status(400).json({ error: "Unknown lesson." });
@@ -510,18 +396,13 @@ app.post("/api/reflections", requireUser, (req, res) => {
       error: `Reflections must be between 1 and ${REFLECTION_MAX} characters.`,
     });
   }
-  const info = db
-    .prepare("INSERT OR IGNORE INTO reflections (user_id, beat_id, caption) VALUES (?, ?, ?)")
-    .run(req.userId, beat.id, text);
-  if (info.changes === 0) {
+  // Null when the student already shared one for this exit card.
+  const row = await rpc("stem_reflection_add", { p_user_id: req.userId, p_beat_id: beat.id, p_caption: text });
+  if (!row) {
     return res.status(409).json({ error: "You already shared a reflection for this lesson." });
   }
-  res.status(201).json({ reflection: reflectionById(info.lastInsertRowid) });
-});
-
-const REFLECTION_SELECT = `
-  SELECT r.id, r.beat_id, r.caption, r.created_at, u.full_name, u.avatar
-  FROM reflections r JOIN users u ON u.user_id = r.user_id`;
+  res.status(201).json({ reflection: toPublicReflection(row) });
+}));
 
 function toPublicReflection(row) {
   return {
@@ -534,50 +415,30 @@ function toPublicReflection(row) {
   };
 }
 
-function reflectionById(id) {
-  return toPublicReflection(db.prepare(`${REFLECTION_SELECT} WHERE r.id = ?`).get(id));
-}
-
-app.get("/api/reflections", requireUser, (req, res) => {
-  const rows = db.prepare(`${REFLECTION_SELECT} ORDER BY r.id DESC LIMIT 50`).all();
+app.get("/api/reflections", requireUser, route(async (req, res) => {
+  const rows = await rpc("stem_reflections_recent", { p_limit: 50 });
   res.json({ reflections: rows.map(toPublicReflection) });
-});
+}));
 
 // ---------------------------------------------------------
 // Collectible cards — packs are paid for and rolled on the server
 // ---------------------------------------------------------
-app.get("/api/cards", requireUser, (req, res) => {
-  const rows = db
-    .prepare("SELECT card_id, count FROM user_cards WHERE user_id = ? AND count > 0")
-    .all(req.userId);
+app.get("/api/cards", requireUser, route(async (req, res) => {
   const owned = {};
-  for (const r of rows) owned[r.card_id] = r.count;
+  for (const r of await rpc("stem_cards_owned", { p_user_id: req.userId })) owned[r.card_id] = r.count;
   res.json({ owned });
-});
+}));
 
-const openPackTx = db.transaction((userId, albumKey, pack) => {
-  const row = db.prepare("SELECT atoms FROM users WHERE user_id = ?").get(userId);
-  if (!row || row.atoms < pack.cost) return null;
-  db.prepare(
-    "UPDATE users SET atoms = atoms - ?, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?",
-  ).run(pack.cost, userId);
-  const cards = rollPack(albumKey, pack);
-  const upsert = db.prepare(
-    `INSERT INTO user_cards (user_id, card_id, count) VALUES (?, ?, 1)
-     ON CONFLICT(user_id, card_id) DO UPDATE SET count = count + 1`,
-  );
-  for (const cardId of cards) upsert.run(userId, cardId);
-  return { cards, atoms: row.atoms - pack.cost };
-});
-
-app.post("/api/packs/open", requireUser, (req, res) => {
+app.post("/api/packs/open", requireUser, route(async (req, res) => {
   const { albumKey, packId } = req.body || {};
   const pack = findPack(albumKey, packId);
   if (!pack) return res.status(400).json({ error: "That pack doesn't exist." });
-  const result = openPackTx(req.userId, albumKey, pack);
-  if (!result) return res.status(400).json({ error: "Not enough Atoms for that pack!" });
-  res.json(result);
-});
+  const cards = rollPack(albumKey, pack);
+  // Takes the cost and adds the cards in one go; null if they can't afford it.
+  const paid = await rpc("stem_pack_open", { p_user_id: req.userId, p_cost: pack.cost, p_cards: cards });
+  if (!paid) return res.status(400).json({ error: "Not enough Atoms for that pack!" });
+  res.json({ cards, atoms: paid.atoms });
+}));
 
 // ---------------------------------------------------------
 // Gemini AI chat endpoint for the in-lesson STEMbot assistant.
@@ -710,7 +571,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api", accountRoutes);
 app.use("/api", socialRoutes);
 app.use("/api", storyRoutes);
-registerGameRoutes(app, db);
+registerGameRoutes(app);
 
 // ---------------------------------------------------------
 // Production: serve the built frontend (npm run build -> dist/) from the same
@@ -718,11 +579,18 @@ registerGameRoutes(app, db);
 // ---------------------------------------------------------
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// The public STEMulate website (website/, plain HTML) is served at /site, so
-// one hosted address gives members both the website and the Academy.
+// The public STEMulate website (website/, plain HTML) is its own Render static
+// site at WEBSITE_URL (https://projstemulate.com), so on the host old /site
+// links go there. Without WEBSITE_URL (your own computer) it is served at
+// /site, so one `npm start` previews both.
 const WEBSITE_DIR = path.join(__dirname, "../website");
-app.get(/^\/site$/, (_req, res) => res.redirect(301, "/site/"));
-app.use("/site", express.static(WEBSITE_DIR, { redirect: false }));
+const WEBSITE_URL = (process.env.WEBSITE_URL ?? "").trim().replace(/\/+$/, "");
+if (WEBSITE_URL) {
+  app.get(/^\/site(\/.*)?$/, (req, res) => res.redirect(301, WEBSITE_URL + (req.params[0] ?? "/")));
+} else {
+  app.get(/^\/site$/, (_req, res) => res.redirect(301, "/site/"));
+  app.use("/site", express.static(WEBSITE_DIR, { redirect: false }));
+}
 
 const DIST_DIR = path.join(__dirname, "../dist");
 if (fs.existsSync(path.join(DIST_DIR, "index.html"))) {
