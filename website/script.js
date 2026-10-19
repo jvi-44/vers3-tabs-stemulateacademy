@@ -3,26 +3,37 @@
 // gentle scroll-in animations. Shared by every page. No dependencies.
 
 // ─── The live STEMulate Academy address (hosted on Render, see DEPLOY.md). ───
-// Every "Enter STEMulate Academy" button on the site uses it. When the site is
+// Every "Enter STEMulate Academy" button on the site uses it, or the Render
+// address until the real domain answers (see below). When the site is
 // served by the Academy itself (at /site, on your own computer), the buttons
 // open that same host. When you open the website on its own on your computer
 // (localhost:8000 or a file), they go to the Academy running locally with
 // `npm run dev:all`.
 const LIVE_ACADEMY_URL = "https://academy.projstemulate.com";
+// The Academy's Render address. The buttons use it until academy.projstemulate.com
+// answers (its DNS isn't set up yet), so they never lead to an error page.
+const FALLBACK_ACADEMY_URL = "https://stemulate-academy.onrender.com";
 const LOCAL_ACADEMY_URL = "http://localhost:5173";
 const servedByAcademy = location.pathname.startsWith("/site/");
 const isLocal = !servedByAcademy && (["localhost", "127.0.0.1"].includes(location.hostname) || location.protocol === "file:");
-const ACADEMY_URL = servedByAcademy ? location.origin + "/" : isLocal ? LOCAL_ACADEMY_URL : LIVE_ACADEMY_URL;
+const ACADEMY_URL = servedByAcademy ? location.origin + "/" : isLocal ? LOCAL_ACADEMY_URL : FALLBACK_ACADEMY_URL;
 
 document.documentElement.classList.add("js");
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-if (ACADEMY_URL) {
-  document.querySelectorAll("[data-academy-link]").forEach((a) => {
-    a.href = ACADEMY_URL;
-    a.target = "_blank";
-    a.rel = "noopener";
-  });
+const academyLinks = document.querySelectorAll("[data-academy-link]");
+academyLinks.forEach((a) => {
+  a.href = ACADEMY_URL;
+  a.target = "_blank";
+  a.rel = "noopener";
+});
+
+// On the live site, switch the buttons to the real domain as soon as it answers.
+// A domain that doesn't exist yet fails at once and the fallback stays.
+if (ACADEMY_URL === FALLBACK_ACADEMY_URL) {
+  fetch(LIVE_ACADEMY_URL + "/api/reference-data", { mode: "no-cors", cache: "no-store" })
+    .then(() => academyLinks.forEach((a) => (a.href = LIVE_ACADEMY_URL)))
+    .catch(() => {});
 }
 
 // Mobile menu
