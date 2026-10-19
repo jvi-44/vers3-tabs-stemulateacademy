@@ -28,12 +28,27 @@ academyLinks.forEach((a) => {
   a.rel = "noopener";
 });
 
-// On the live site, switch the buttons to the real domain as soon as it answers.
-// A domain that doesn't exist yet fails at once and the fallback stays.
+// On the live site, switch the buttons to the real domain once the Academy
+// answers there. The check loads academy-check.png, a tiny image only the
+// Academy serves (public/ in this repo): a missing domain, a parked page or a
+// host's error page can't load as that image, so the fallback stays until the
+// Academy itself is live on academy.projstemulate.com. It runs only when
+// someone reaches for a button, so page loads and search crawlers never request
+// an address that may not exist yet (a console error).
 if (ACADEMY_URL === FALLBACK_ACADEMY_URL) {
-  fetch(LIVE_ACADEMY_URL + "/api/reference-data", { mode: "no-cors", cache: "no-store" })
-    .then(() => academyLinks.forEach((a) => (a.href = LIVE_ACADEMY_URL)))
-    .catch(() => {});
+  let checked = false;
+  const checkLiveAcademy = () => {
+    if (checked) return;
+    checked = true;
+    const probe = new Image();
+    probe.onload = () => academyLinks.forEach((a) => (a.href = LIVE_ACADEMY_URL));
+    probe.src = `${LIVE_ACADEMY_URL}/academy-check.png?${Date.now()}`;
+  };
+  academyLinks.forEach((a) => {
+    for (const type of ["pointerenter", "focus", "touchstart"]) {
+      a.addEventListener(type, checkLiveAcademy, { once: true, passive: true });
+    }
+  });
 }
 
 // Mobile menu

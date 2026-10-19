@@ -1,0 +1,29 @@
+# Project STEMulate
+
+> Student-led volunteering programme running free, hands-on STEM workshops for primary schoolers from less-privileged backgrounds in Singapore. Started in 2023 by Raffles Institution students.
+
+Key facts, as stated on this website (October 2026):
+
+- What it is: a student-initiated volunteering programme that carries out STEM enrichment activities for primary school students from less-fortunate families in Singapore. Workshops are free for the children.
+- Who runs it: student volunteers, led by a yearly executive committee. Volunteers write every workshop themselves.
+- Where: Singapore, with student care centres, family service centres, libraries and charities.
+- Reach so far: 450+ children, 80+ workshops, 10 partner organisations and 50 student volunteers since 2023.
+- Workshops: STEM x Sports, STEM x Coding, STEM x Games, STEM x Nature, STEM x Magic and STEM x Content creation. Each pairs STEM with something children already love, has a theory part and a hands-on part, is aligned with the Singapore primary school syllabus and lasts 1.5 to 3 hours.
+- STEM x Games curriculum: Minecraft Masterminds (P5 and P6: matter, the water cycle, area and volume), Mission Millionaire (P4 to P6: money, GST, percentages and interest) and Space Busters (P5 and P6: energy, forces, rockets and BODMAS).
+- Partners: Beyond Social Services (the first partner, in 2023), Canossaville Children and Community Services, Chinese Development Assistance Council (CDAC), VIVA Foundation, Brighton Connection, Caritas Singapore, FaithActs, Society of Sheng Hong Welfare Services and New Life Community Services.
+- Also: weekly 1-to-1 sessions, learning journeys and monthly enrichment activities.
+- STEMulate Academy: the programme's online learning world, so learning continues between workshops. Children sign in with a username and a 4-digit PIN; no email is needed.
+- STEMulate chapters: students aged 15 and above can start a chapter of Project STEMulate where they live, on their own, as a group or as a school club.
+- Contact: proj.stemulate@gmail.com · Instagram @proj.stemulate
+
+## Pages
+
+- [Home](https://projstemulate.com/): what Project STEMulate does, its impact so far, the six STEM x workshops, how a workshop runs, partners and STEMulate Academy.
+- [Workshops](https://projstemulate.com/workshops.html): the STEM x series, 1-to-1 sessions, learning journeys and monthly activities, and how a centre can book a workshop.
+- [Curriculum](https://projstemulate.com/curriculum.html): the three STEM x Games workshops in detail, with the real slide decks, learning outcomes and the syllabus map.
+- [Impact and partners](https://projstemulate.com/impact.html): the numbers, how impact is measured, each partner organisation and what families, partners and volunteers say.
+- [About us](https://projstemulate.com/about.html): the mission, the story since 2023, the current committee, starting a STEMulate chapter and common questions.
+
+## Optional
+
+- [STEMulate Academy](https://academy.projstemulate.com/): the online learning world for children (sign-in needed).

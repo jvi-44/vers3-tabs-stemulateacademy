@@ -1,4 +1,20 @@
+# Project STEMulate: everyone may crawl, index and cite this site.
 User-agent: *
+Allow: /
+
+# AI search and assistants, listed so the choice is explicit.
+User-agent: OAI-SearchBot
+User-agent: GPTBot
+User-agent: ChatGPT-User
+User-agent: Claude-SearchBot
+User-agent: ClaudeBot
+User-agent: Claude-User
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: Google-Extended
+User-agent: Applebot-Extended
+User-agent: CCBot
+User-agent: Meta-ExternalAgent
 Allow: /
 
 Sitemap: https://projstemulate.com/sitemap.xml
