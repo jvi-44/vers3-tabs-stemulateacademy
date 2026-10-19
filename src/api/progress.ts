@@ -1,6 +1,6 @@
-// Talks to the same Express + SQLite backend as auth.ts. See server/index.js
-// for the routes and SQL_EXPLAINED.md (project root) for a walkthrough of how
-// this all persists to disk.
+// Talks to the same Express backend as auth.ts. See server/app.js for the
+// routes and SQL_EXPLAINED.md (project root) for a walkthrough of how it is
+// all saved in the database.
 
 import { request } from "./client";
 
@@ -72,7 +72,7 @@ export function openPack(
   });
 }
 
-// ---- Gallery reflections (the leaderboard is in social.ts) ----
+// ---- Exit-card reflections (saved for their author only) ----
 
 export interface Reflection {
   id: number;
@@ -81,10 +81,6 @@ export interface Reflection {
   caption: string;
   beatTitle: string;
   createdAt: string;
-}
-
-export function getReflections(): Promise<{ reflections: Reflection[] }> {
-  return request("/reflections");
 }
 
 export function postReflection(beatId: string, caption: string): Promise<{ reflection: Reflection }> {

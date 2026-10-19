@@ -5,11 +5,11 @@ import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { startServer, signUp } from "./helpers.js";
 
-// Times come back the way SQLite's CURRENT_TIMESTAMP writes them (UTC); the
-// admin page and the chat parse exactly this format.
+// Times come back as "YYYY-MM-DD HH:MM:SS" in UTC (stem_ts in schema.sql, the
+// format the API has always sent); the admin page and the chat parse exactly this.
 const SQL_TIME = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
 const PASSKEY = "test-admin-passkey-long-enough";
-const USER_KEYS = ["atoms", "avatar", "fullName", "level", "orgId", "schoolLevelId", "userId", "username", "xp"].sort();
+const USER_KEYS = ["atoms", "avatar", "fullName", "level", "orgId", "orgOther", "schoolLevelId", "userId", "username", "xp"].sort();
 const PROFILE_KEYS = [...USER_KEYS, "createdAt", "orgName", "schoolLevelName"].sort();
 const OTHER_USER_KEYS = ["avatar", "level", "userId", "username"];
 
@@ -72,6 +72,17 @@ test("reference data lists the fixed sign-up options in order", async () => {
     json.recoverySubjects.map((s) => s.name),
     ["Mathematics", "Science", "English", "Mother Tongue", "Art", "Music", "Physical Education"],
   );
+});
+
+test("every response carries the basic browser protections", async () => {
+  for (const path of ["/api/reference-data", "/api/does-not-exist", "/site/"]) {
+    const res = await fetch(srv.base + path);
+    assert.equal(res.headers.get("x-content-type-options"), "nosniff", path);
+    assert.equal(res.headers.get("x-frame-options"), "DENY", path);
+    assert.equal(res.headers.get("referrer-policy"), "strict-origin-when-cross-origin", path);
+    // HTTPS-only is for the host; here, as on your own computer, it's plain http.
+    assert.equal(res.headers.get("strict-transport-security"), null, path);
+  }
 });
 
 test("on your own computer the website is previewed at /site", async () => {
@@ -615,7 +626,7 @@ test("game scores: best kept, plays counted, at most 100 games each", async () =
   assert.equal((await kid.get("/api/game-scores")).json.scores.length, 100);
 });
 
-test("reflections: newest first, first name only", async () => {
+test("reflections: the author gets theirs back, and nobody can list them", async () => {
   const [x, y] = [srv.client(), srv.client()];
   await signUp(x, { fullName: "Lee Wei Ming" });
   await signUp(y, { fullName: "Sara" });
@@ -624,16 +635,12 @@ test("reflections: newest first, first name only", async () => {
   assert.equal(made.status, 201);
   assert.deepEqual(keys(made.json), ["reflection"]);
   assert.deepEqual(keys(made.json.reflection), ["avatar", "beatTitle", "caption", "createdAt", "firstName", "id"]);
-  assert.match(made.json.reflection.createdAt, SQL_TIME);
-  const { reflections } = (await x.get("/api/reflections")).json;
-  assert.deepEqual(
-    reflections.slice(0, 2).map((r) => [r.caption, r.firstName, r.beatTitle, r.avatar]),
-    [
-      ["Space!", "Sara", "Exit Card", null],
-      ["Budgets!", "Lee", "Exit Card", null],
-    ],
-  );
-  assert.equal(reflections[0].id, made.json.reflection.id);
+  const r = made.json.reflection;
+  assert.deepEqual([r.caption, r.firstName, r.beatTitle, r.avatar], ["Space!", "Sara", "Exit Card", null]);
+  assert.match(r.createdAt, SQL_TIME);
+  // Lee can't list Sara's (or anyone's); each student only finds their own, in their data export.
+  assert.equal((await x.get("/api/reflections")).status, 404);
+  assert.deepEqual((await x.get("/api/me/export")).json.reflections.map((e) => e.caption), ["Budgets!"]);
 });
 
 test("admin: stats, students, progress and the student tools", async (t) => {
@@ -656,6 +663,7 @@ test("admin: stats, students, progress and the student tools", async (t) => {
 
   await t.test("the student list", async () => {
     const quiet = await signUp(srv.client());
+    const typed = await signUp(srv.client(), { orgId: undefined, orgOther: "Little Stars Centre" });
     const { users } = (await admin("GET", "/users")).json;
     const row = users.find((u) => u.userId === kidId);
     assert.deepEqual(keys(row), [
@@ -664,21 +672,28 @@ test("admin: stats, students, progress and the student tools", async (t) => {
       "completed",
       "createdAt",
       "fullName",
-      "lastLogin",
+      "lastActive",
       "level",
       "orgName",
+      "orgOther",
       "schoolLevelName",
       "userId",
       "username",
       "xp",
     ]);
     assert.deepEqual(
-      [row.fullName, row.username, row.orgName, row.schoolLevelName, row.completed, row.xp, row.level, row.atoms],
-      ["Admin Test", K.body.username, "VIVA Foundation", "Primary 6", 1, 100, 1, 50],
+      [row.fullName, row.username, row.orgName, row.orgOther, row.schoolLevelName, row.completed, row.xp, row.level, row.atoms],
+      ["Admin Test", K.body.username, "VIVA Foundation", null, "Primary 6", 1, 100, 1, 50],
     );
     assert.match(row.createdAt, SQL_TIME);
-    assert.match(row.lastLogin, SQL_TIME);
-    assert.equal(users.find((u) => u.userId === idOf(quiet)).lastLogin, null);
+    assert.match(row.lastActive, SQL_TIME);
+    assert.ok(row.lastActive >= row.createdAt);
+    // Signed up and stayed signed in (no typed PIN since): active since joining, not "Never".
+    const quietRow = users.find((u) => u.userId === idOf(quiet));
+    assert.equal(quietRow.lastActive, quietRow.createdAt);
+    // A centre typed under "Others" is shown, not just "Other".
+    const typedRow = users.find((u) => u.userId === idOf(typed));
+    assert.deepEqual([typedRow.orgName, typedRow.orgOther], ["Other", "Little Stars Centre"]);
   });
 
   await t.test("one student's progress", async () => {

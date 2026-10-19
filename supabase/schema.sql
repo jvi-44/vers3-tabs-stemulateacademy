@@ -68,6 +68,14 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS org_other TEXT;
 -- Usernames are unique ignoring capital letters ("Alice" and "alice" clash).
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_lower ON users (lower(username));
 
+-- Every foreign key has an index (here and below), so deleting a row never
+-- scans a whole table to find what points at it. Supabase's Performance
+-- Advisor checks for these.
+CREATE INDEX IF NOT EXISTS idx_users_school_level ON users (school_level_id);
+CREATE INDEX IF NOT EXISTS idx_users_org ON users (org_id);
+CREATE INDEX IF NOT EXISTS idx_users_recovery_colour ON users (recovery_colour_id);
+CREATE INDEX IF NOT EXISTS idx_users_recovery_subject ON users (recovery_subject_id);
+
 -- Deleting a user removes every row tied to them (PDPA, see
 -- docs/DATA_PRIVACY.md), hence ON DELETE CASCADE below. stem_user_delete()
 -- also removes them one by one, so the cascades are a safety net for deletes
@@ -148,6 +156,8 @@ CREATE TABLE IF NOT EXISTS conversations (
     created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE INDEX IF NOT EXISTS idx_conversations_created_by ON conversations (created_by);
+
 CREATE TABLE IF NOT EXISTS conversation_members (
     conversation_id  BIGINT NOT NULL REFERENCES conversations(conversation_id) ON DELETE CASCADE,
     user_id          BIGINT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
@@ -167,6 +177,7 @@ CREATE TABLE IF NOT EXISTS messages (
 );
 
 CREATE INDEX IF NOT EXISTS idx_messages_convo ON messages (conversation_id, message_id);
+CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages (sender_id);
 
 -- Best score (0-100) per lesson game (server/gameRooms.js).
 CREATE TABLE IF NOT EXISTS game_scores (
@@ -186,7 +197,8 @@ CREATE TABLE IF NOT EXISTS user_cards (
     PRIMARY KEY (user_id, card_id)
 );
 
--- Exit-card reflections shown in the Gallery, one per student per exit card.
+-- Exit-card reflections, one per student per exit card. Only the student who
+-- wrote one gets it back ("Download my data"); other students never see them.
 CREATE TABLE IF NOT EXISTS reflections (
     id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_id     BIGINT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
@@ -251,7 +263,7 @@ ON CONFLICT (subject_name) DO NOTHING;
 -- Bump this, and SCHEMA_VERSION in server/db.js, whenever this file changes.
 CREATE OR REPLACE FUNCTION stem_schema_version() RETURNS json
 LANGUAGE sql IMMUTABLE SET search_path = public AS $$
-  SELECT to_json(1)
+  SELECT to_json(2)
 $$;
 
 -- Times go out the way the API has always sent them: "2026-10-17 08:30:00",
@@ -681,7 +693,7 @@ BEGIN
   RETURN json_build_object('atoms', v_atoms);
 END $$;
 
--- An exit-card reflection, the way the Gallery shows it, or null if the
+-- Saves an exit-card reflection and returns it for its author, or null if the
 -- student already shared one for that exit card.
 CREATE OR REPLACE FUNCTION stem_reflection_add(p_user_id bigint, p_beat_id text, p_caption text) RETURNS json
 LANGUAGE plpgsql SET search_path = public AS $$
@@ -698,15 +710,9 @@ BEGIN
             FROM users u WHERE u.user_id = r.user_id);
 END $$;
 
-CREATE OR REPLACE FUNCTION stem_reflections_recent(p_limit integer) RETURNS json
-LANGUAGE sql STABLE SET search_path = public AS $$
-  SELECT coalesce(json_agg(json_build_object('id', x.id, 'beat_id', x.beat_id, 'caption', x.caption,
-                                             'created_at', stem_ts(x.created_at), 'full_name', x.full_name, 'avatar', x.avatar)
-           ORDER BY x.id DESC), '[]')
-    FROM (SELECT r.id, r.beat_id, r.caption, r.created_at, u.full_name, u.avatar
-            FROM reflections r JOIN users u ON u.user_id = r.user_id
-           ORDER BY r.id DESC LIMIT p_limit) x
-$$;
+-- Older copies of this file listed every student's reflections, with first
+-- names, for a Gallery the app no longer has.
+DROP FUNCTION IF EXISTS stem_reflections_recent(integer);
 
 CREATE OR REPLACE FUNCTION stem_story_choices(p_user_id bigint) RETURNS json
 LANGUAGE sql STABLE SET search_path = public AS $$
@@ -1011,17 +1017,25 @@ LANGUAGE sql STABLE SET search_path = public AS $$
     'groups', (SELECT count(*) FROM conversations WHERE is_group))
 $$;
 
--- Every student, newest first, with their centre, level, lessons completed
--- and last successful sign-in.
+-- Every student, newest first, with their centre (and the name typed for
+-- "Others"), level, lessons completed and when they were last active: the
+-- latest sign-in, lesson or game score, or else when they joined. Students
+-- stay signed in for 30 days, so sign-ins alone would say "Never" for most.
 CREATE OR REPLACE FUNCTION stem_admin_users() RETURNS json
 LANGUAGE sql STABLE SET search_path = public AS $$
   SELECT coalesce(json_agg(json_build_object(
       'user_id', u.user_id, 'full_name', u.full_name, 'username', u.username,
       'xp', u.xp, 'level', u.level, 'atoms', u.atoms, 'avatar', u.avatar,
-      'created_at', stem_ts(u.created_at), 'org_name', o.org_name, 'level_name', s.level_name,
+      'created_at', stem_ts(u.created_at), 'org_name', o.org_name, 'org_other', u.org_other,
+      'level_name', s.level_name,
       'completed', (SELECT count(*) FROM lesson_progress p WHERE p.user_id = u.user_id AND p.status = 'completed'),
-      'last_login', (SELECT stem_ts(max(a.attempted_at)) FROM login_attempts a
-                      WHERE a.username = u.username AND a.success))
+      'last_active', stem_ts(greatest(
+        -- lower() on both sides uses idx_login_attempts_user_time, so this
+        -- stays quick however many sign-ins pile up.
+        (SELECT max(a.attempted_at) FROM login_attempts a WHERE lower(a.username) = lower(u.username) AND a.success),
+        (SELECT max(p.last_accessed) FROM lesson_progress p WHERE p.user_id = u.user_id),
+        (SELECT max(g.updated_at) FROM game_scores g WHERE g.user_id = u.user_id),
+        u.created_at)))
     ORDER BY u.created_at DESC, u.user_id DESC), '[]')
     FROM users u
     JOIN organisations o ON o.org_id = u.org_id

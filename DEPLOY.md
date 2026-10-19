@@ -16,15 +16,26 @@ steps 1–3 together.
 
 1. In Supabase, open the project, or create one with **Region: Southeast Asia
    (Singapore)** (our data-protection note asks for Singapore,
-   docs/DATA_PRIVACY.md).
+   docs/DATA_PRIVACY.md). Keep the Data API on, using the `public` schema (the
+   default): the Academy reaches its data only through it.
 2. **SQL Editor → New query**, paste all of `supabase/schema.sql`, press **Run**.
    It should end with "Success. No rows returned". It's safe to run again.
+   - If the editor warns about destructive operations, confirm. The file has
+     `DROP` and `DELETE` lines for upgrades and inside its functions; on a new
+     project it deletes nothing.
+   - Afterwards **Advisors → Security Advisor** lists "RLS Enabled No Policy" for
+     all 18 tables. That's intended: with no policies, only the server's secret
+     key can reach students' data.
 3. **Project Settings → API Keys**. You need two values for Render:
-   - **Project URL**, like `https://abcdefghijkl.supabase.co`.
+   - **Project URL**, like `https://abcdefghijkl.supabase.co` (nothing after `.co`).
    - A **secret key**, starting `sb_secret_` (create one if the list is empty).
      Not the publishable key: the tables are locked to the server, and the server
      refuses to start with a publishable key. Keep the secret key out of the repo,
      chats and the browser.
+4. Optional 5-second check from your own computer: put both values in `.env` and
+   run `npm run db:check`. It should say "Schema is installed: 7 centres, 6 school
+   levels, …". Then take them out of `.env` again, so testing on your computer
+   never writes into the real database.
 
 ## 2. Render: the website and the Academy (15 minutes)
 
@@ -41,9 +52,12 @@ steps 1–3 together.
 4. Check it works before touching the domain:
    - Open the Academy's `….onrender.com` address (shown on the service), create
      a test account, then look in Supabase **Table Editor → users**: the account
-     is there.
+     is there. Then delete it (**Me → Privacy & account → Delete my account**),
+     so no test data stays among the students' accounts.
    - The Academy's **Logs** start with `[db] Saving to Supabase project https://….supabase.co`.
-     If it says the tables aren't there, redo step 1.2.
+     If it says the tables aren't there, redo step 1.2, then press **Manual
+     Deploy → Deploy latest commit** (Render doesn't retry a failed start on
+     its own).
    - Open the website's `….onrender.com` address.
 
 Every push to `main` redeploys both services.

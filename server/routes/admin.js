@@ -74,7 +74,7 @@ router.get("/stats", route(async (req, res) => {
 }));
 
 router.get("/users", route(async (req, res) => {
-  // Newest first, with lessons completed and the last successful sign-in.
+  // Newest first, with lessons completed and when each student was last active.
   const rows = await rpc("stem_admin_users");
   res.json({
     users: rows.map((r) => ({
@@ -82,13 +82,15 @@ router.get("/users", route(async (req, res) => {
       fullName: r.full_name,
       username: r.username,
       orgName: r.org_name,
+      // The centre typed for "Others (please specify)"; orgName is then "Other".
+      orgOther: r.org_other,
       schoolLevelName: r.level_name,
       xp: r.xp,
       level: r.level,
       atoms: r.atoms,
       avatar: r.avatar,
       completed: r.completed,
-      lastLogin: r.last_login,
+      lastActive: r.last_active,
       createdAt: r.created_at,
     })),
   });

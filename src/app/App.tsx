@@ -220,7 +220,7 @@ export default function App() {
       })
       .catch(() => {});
 
-    // Pull lesson progress from SQLite so completed beats persist across
+    // Pull lesson progress from the database so completed beats persist across
     // devices / refreshes (see SQL_EXPLAINED.md for how this is stored).
     getProgress()
       .then(({ progress }) => {
@@ -239,7 +239,7 @@ export default function App() {
         setProgressLoaded(true);
       });
 
-    // Owned cards live in SQLite too (see POST /api/packs/open).
+    // Owned cards live in the database too (see POST /api/packs/open).
     getCards()
       .then(({ owned }) => {
         if (gen === authGen.current) setUserCards(owned);
@@ -1094,7 +1094,7 @@ function Profile({
           </div>
           <p className="font-bold opacity-85 mb-3 truncate">
             @{authUser.username}
-            {authUser.orgName ? ` · ${authUser.orgName}` : ""}
+            {(authUser.orgOther ?? authUser.orgName) ? ` · ${authUser.orgOther ?? authUser.orgName}` : ""}
           </p>
           <div className="max-w-xs mx-auto md:mx-0 mb-6">
             <div className="meter">

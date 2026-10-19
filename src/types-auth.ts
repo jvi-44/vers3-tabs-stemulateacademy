@@ -18,6 +18,8 @@ export interface AuthUser {
   username: string;
   schoolLevelId: number;
   orgId: number;
+  /** The centre typed for "Others (please specify)"; null for a listed centre. */
+  orgOther?: string | null;
   xp: number;
   level: number;
   atoms: number;

@@ -13,6 +13,8 @@ export function publicUser(row) {
     username: row.username,
     schoolLevelId: row.school_level_id,
     orgId: row.org_id,
+    // The centre typed for "Others (please specify)"; null for a listed centre.
+    orgOther: row.org_other ?? null,
     xp: row.xp,
     level: row.level,
     atoms: row.atoms,

@@ -85,7 +85,7 @@ export function avatarFor(user: { userId: number; avatar: string | null }) {
 }
 
 function timeLabel(sqlTime: string) {
-  // SQLite CURRENT_TIMESTAMP is UTC without a zone marker.
+  // The server sends UTC times without a zone marker (stem_ts in supabase/schema.sql).
   const d = new Date(sqlTime.replace(" ", "T") + "Z");
   if (Number.isNaN(d.getTime())) return "";
   const today = new Date().toDateString() === d.toDateString();

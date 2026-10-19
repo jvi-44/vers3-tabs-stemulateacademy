@@ -3,6 +3,8 @@ dist/
 
 # The local database (PGlite, created when the server runs without Supabase)
 server/.pglite/
+# The Supabase CLI's cache when it runs in this folder
+supabase/.temp/
 # Database files from the old SQLite version
 server/stemulate.db*
 

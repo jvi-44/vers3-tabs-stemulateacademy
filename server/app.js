@@ -37,6 +37,18 @@ app.disable("x-powered-by");
 // client IP, which the per-IP rate limits below depend on.
 if (process.env.NODE_ENV === "production") app.set("trust proxy", 1);
 
+// Basic browser protections on every response: no guessing at file types, no
+// showing the Academy inside another site's frame, and only the site's name
+// (not the page address) when a link leaves it. HTTPS-only (HSTS) is for the
+// host, which always has HTTPS; on your own computer the app runs on http.
+app.use((_req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  if (process.env.NODE_ENV === "production") res.setHeader("Strict-Transport-Security", "max-age=31536000");
+  next();
+});
+
 // Only the app's own origin may call the API with the session cookie.
 app.use(cors({ origin: process.env.APP_ORIGIN || "http://localhost:5173", credentials: true }));
 app.use(express.json({ limit: "20kb" }));
@@ -383,8 +395,8 @@ app.post("/api/user/avatar", requireUser, route(async (req, res) => {
 }));
 
 // ---------------------------------------------------------
-// Exit-card reflections (shown in the Gallery to signed-in students).
-// Only the author's first name and avatar are shared.
+// Exit-card reflections. Saved for the student who wrote them (they are in
+// "Download my data"); there is no route that lists other students' ones.
 // ---------------------------------------------------------
 app.post("/api/reflections", requireUser, route(async (req, res) => {
   const { beatId, caption } = req.body || {};
@@ -414,11 +426,6 @@ function toPublicReflection(row) {
     createdAt: row.created_at,
   };
 }
-
-app.get("/api/reflections", requireUser, route(async (req, res) => {
-  const rows = await rpc("stem_reflections_recent", { p_limit: 50 });
-  res.json({ reflections: rows.map(toPublicReflection) });
-}));
 
 // ---------------------------------------------------------
 // Collectible cards — packs are paid for and rolled on the server

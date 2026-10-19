@@ -27,13 +27,20 @@ test("sign-up limits, organisations, reflections, leaderboard and account deleti
   });
 
   await t.test("'Others' stores free text and never adds to the dropdown", async () => {
-    const res = await signUp(srv.client(), { orgId: undefined, orgOther: "Little Stars Centre" });
+    const student = srv.client();
+    const res = await signUp(student, { orgId: undefined, orgOther: "Little Stars Centre" });
     assert.equal(res.status, 201);
     const [row] = await srv.sql(
       "SELECT u.org_other, o.org_name FROM users u JOIN organisations o ON o.org_id = u.org_id WHERE u.user_id = $1",
       [res.json.user.userId],
     );
     assert.deepEqual(row, { org_other: "Little Stars Centre", org_name: "Other" });
+
+    // The student sees the centre they typed, and it is in their data export.
+    assert.equal(res.json.user.orgOther, "Little Stars Centre");
+    const me = (await student.get("/api/me")).json.user;
+    assert.deepEqual([me.orgName, me.orgOther], ["Other", "Little Stars Centre"]);
+    assert.equal((await student.get("/api/me/export")).json.profile.orgOther, "Little Stars Centre");
 
     const names = (await srv.client().get("/api/reference-data")).json.organisations.map((o) => o.name);
     assert.equal(names.length, 7);
@@ -51,24 +58,23 @@ test("sign-up limits, organisations, reflections, leaderboard and account deleti
   const { json } = await signUp(kid, { fullName: "Maya Tan" });
   const userId = json.user.userId;
 
-  await t.test("reflections persist and only show first name + avatar", async () => {
-    assert.equal((await srv.client().get("/api/reflections")).status, 401);
+  await t.test("reflections are saved, and nobody can list other students' ones", async () => {
     assert.equal((await kid.post("/api/reflections", { beatId: "mm-exit", caption: "x".repeat(281) })).status, 400);
     assert.equal((await kid.post("/api/reflections", { beatId: "mm-intro", caption: "hi" })).status, 400);
 
     const created = await kid.post("/api/reflections", { beatId: "mm-exit", caption: "Water cycles!" });
     assert.equal(created.status, 201);
     assert.equal((await kid.post("/api/reflections", { beatId: "mm-exit", caption: "again" })).status, 409);
+    assert.deepEqual(await srv.sql("SELECT caption FROM reflections WHERE user_id = $1", [userId]), [
+      { caption: "Water cycles!" },
+    ]);
 
-    // Another student (or the same one after a refresh) sees it.
+    // There is no Gallery: no route lists reflections, signed in or not, so no
+    // other student gets Maya's first name or what she wrote.
     const viewer = srv.client();
     await signUp(viewer);
-    const { reflections } = (await viewer.get("/api/reflections")).json;
-    assert.equal(reflections.length, 1);
-    assert.equal(reflections[0].caption, "Water cycles!");
-    assert.equal(reflections[0].firstName, "Maya");
-    assert.equal(reflections[0].beatTitle, "Exit Card");
-    assert.deepEqual(Object.keys(reflections[0]).sort(), ["avatar", "beatTitle", "caption", "createdAt", "firstName", "id"]);
+    assert.equal((await viewer.get("/api/reflections")).status, 404);
+    assert.equal((await srv.client().get("/api/reflections")).status, 404);
   });
 
   await t.test("leaderboard is backed by users.xp", async () => {

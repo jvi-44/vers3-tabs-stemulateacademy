@@ -33,7 +33,7 @@ export default defineConfig({
 
   server: {
     proxy: {
-      // Forward API calls to the Express + SQLite backend (see server/index.js)
+      // Forward API calls to the Express backend (see server/index.js)
       '/api': {
         target: 'http://localhost:4000',
         changeOrigin: true,

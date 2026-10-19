@@ -41,7 +41,7 @@ it changes. It's safe to run more than once: it never deletes students' data.
 | `lesson_progress` | Progress per activity | One (student, activity) pair: `in_progress` or `completed`, and the score |
 | `game_scores`, `beat_replays` | Games | Best score per game; replays that paid a small reward |
 | `user_cards` | Card albums | How many of each card a student owns |
-| `reflections` | The Gallery | One exit-card reflection |
+| `reflections` | Exit cards (only their author gets them back, in "Download my data") | One exit-card reflection |
 | `story_choices` | Intro episodes | The choices a student made in an episode |
 | `friend_requests`, `friendships`, `conversations`, `conversation_members`, `messages` | Friends and chats | Requests, friendships, chats and their messages |
 | `organisations`, `school_levels`, `recovery_colours`, `recovery_subjects` | Sign-up lists | The options in the sign-up form |

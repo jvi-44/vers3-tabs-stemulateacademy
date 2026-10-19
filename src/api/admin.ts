@@ -7,13 +7,16 @@ export interface AdminUser {
   fullName: string;
   username: string;
   orgName: string;
+  /** The centre typed for "Others (please specify)"; orgName is then "Other". */
+  orgOther: string | null;
   schoolLevelName: string;
   xp: number;
   level: number;
   atoms: number;
   avatar: string | null;
   completed: number;
-  lastLogin: string | null;
+  /** Latest sign-in, lesson or game score, or when they joined (UTC). */
+  lastActive: string | null;
   createdAt: string;
 }
 

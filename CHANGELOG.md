@@ -1,3 +1,21 @@
+# What changed in this update (round 5: checks before going live)
+
+- Exit-card reflections are private now. Nothing lists other students'
+  reflections or first names anymore; each student finds their own in Download my data.
+- A centre typed under "Others (please specify)" shows on the Me page, in
+  Download my data and on the admin page ("Other: Little Stars Centre"),
+  instead of just "Other".
+- The admin page shows **Last active** (the latest sign-in, lesson or game
+  score, or else when the student joined) instead of a "Last sign-in" that
+  said "Never" for students who stayed signed in. The student list also loads
+  quickly however many sign-ins pile up.
+- Every response carries basic browser protections, and HTTPS-only on the host.
+- `supabase/schema.sql` is now version 2 (new indexes, the changes above).
+  Run it in the SQL Editor before the Academy starts with this code.
+- DEPLOY.md covers the first-day details: the SQL Editor's confirm prompt,
+  the Security Advisor's expected notes, `npm run db:check`, and redeploying
+  after a failed first start.
+
 # What changed in this update (round 4: Supabase, going online, new website)
 
 ## Database: Supabase

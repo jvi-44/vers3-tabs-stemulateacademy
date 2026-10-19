@@ -90,7 +90,7 @@ export function ProfileDetails({ authUser, onChange }: { authUser: AuthUser; onC
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <DetailRow icon={<Pencil size={17} strokeWidth={2.5} />} label="Name" value={authUser.fullName} />
         <DetailRow icon={<AtSign size={17} strokeWidth={2.5} />} label="Username" value={authUser.username} />
-        <DetailRow icon={<Building2 size={17} strokeWidth={2.5} />} label="Organisation" value={authUser.orgName ?? "—"} />
+        <DetailRow icon={<Building2 size={17} strokeWidth={2.5} />} label="Organisation" value={authUser.orgOther ?? authUser.orgName ?? "—"} />
         <DetailRow icon={<GraduationCap size={17} strokeWidth={2.5} />} label="School level" value={authUser.schoolLevelName ?? "—"} />
         <DetailRow icon={<CalendarDays size={17} strokeWidth={2.5} />} label="Member since" value={memberSince(authUser.createdAt)} />
       </div>

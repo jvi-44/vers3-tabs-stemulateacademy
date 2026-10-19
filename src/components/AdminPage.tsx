@@ -101,6 +101,9 @@ function prettyId(id: string) {
 
 const pctDone = (u: AdminUser) => Math.round((Math.min(u.completed, TOTAL_BEATS) / Math.max(TOTAL_BEATS, 1)) * 100);
 
+/** A listed centre, or "Other: <name>" for one typed under "Others (please specify)". */
+const centreLabel = (u: AdminUser) => (u.orgOther ? `Other: ${u.orgOther}` : u.orgName);
+
 // ---------------------------------------------------------------------------
 // CSV export (client side, of the students currently shown)
 // ---------------------------------------------------------------------------
@@ -122,20 +125,20 @@ function exportCsv(users: AdminUser[]) {
     "XP",
     "Atoms",
     "Activities completed",
-    "Last sign-in (UTC)",
+    "Last active (UTC)",
     "Joined (UTC)",
   ];
   const rows = users.map((u) => [
     u.userId,
     u.fullName,
     u.username,
-    u.orgName,
+    centreLabel(u),
     u.schoolLevelName,
     u.level,
     u.xp,
     u.atoms,
     u.completed,
-    u.lastLogin ?? "",
+    u.lastActive ?? "",
     u.createdAt,
   ]);
   const csv = [header, ...rows].map((r) => r.map(csvCell).join(",")).join("\r\n");
@@ -308,7 +311,7 @@ function PasskeyGate({ onSuccess }: { onSuccess: (token: string) => void }) {
 // ---------------------------------------------------------------------------
 // Dashboard
 // ---------------------------------------------------------------------------
-type SortKey = "name" | "level" | "xp" | "atoms" | "progress" | "lastLogin" | "joined";
+type SortKey = "name" | "level" | "xp" | "atoms" | "progress" | "lastActive" | "joined";
 
 const SORTS: { key: SortKey; label: string; get: (u: AdminUser) => string | number }[] = [
   { key: "joined", label: "Newest joined", get: (u) => u.createdAt },
@@ -317,7 +320,7 @@ const SORTS: { key: SortKey; label: string; get: (u: AdminUser) => string | numb
   { key: "xp", label: "XP", get: (u) => u.xp },
   { key: "atoms", label: "Atoms", get: (u) => u.atoms },
   { key: "progress", label: "Progress", get: (u) => u.completed },
-  { key: "lastLogin", label: "Last sign-in", get: (u) => u.lastLogin ?? "" },
+  { key: "lastActive", label: "Last active", get: (u) => u.lastActive ?? "" },
 ];
 
 function AdminDashboard({ token, onExpired }: { token: string; onExpired: () => void }) {
@@ -364,7 +367,7 @@ function AdminDashboard({ token, onExpired }: { token: string; onExpired: () => 
           !q ||
           u.fullName.toLowerCase().includes(q) ||
           u.username.toLowerCase().includes(q) ||
-          u.orgName.toLowerCase().includes(q);
+          centreLabel(u).toLowerCase().includes(q);
         return matchesText && (org === "all" || u.orgName === org);
       })
       .sort((a, b) => {
@@ -507,7 +510,7 @@ function AdminDashboard({ token, onExpired }: { token: string; onExpired: () => 
           <SortHeader label="XP" k="xp" sort={sort} onSort={toggleSort} />
           <SortHeader label="Atoms" k="atoms" sort={sort} onSort={toggleSort} />
           <SortHeader label="Progress" k="progress" sort={sort} onSort={toggleSort} />
-          <SortHeader label="Last sign-in" k="lastLogin" sort={sort} onSort={toggleSort} />
+          <SortHeader label="Last active" k="lastActive" sort={sort} onSort={toggleSort} />
         </div>
 
         {users === null ? (
@@ -538,7 +541,7 @@ function AdminDashboard({ token, onExpired }: { token: string; onExpired: () => 
                     <div className="min-w-0">
                       <p className="font-display font-semibold text-[15px] truncate">{u.fullName}</p>
                       <p className="text-xs font-semibold text-muted-foreground truncate">
-                        @{u.username} · {u.orgName}
+                        @{u.username} · {centreLabel(u)}
                       </p>
                     </div>
                   </div>
@@ -571,7 +574,7 @@ function AdminDashboard({ token, onExpired }: { token: string; onExpired: () => 
                       {u.completed}/{TOTAL_BEATS}
                     </span>
                   </span>
-                  <span className="hidden md:block text-sm font-semibold text-muted-foreground">{shortDate(u.lastLogin)}</span>
+                  <span className="hidden md:block text-sm font-semibold text-muted-foreground">{shortDate(u.lastActive)}</span>
                 </button>
               </li>
             ))}
@@ -749,14 +752,14 @@ function UserDrawer({
                 </div>
               </div>
               <div className="flex flex-wrap gap-2 mt-4">
-                <span className="chip-ink text-xs">{user.orgName}</span>
+                <span className="chip-ink text-xs">{centreLabel(user)}</span>
                 <span className="chip-ink text-xs">{user.schoolLevelName}</span>
               </div>
             </div>
 
             <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
               <p className="text-xs font-bold text-muted-foreground">
-                Joined {shortDate(user.createdAt)} · last sign-in {shortDate(user.lastLogin)}
+                Joined {shortDate(user.createdAt)} · last active {shortDate(user.lastActive)}
               </p>
 
               <StatsEditor
