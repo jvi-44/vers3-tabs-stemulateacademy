@@ -12,18 +12,19 @@ Key facts, as stated on this website (October 2026):
 - STEM x Games curriculum: Minecraft Masterminds (P5 and P6: matter, the water cycle, area and volume), Mission Millionaire (P4 to P6: money, GST, percentages and interest) and Space Busters (P5 and P6: energy, forces, rockets and BODMAS).
 - Partners: Beyond Social Services (the first partner, in 2023), Canossaville Children and Community Services, Chinese Development Assistance Council (CDAC), VIVA Foundation, Brighton Connection, Caritas Singapore, FaithActs, Society of Sheng Hong Welfare Services and New Life Community Services.
 - Also: weekly 1-to-1 sessions, learning journeys and monthly enrichment activities.
-- STEMulate Academy: the programme's online learning world, so learning continues between workshops. Children sign in with a username and a 4-digit PIN; no email is needed.
+- STEMulate Academy: a new (2026) online add-on to the in-person workshops, not a replacement, so learning continues between sessions. Children sign in with a username and a 4-digit PIN; no email is needed.
 - STEMulate chapters: students aged 15 and above can start a chapter of Project STEMulate where they live, on their own, as a group or as a school club.
 - Contact: proj.stemulate@gmail.com · Instagram @proj.stemulate
 
 ## Pages
 
-- [Home](https://projstemulate.com/): what Project STEMulate does, its impact so far, the six STEM x workshops, how a workshop runs, partners and STEMulate Academy.
-- [Workshops](https://projstemulate.com/workshops.html): the STEM x series, 1-to-1 sessions, learning journeys and monthly activities, and how a centre can book a workshop.
-- [Curriculum](https://projstemulate.com/curriculum.html): the three STEM x Games workshops in detail, with the real slide decks, learning outcomes and the syllabus map.
-- [Impact and partners](https://projstemulate.com/impact.html): the numbers, how impact is measured, each partner organisation and what families, partners and volunteers say.
-- [About us](https://projstemulate.com/about.html): the mission, the story since 2023, the current committee, starting a STEMulate chapter and common questions.
+- [Home](https://projstemulate.com/): what Project STEMulate does in person since 2023 (workshops, 1-to-1 sessions, learning journeys, monthly activities), its impact so far, the six STEM x workshops, how a workshop runs, partners and a short note on STEMulate Academy.
+- [Curriculum](https://projstemulate.com/curriculum.html): the STEM x series, how a workshop runs, the three STEM x Games workshops in detail with the real slide decks, learning outcomes and the syllabus map, and how a centre can book a workshop.
+- [Impact](https://projstemulate.com/impact.html): the numbers, how impact is measured, each partner organisation and what families, partners and volunteers say.
+- [About us](https://projstemulate.com/about.html): the mission, the story since 2023, the current committee and common questions.
+- [Get involved](https://projstemulate.com/get-involved.html): volunteering, partnering, starting a STEMulate chapter and the monthly newsletter.
+- [STEMulate Academy](https://projstemulate.com/academy.html): the new (2026) online add-on to the in-person workshops, how it matches each workshop, and sign-in for parents and centres.
 
 ## Optional
 
-- [STEMulate Academy](https://academy.projstemulate.com/): the online learning world for children (sign-in needed).
+- [STEMulate Academy app](https://academy.projstemulate.com/): the online learning world for children (sign-in needed).

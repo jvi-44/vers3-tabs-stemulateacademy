@@ -1,3 +1,21 @@
+# What changed in this update (round 6: website layout)
+
+- The website menu is now six tabs: Home, Curriculum, Impact, About us,
+  Get involved and STEMulate Academy. The Academy is a normal last tab instead
+  of a bright button.
+- Every page leads with our in-person workshops since 2023. STEMulate Academy
+  is shown as a new add-on: a small "New in 2026" band near the bottom of Home
+  and its own page (`academy.html`), which holds the "Enter STEMulate Academy"
+  buttons.
+- The Workshops page is gone: what we do (1-to-1 sessions, learning journeys,
+  monthly activities) and "what changes for the children" moved to Home; the
+  STEM x series and "bring a workshop to your centre" are on Curriculum. Old
+  `workshops.html` links redirect to Home (`render.yaml`).
+- New Get involved page: volunteering, partnering, starting a chapter (moved
+  from About us) and the newsletter.
+- FAQ: "Is STEMulate Academy replacing your workshops?" (no), and event dates
+  now point to the newsletter and Instagram.
+
 # What changed in this update (round 5: checks before going live)
 
 - Exit-card reflections are private now. Nothing lists other students'

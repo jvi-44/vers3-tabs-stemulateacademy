@@ -18,6 +18,11 @@ services:
     staticPublishPath: ./website
     domains:
       - projstemulate.com
+    # The Workshops page was folded into Home and Curriculum (October 2026).
+    routes:
+      - type: redirect
+        source: /workshops.html
+        destination: /
     envVars:
       - key: SKIP_INSTALL_DEPS
         value: "true"
