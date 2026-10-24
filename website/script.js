@@ -3,53 +3,25 @@
 // gentle scroll-in animations. Shared by every page. No dependencies.
 
 // ─── The live STEMulate Academy address (hosted on Render, see DEPLOY.md). ───
-// Every "Enter STEMulate Academy" button on the site uses it, or the Render
-// address until the real domain answers (see below). When the site is
+// Every "Enter STEMulate Academy" button on the site uses it. When the site is
 // served by the Academy itself (at /site, on your own computer), the buttons
 // open that same host. When you open the website on its own on your computer
 // (localhost:8000 or a file), they go to the Academy running locally with
 // `npm run dev:all`.
 const LIVE_ACADEMY_URL = "https://academy.projstemulate.com";
-// The Academy's Render address. The buttons use it until academy.projstemulate.com
-// answers (its DNS isn't set up yet), so they never lead to an error page.
-const FALLBACK_ACADEMY_URL = "https://stemulate-academy.onrender.com";
 const LOCAL_ACADEMY_URL = "http://localhost:5173";
 const servedByAcademy = location.pathname.startsWith("/site/");
 const isLocal = !servedByAcademy && (["localhost", "127.0.0.1"].includes(location.hostname) || location.protocol === "file:");
-const ACADEMY_URL = servedByAcademy ? location.origin + "/" : isLocal ? LOCAL_ACADEMY_URL : FALLBACK_ACADEMY_URL;
+const ACADEMY_URL = servedByAcademy ? location.origin + "/" : isLocal ? LOCAL_ACADEMY_URL : LIVE_ACADEMY_URL;
 
 document.documentElement.classList.add("js");
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-const academyLinks = document.querySelectorAll("[data-academy-link]");
-academyLinks.forEach((a) => {
+document.querySelectorAll("[data-academy-link]").forEach((a) => {
   a.href = ACADEMY_URL;
   a.target = "_blank";
   a.rel = "noopener";
 });
-
-// On the live site, switch the buttons to the real domain once the Academy
-// answers there. The check loads academy-check.png, a tiny image only the
-// Academy serves (public/ in this repo): a missing domain, a parked page or a
-// host's error page can't load as that image, so the fallback stays until the
-// Academy itself is live on academy.projstemulate.com. It runs only when
-// someone reaches for a button, so page loads and search crawlers never request
-// an address that may not exist yet (a console error).
-if (ACADEMY_URL === FALLBACK_ACADEMY_URL) {
-  let checked = false;
-  const checkLiveAcademy = () => {
-    if (checked) return;
-    checked = true;
-    const probe = new Image();
-    probe.onload = () => academyLinks.forEach((a) => (a.href = LIVE_ACADEMY_URL));
-    probe.src = `${LIVE_ACADEMY_URL}/academy-check.png?${Date.now()}`;
-  };
-  academyLinks.forEach((a) => {
-    for (const type of ["pointerenter", "focus", "touchstart"]) {
-      a.addEventListener(type, checkLiveAcademy, { once: true, passive: true });
-    }
-  });
-}
 
 // Mobile menu
 const toggle = document.querySelector(".nav-toggle");

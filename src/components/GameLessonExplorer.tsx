@@ -556,6 +556,17 @@ function VideoBeat({
               >
                 <Play size={40} className="fill-[color:var(--ink)] ml-1.5" />
               </motion.button>
+            ) : beat.videoUrl ? (
+              <motion.iframe
+                key="video"
+                src={`${beat.videoUrl}${beat.videoUrl.includes("?") ? "&" : "?"}autoplay=1`}
+                title={beat.title}
+                allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+                allowFullScreen
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="absolute inset-0 z-10 w-full h-full border-0"
+              />
             ) : (
               <motion.div
                 key="soon"
@@ -570,7 +581,7 @@ function VideoBeat({
               </motion.div>
             )}
           </AnimatePresence>
-          {beat.duration && (
+          {beat.duration && !(pressed && beat.videoUrl) && (
             <span className="absolute top-3 right-3 chip-ink !text-xs !py-1 !px-2.5">
               <Clock size={12} /> {beat.duration}
             </span>

@@ -44,7 +44,7 @@ test("rewards are computed by the server and paid once", async (t) => {
     assert.deepEqual(quiz.json.awarded, { xp: 100, atoms: 25 });
     const quiz2 = await kid.post("/api/progress", { lessonId: "mm-sci2-quiz", status: "completed", score: 0 });
     assert.deepEqual(quiz2.json.awarded, { xp: 50, atoms: 25 });
-    const video = await kid.post("/api/progress", { lessonId: "mm-sci1-video", status: "completed" });
+    const video = await kid.post("/api/progress", { lessonId: "mm-math1-video", status: "completed" });
     assert.deepEqual(video.json.awarded, { xp: 0, atoms: 100 });
   });
 
