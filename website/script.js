@@ -209,7 +209,7 @@ function countUp(el) {
 // a safety timer reveals the rest so no section can stay blank (for example
 // in previews and screenshots that never scroll).
 const revealTargets = document.querySelectorAll(
-  ".intro, .intro-centred, .wcard, .number, .rhythm li, .partner, .partner-row, .deck-cover, .screens figure, .bots-row li, .pullquote, .quote, .split-photo, .year, .way, .member, .methods li, .growth, .deck, .ws-card, .curr, .total, .faq details, .cta-band, .steps-3 li, .poster"
+  ".intro, .intro-centred, .wcard, .number, .rhythm li, .partner, .partner-row, .deck-cover, .screens figure, .bots-row li, .pullquote, .quote, .split-photo, .year, .way, .member, .methods li, .growth, .deck, .ws-card, .curr, .total, .faq details, .cta-band, .steps-3 li, .poster, .offer li, .join-cards li, .at-home li, .teaser-shot"
 );
 const counters = document.querySelectorAll("[data-count]");
 if ("IntersectionObserver" in window && !reduceMotion) {

@@ -148,6 +148,7 @@ ul, ol { margin: 0; padding: 0; }
 .band-butter { background: var(--butter); }
 .band-mint { background: var(--mint); }
 .band-white { background: var(--white); }
+.band-lilac { background: var(--lilac); }
 
 /* Section openers: a heading with its sentence beside it on wide screens */
 .intro { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 20px 56px; align-items: end; margin-bottom: 52px; }
@@ -161,6 +162,7 @@ ul, ol { margin: 0; padding: 0; }
 .muted { color: var(--muted); }
 .center { text-align: center; }
 .mt-lg { margin-top: 48px; }
+.mt-md { margin-top: 28px; }
 
 /* ───────── Home hero: the session photo with the headline on a forest panel ───────── */
 .hero { position: relative; background: var(--forest); }
@@ -184,6 +186,9 @@ ul, ol { margin: 0; padding: 0; }
 .hero-bots img:nth-child(4) { width: 72px; animation-delay: -3.6s; }
 @keyframes bob { 50% { translate: 0 -8px; } }
 .hero-pre { font: 600 1rem var(--head); color: var(--lime); margin-bottom: 14px; }
+/* "STIM" crossed out in front of STEMulating, as a little wordmark joke */
+.hero-chip { display: inline-block; padding: 5px 14px; border-radius: 999px; background: rgba(198, 239, 114, 0.14); border: 2px solid rgba(198, 239, 114, 0.45); }
+.hero-chip s { color: var(--on-forest-muted); text-decoration-thickness: 2px; margin-right: 3px; }
 .hero h1 { margin-bottom: 18px; color: var(--on-forest); }
 .hero h1 em {
   font-style: normal; display: inline-block; padding: 0 0.18em 0.04em; border-radius: 0.24em;
@@ -213,6 +218,7 @@ ul, ol { margin: 0; padding: 0; }
 }
 .number span { font-weight: 800; font-size: 1.05rem; }
 .numbers-note { margin: 30px 0 0; font-weight: 700; color: var(--forest); }
+.numbers-title { font-size: clamp(1.6rem, 3vw, 2.2rem); color: var(--forest); margin-bottom: 26px; }
 
 /* ───────── Signature: STEM x workshops as collectible cards ───────── */
 /* Cards keep their own height, like a handful of real cards on a table */
@@ -241,6 +247,12 @@ ul, ol { margin: 0; padding: 0; }
 .wcard-body p { color: var(--muted); margin-bottom: 12px; }
 .wcard-body .text-link { margin-top: auto; }
 .wcard-quote { font-style: italic; }
+/* On Home the card's name links to its part of the Curriculum page; the whole card is clickable */
+.wcard-link { text-decoration: none; }
+.wcard-link::after { content: ""; position: absolute; inset: 0; border-radius: 14px; }
+.wcard-link:hover { text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 5px; }
+.wcard .text-link { position: relative; z-index: 1; }
+.wcard:target { box-shadow: 0 0 0 6px var(--lime), 0 7px 0 rgba(15, 42, 19, 0.22); }
 .x-sports { --frame: var(--x-sports); }
 .x-coding { --frame: var(--x-coding); }
 .x-games { --frame: var(--x-games); }
@@ -268,6 +280,7 @@ ul, ol { margin: 0; padding: 0; }
 .band-butter .rhythm li::before { border-color: var(--butter); }
 .rhythm b { display: block; font: 600 1.2rem var(--head); margin-bottom: 4px; }
 .rhythm span { display: block; font-size: 0.95rem; color: var(--muted); line-height: 1.45; }
+.rhythm-short li { padding-right: 8px; }
 
 /* ───────── Partners ───────── */
 .partner-wall { list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; }
@@ -280,6 +293,12 @@ ul, ol { margin: 0; padding: 0; }
 .partner span { font: 600 0.98rem/1.25 var(--head); }
 .partner-text { background: var(--mint); border-style: dashed; }
 .partner-text strong { font: 700 1.25rem/1.15 var(--head); color: var(--leaf-deep); }
+/* Home: all nine partners in one row on wide screens */
+.partner-strip { grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 10px; }
+.partner-strip .partner { min-height: 128px; padding: 12px 8px; gap: 8px; }
+.partner-strip .partner img { height: 52px; max-width: 100%; }
+.partner-strip .partner span { font-size: 0.8rem; }
+.partner-strip .partner-text strong { font-size: 0.95rem; }
 
 /* Partners with what we do together (Impact page) */
 .partner-list { list-style: none; display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; }
@@ -450,6 +469,29 @@ ul, ol { margin: 0; padding: 0; }
 .bots-row img { height: 128px; width: auto; margin: 0 auto 10px; filter: var(--die-cut); }
 .bots-row b { display: block; font: 700 1.3rem var(--head); color: var(--on-forest); }
 .bots-row span { font-weight: 700; color: var(--lime); }
+.bots-light { margin-top: 0; }
+.bots-light b { color: var(--ink); }
+.bots-light span { color: var(--leaf-deep); }
+
+/* Home: the Academy as a small "new" band near the bottom */
+.academy-teaser { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); gap: 48px; align-items: center; }
+.academy-teaser h2 { font-size: clamp(1.8rem, 3.4vw, 2.5rem); }
+.academy-teaser p { color: var(--muted); font-size: 1.08rem; max-width: 34em; }
+.new-tag { display: inline-block; font: 700 0.85rem var(--head); background: var(--grape); color: #fff; border-radius: 999px; padding: 5px 12px; margin-bottom: 14px; }
+.mini-bots { list-style: none; display: flex; gap: 18px; margin: 6px 0 26px; }
+.mini-bots li { text-align: center; }
+.mini-bots img { height: 64px; width: auto; margin: 0 auto 4px; filter: var(--die-cut); }
+.mini-bots span { font: 600 0.9rem var(--head); }
+.teaser-shot { margin: 0; background: var(--white); border-radius: 18px; padding: 6px; box-shadow: 0 16px 30px -18px rgba(60, 30, 140, 0.55); }
+.teaser-shot img { border-radius: 13px; width: 100%; aspect-ratio: 16 / 11; object-fit: cover; object-position: top center; }
+.page-hero-photo .shot { object-position: top center; }
+
+/* Each workshop and its matching Academy lesson */
+.at-home { list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.at-home li { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 14px; align-items: center; background: var(--white); border: 2px solid var(--line); border-radius: var(--r-md); padding: 12px; }
+.at-home img { width: 112px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 10px; }
+.at-home b { display: block; font: 600 1.12rem var(--head); }
+.at-home span { display: block; font-size: 0.93rem; color: var(--muted); line-height: 1.4; }
 
 /* ───────── Voices ───────── */
 .pullquote { margin: 0 auto 48px; max-width: 900px; text-align: center; }
@@ -508,6 +550,32 @@ ul, ol { margin: 0; padding: 0; }
 .way img { width: 92px; height: 92px; object-fit: contain; filter: var(--die-cut); }
 .way h3 { margin-bottom: 4px; }
 .way p { margin: 0; color: var(--muted); }
+
+/* Home: what we do, four blocks */
+.offer { list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+.offer li { background: var(--white); border: 2px solid var(--line); border-radius: var(--r-md); padding: 22px 20px 20px; }
+.offer img { height: 72px; width: auto; margin-bottom: 12px; filter: var(--die-cut); }
+.offer h3 { font-size: 1.3rem; margin-bottom: 6px; }
+.offer p { margin: 0; color: var(--muted); font-size: 0.98rem; line-height: 1.5; }
+
+/* Home: what changes, with two quotes */
+.change-quotes { display: grid; gap: 18px; }
+.change-quotes .quote { background: var(--butter); }
+
+/* Home: four small ways in, each to its part of Get involved */
+.join-cards { list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.join-cards a {
+  display: grid; justify-items: start; gap: 2px; height: 100%; text-decoration: none;
+  background: var(--white); border: 3px solid var(--ink); border-radius: var(--r-md); padding: 18px; box-shadow: 0 5px 0 var(--ink);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.join-cards a:hover { transform: translateY(-2px); box-shadow: 0 7px 0 var(--ink); }
+.join-cards img { height: 60px; width: auto; margin-bottom: 8px; filter: var(--die-cut); }
+.join-cards b { font: 700 1.25rem var(--head); }
+.join-cards span { color: var(--muted); font-size: 0.95rem; line-height: 1.4; }
+.photo-tall { max-height: 560px; }
+.methods-3 { grid-template-columns: repeat(3, 1fr); }
+.methods a { color: var(--leaf-deep); font-weight: 700; }
 
 /* ───────── About ───────── */
 .mission { font: 600 clamp(1.35rem, 2.6vw, 1.9rem)/1.4 var(--head); max-width: 34em; margin: 0 0 18px; }
@@ -578,11 +646,19 @@ ul, ol { margin: 0; padding: 0; }
   .years { grid-template-columns: repeat(2, 1fr); }
   .rhythm { grid-template-columns: repeat(3, 1fr); row-gap: 30px; }
   .rhythm::before { display: none; }
+  .partner-strip { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .offer, .join-cards { grid-template-columns: repeat(2, 1fr); }
+  .at-home { grid-template-columns: minmax(0, 1fr); }
+  .rhythm-short { grid-template-columns: repeat(6, 1fr); }
+  .rhythm-short::before { display: block; }
 }
 
 @media (max-width: 960px) {
 
   .intro, .split, .page-hero-grid, .academy-grid, .ws-cols { grid-template-columns: minmax(0, 1fr); }
+  .academy-teaser { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+  .rhythm-short { grid-template-columns: repeat(3, 1fr); row-gap: 26px; }
+  .rhythm-short::before { display: none; }
   .intro { gap: 14px; }
   .album { grid-template-columns: repeat(2, 1fr); }
   .album > li .wcard { transform: none !important; }
@@ -626,6 +702,13 @@ ul, ol { margin: 0; padding: 0; }
   .numbers { gap: 22px 14px; }
   .number { padding-left: 12px; }
   .methods, .rhythm { grid-template-columns: minmax(0, 1fr); }
+  .partner-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .offer, .join-cards { grid-template-columns: minmax(0, 1fr); }
+  .rhythm-short { grid-template-columns: repeat(2, 1fr); }
+  .rhythm-short li { padding: 0 0 0 58px; min-height: 46px; display: flex; align-items: center; }
+  .methods-3 { grid-template-columns: minmax(0, 1fr); }
+  .mini-bots { gap: 12px; }
+  .mini-bots img { height: 52px; }
   .rhythm li { padding: 0 0 0 62px; min-height: 46px; }
   .way { grid-template-columns: 64px minmax(0, 1fr); padding: 14px; }
   .way img { width: 64px; height: 64px; }
