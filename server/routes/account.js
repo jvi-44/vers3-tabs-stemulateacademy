@@ -2,9 +2,10 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import { rpc } from "../db.js";
 import { route } from "../route.js";
-import { requireUser, destroySession } from "../auth.js";
+import { requireUser, destroySession, sessionHash } from "../auth.js";
 import {
   publicUser,
+  PIN_REGEX,
   USERNAME_REGEX,
   USERNAME_RULE,
   usernameTaken,
@@ -12,6 +13,7 @@ import {
 } from "../users.js";
 
 const NAME_MAX = 80;
+const LOCKOUT_FAILURES = 5;
 
 const router = express.Router();
 router.use(["/me", "/user/me"], requireUser);
@@ -35,11 +37,21 @@ router.get(["/me", "/user/me"], route(async (req, res) => {
   res.json({ user });
 }));
 
-// Change username and/or display name.
+// Change username, display name and/or school level. The centre is changed by
+// an admin, not here.
 router.patch("/me", route(async (req, res) => {
-  const { username, fullName } = req.body || {};
+  const { username, fullName, schoolLevelId } = req.body || {};
   const current = await rpc("stem_user", { p_user_id: req.userId });
   if (!current) return res.status(404).json({ error: "User not found." });
+
+  // Checked first, so a bad level leaves the name and username unchanged too.
+  if (schoolLevelId !== undefined) {
+    const levelId = Number(schoolLevelId);
+    const moved =
+      Number.isSafeInteger(levelId) && levelId > 0 &&
+      (await rpc("stem_user_set_level", { p_user_id: req.userId, p_level_id: levelId }));
+    if (!moved) return res.status(400).json({ error: "Please pick your school level." });
+  }
 
   let nextUsername = current.username;
   let nextFullName = current.full_name;
@@ -72,6 +84,35 @@ router.patch("/me", route(async (req, res) => {
   if (renamed.error) return res.status(409).json({ error: "That username is already taken." });
 
   res.json({ user: await profileFor(req.userId) });
+}));
+
+// Change the PIN while signed in. Needs the current PIN; wrong tries count
+// toward the same 5-in-15-minutes lockout as sign-in. Every other device is
+// signed out; this one stays signed in.
+router.post("/me/pin", route(async (req, res) => {
+  const { currentPin, newPin } = req.body || {};
+  if (typeof currentPin !== "string" || typeof newPin !== "string" || !PIN_REGEX.test(newPin)) {
+    return res.status(400).json({ error: "Your new PIN must be exactly 4 digits." });
+  }
+
+  const current = await rpc("stem_user", { p_user_id: req.userId });
+  const pinHash = await rpc("stem_user_pin_hash", { p_user_id: req.userId });
+  if (!current || !pinHash) return res.status(404).json({ error: "User not found." });
+
+  if ((await rpc("stem_recent_failures", { p_username: current.username })) >= LOCKOUT_FAILURES) {
+    return res.status(429).json({ error: "Too many tries — ask your teacher or wait 15 minutes" });
+  }
+  if (!PIN_REGEX.test(currentPin) || !(await bcrypt.compare(currentPin, pinHash))) {
+    await rpc("stem_log_attempt", { p_username: current.username, p_success: false });
+    return res.status(401).json({ error: "That PIN isn't right." });
+  }
+
+  const signedOut = await rpc("stem_user_change_pin", {
+    p_user_id: req.userId,
+    p_pin_hash: await bcrypt.hash(newPin, 10),
+    p_keep_token: sessionHash(req),
+  });
+  res.json({ success: true, otherDevicesSignedOut: signedOut });
 }));
 
 // "Download my data": everything we hold about this account, as JSON.

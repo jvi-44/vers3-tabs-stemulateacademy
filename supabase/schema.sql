@@ -263,7 +263,7 @@ ON CONFLICT (subject_name) DO NOTHING;
 -- Bump this, and SCHEMA_VERSION in server/db.js, whenever this file changes.
 CREATE OR REPLACE FUNCTION stem_schema_version() RETURNS json
 LANGUAGE sql IMMUTABLE SET search_path = public AS $$
-  SELECT to_json(2)
+  SELECT to_json(3)
 $$;
 
 -- Times go out the way the API has always sent them: "2026-10-17 08:30:00",
@@ -519,6 +519,25 @@ CREATE OR REPLACE FUNCTION stem_set_avatar(p_user_id bigint, p_avatar text) RETU
 LANGUAGE sql SET search_path = public AS $$
   UPDATE users SET avatar = p_avatar, updated_at = now() WHERE user_id = p_user_id;
   SELECT NULL::json;
+$$;
+
+-- Moves a student to another school level (they move up every January).
+-- True, or null if there is no such level.
+CREATE OR REPLACE FUNCTION stem_user_set_level(p_user_id bigint, p_level_id bigint) RETURNS json
+LANGUAGE sql SET search_path = public AS $$
+  UPDATE users SET school_level_id = p_level_id, updated_at = now()
+   WHERE user_id = p_user_id AND EXISTS (SELECT 1 FROM school_levels WHERE level_id = p_level_id)
+  RETURNING to_json(true);
+$$;
+
+-- A new PIN hash the student chose while signed in. Signs out every other
+-- device: every session except p_keep_token (the hash of this browser's
+-- cookie). Returns how many sessions ended.
+CREATE OR REPLACE FUNCTION stem_user_change_pin(p_user_id bigint, p_pin_hash text, p_keep_token text) RETURNS json
+LANGUAGE sql SET search_path = public AS $$
+  UPDATE users SET pin_hash = p_pin_hash, updated_at = now() WHERE user_id = p_user_id;
+  WITH gone AS (DELETE FROM sessions WHERE user_id = p_user_id AND token <> p_keep_token RETURNING 1)
+  SELECT to_json(count(*)) FROM gone;
 $$;
 
 -- "Download my data": everything stored about one student, in the shapes the

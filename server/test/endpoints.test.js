@@ -251,6 +251,18 @@ test("profile, rename and the data export", async (t) => {
     assert.equal(upper.json.user.username, me.username.toUpperCase());
   });
 
+  await t.test("school level can be changed; a bad level changes nothing", async () => {
+    const res = await kid.patch("/api/me", { schoolLevelId: 4 });
+    assert.equal(res.status, 200);
+    assert.deepEqual([res.json.user.schoolLevelId, res.json.user.schoolLevelName], [4, "Primary 4"]);
+    const before = (await kid.get("/api/me")).json.user;
+    for (const bad of [999, 0, "x", 1.5]) {
+      const r = await kid.patch("/api/me", { schoolLevelId: bad, fullName: "Changed" });
+      assert.equal(r.status, 400, `level ${bad}`);
+    }
+    assert.deepEqual((await kid.get("/api/me")).json.user, before);
+  });
+
   await t.test("the export holds every table in its usual shape", async () => {
     const res = await kid.get("/api/me/export");
     assert.equal(res.status, 200);
@@ -744,5 +756,46 @@ test("admin: stats, students, progress and the student tools", async (t) => {
     assert.equal((await kid.get("/api/me")).status, 401);
     assert.ok(!(await admin("GET", "/users")).json.users.some((u) => u.userId === kidId));
     assert.equal((await admin("DELETE", `/users/${kidId}`, { confirm: K.body.username })).status, 404);
+  });
+});
+
+test("changing the PIN while signed in", async (t) => {
+  const kid = srv.client();
+  const K = await signUp(kid, { pin: "1234" });
+  const tablet = srv.client();
+  assert.equal((await tablet.post("/api/login", { username: K.body.username, pin: "1234" })).status, 200);
+
+  await t.test("the new PIN must be 4 digits", async () => {
+    for (const newPin of ["12", "12345", "abcd", 1234, undefined]) {
+      assert.equal((await kid.post("/api/me/pin", { currentPin: "1234", newPin })).status, 400, `newPin ${newPin}`);
+    }
+  });
+
+  await t.test("a wrong current PIN is rejected", async () => {
+    const res = await kid.post("/api/me/pin", { currentPin: "0000", newPin: "5678" });
+    assert.equal(res.status, 401);
+    assert.equal((await tablet.post("/api/login", { username: K.body.username, pin: "1234" })).status, 200);
+  });
+
+  await t.test("the right PIN changes it and signs out other devices only", async () => {
+    const res = await kid.post("/api/me/pin", { currentPin: "1234", newPin: "5678" });
+    assert.deepEqual([res.status, res.json.success], [200, true]);
+    assert.ok(res.json.otherDevicesSignedOut >= 1);
+    assert.equal((await kid.get("/api/me")).status, 200);
+    assert.equal((await tablet.get("/api/me")).status, 401);
+    const fresh = srv.client();
+    assert.equal((await fresh.post("/api/login", { username: K.body.username, pin: "1234" })).status, 401);
+    assert.equal((await fresh.post("/api/login", { username: K.body.username, pin: "5678" })).status, 200);
+  });
+
+  await t.test("wrong current PINs share the sign-in lockout", async () => {
+    // Two failures so far (a wrong current PIN, then the old PIN at sign-in);
+    // three more wrong tries here make five.
+    for (let i = 0; i < 3; i++) {
+      assert.equal((await kid.post("/api/me/pin", { currentPin: "0000", newPin: "1111" })).status, 401);
+    }
+    const locked = await kid.post("/api/me/pin", { currentPin: "5678", newPin: "1111" });
+    assert.equal(locked.status, 429);
+    assert.match(locked.json.error, /Too many tries/);
   });
 });

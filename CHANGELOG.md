@@ -1,3 +1,18 @@
+# What changed in this update (round 7: Me page and lesson videos)
+
+- Students can change their own school level on the Me page (Edit → School
+  level), so they can move up each January. The centre is still changed by an
+  admin.
+- New "Change my PIN" button under Privacy & account: type the current PIN,
+  then the new one twice. Any other device that's signed in gets signed out;
+  this one stays signed in. Wrong current PINs count toward the same
+  "too many tries" lockout as sign-in.
+- The Area and Volume lessons now play their videos from the Project STEMulate
+  YouTube channel, so every video lesson has one.
+- Database: `supabase/schema.sql` is now version 3 (two new functions). Run
+  the whole file again in the Supabase SQL Editor before this code goes live;
+  the server won't start against a version-2 database. Nothing is deleted.
+
 # What changed in this update (round 6: website layout)
 
 - The website menu is now six tabs: Home, Curriculum, Impact, About us,

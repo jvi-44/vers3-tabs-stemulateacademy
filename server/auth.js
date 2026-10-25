@@ -50,6 +50,12 @@ function sessionToken(req) {
   return typeof token === "string" && token.length > 0 ? token : null;
 }
 
+/** The stored form (SHA-256) of this browser's session token, or null. */
+export function sessionHash(req) {
+  const token = sessionToken(req);
+  return token ? hashToken(token) : null;
+}
+
 /** The signed-in user's id, or null if there's no valid, unexpired session. */
 export async function userIdFromRequest(req) {
   const token = sessionToken(req);

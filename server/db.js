@@ -16,7 +16,7 @@ import { databaseConfig, SCHEMA_FILE } from "./dbConfig.js";
 import { callFunction } from "./pgFunctions.js";
 
 /** Must match stem_schema_version() in supabase/schema.sql. */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 // Half-finished settings don't throw here (that would print a stack trace
 // while the app loads); they fail `ready` below, which index.js reports.

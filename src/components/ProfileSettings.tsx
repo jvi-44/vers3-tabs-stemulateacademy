@@ -1,8 +1,8 @@
-import { useState } from "react";
-import { Pencil, Building2, GraduationCap, AtSign, CalendarDays, Download, Trash2, ShieldCheck, Palette, Check } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Pencil, Building2, GraduationCap, AtSign, CalendarDays, Download, Trash2, ShieldCheck, Palette, Check, KeyRound } from "lucide-react";
 import { toast } from "sonner";
-import type { AuthUser } from "../types-auth";
-import { updateMe, deleteMe, downloadMyData } from "../api/auth";
+import type { AuthUser, ReferenceOption } from "../types-auth";
+import { updateMe, deleteMe, downloadMyData, changeMyPin, fetchReferenceData } from "../api/auth";
 import { THEMES, type ThemeId } from "../lib/theme";
 import { cn } from "./ui/utils";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
@@ -40,28 +40,41 @@ function DetailRow({ icon, label, value }: { icon: React.ReactNode; label: strin
 }
 
 // ---------------------------------------------------------------------------
-// My details: name, username, organisation, school level. Name and username
-// can be changed; organisation and level are set by the centre.
+// My details: name, username, organisation, school level. Name, username and
+// school level (students move up every January) can be changed; the
+// organisation is set by the centre.
 // ---------------------------------------------------------------------------
 
 export function ProfileDetails({ authUser, onChange }: { authUser: AuthUser; onChange: (u: AuthUser) => void }) {
   const [open, setOpen] = useState(false);
   const [username, setUsername] = useState(authUser.username);
   const [fullName, setFullName] = useState(authUser.fullName);
+  const [levelId, setLevelId] = useState(authUser.schoolLevelId);
+  const [levels, setLevels] = useState<ReferenceOption[] | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // The level list loads the first time the dialog opens.
+  useEffect(() => {
+    if (!open || levels) return;
+    fetchReferenceData()
+      .then((d) => setLevels(d.schoolLevels))
+      .catch(() => setLevels([]));
+  }, [open, levels]);
 
   const startEdit = () => {
     setUsername(authUser.username);
     setFullName(authUser.fullName);
+    setLevelId(authUser.schoolLevelId);
     setOpen(true);
   };
 
   const save = async () => {
     setSaving(true);
     try {
-      const changes: { username?: string; fullName?: string } = {};
+      const changes: { username?: string; fullName?: string; schoolLevelId?: number } = {};
       if (username.trim() !== authUser.username) changes.username = username.trim();
       if (fullName.trim() !== authUser.fullName) changes.fullName = fullName.trim();
+      if (levelId !== authUser.schoolLevelId) changes.schoolLevelId = levelId;
       if (Object.keys(changes).length) {
         const { user } = await updateMe(changes);
         onChange(user);
@@ -123,6 +136,30 @@ export function ProfileDetails({ authUser, onChange }: { authUser: AuthUser; onC
             />
             <span className={cn("block text-[11px] font-semibold", usernameValid ? "text-muted-foreground" : "text-destructive")}>
               3–20 letters, numbers or underscores. You'll sign in with the new one.
+            </span>
+          </label>
+          <label className="block space-y-1.5">
+            <span className="text-sm font-bold text-foreground">School level</span>
+            <select
+              value={levelId}
+              onChange={(e) => setLevelId(Number(e.target.value))}
+              disabled={!levels?.length}
+              className="pop-field w-full h-11 px-3 text-sm"
+            >
+              {levels?.length ? (
+                levels.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.name}
+                  </option>
+                ))
+              ) : (
+                <option value={authUser.schoolLevelId}>
+                  {levels ? authUser.schoolLevelName ?? "—" : "Loading…"}
+                </option>
+              )}
+            </select>
+            <span className="block text-[11px] font-semibold text-muted-foreground">
+              Moved up a year? Pick your new level.
             </span>
           </label>
           <DialogFooter>
@@ -202,6 +239,90 @@ export function ThemePicker({ theme, onTheme }: { theme: ThemeId; onTheme: (t: T
 // Privacy & account: download my data, delete my account
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Change my PIN: needs the current one; other devices are signed out
+// ---------------------------------------------------------------------------
+
+function PinInput({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <label className="block space-y-1.5">
+      <span className="text-sm font-bold text-foreground">{label}</span>
+      <input
+        type="password"
+        inputMode="numeric"
+        autoComplete="off"
+        value={value}
+        maxLength={4}
+        onChange={(e) => /^\d{0,4}$/.test(e.target.value) && onChange(e.target.value)}
+        placeholder="••••"
+        className="pop-field w-full h-12 px-3 text-center text-xl font-bold tracking-[0.5em]"
+      />
+    </label>
+  );
+}
+
+function ChangePin() {
+  const [open, setOpen] = useState(false);
+  const [currentPin, setCurrentPin] = useState("");
+  const [newPin, setNewPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const reset = (o: boolean) => {
+    setOpen(o);
+    setCurrentPin("");
+    setNewPin("");
+    setConfirmPin("");
+  };
+
+  const mismatch = confirmPin.length === 4 && newPin !== confirmPin;
+  const ready = currentPin.length === 4 && newPin.length === 4 && newPin === confirmPin;
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      await changeMyPin(currentPin, newPin);
+      reset(false);
+      toast.success("PIN changed! Any other devices have been signed out.");
+    } catch (e) {
+      toast.error((e as Error).message);
+      setCurrentPin("");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <>
+      <button onClick={() => reset(true)} className="btn-pop btn-pop-sm btn-primary">
+        <KeyRound size={16} strokeWidth={2.5} /> Change my PIN
+      </button>
+      <Dialog open={open} onOpenChange={reset}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Change my PIN</DialogTitle>
+            <DialogDescription>
+              Pick a new 4-digit PIN. Any other device you're signed in on will be signed out.
+            </DialogDescription>
+          </DialogHeader>
+          <PinInput label="Current PIN" value={currentPin} onChange={setCurrentPin} />
+          <PinInput label="New PIN" value={newPin} onChange={setNewPin} />
+          <PinInput label="New PIN again" value={confirmPin} onChange={setConfirmPin} />
+          {mismatch && <p className="text-[11px] font-semibold text-destructive">The new PINs don't match.</p>}
+          <DialogFooter>
+            <button onClick={() => reset(false)} className="btn-pop btn-pop-sm">
+              Cancel
+            </button>
+            <button onClick={save} disabled={!ready || busy} className="btn-pop btn-pop-sm btn-primary">
+              {busy ? "Saving…" : "Change PIN"}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 export function PrivacyAndAccount({ authUser, onDeleted }: { authUser: AuthUser; onDeleted: () => void }) {
   const [step, setStep] = useState<"closed" | "confirm" | "pin">("closed");
   const [pin, setPin] = useState("");
@@ -243,7 +364,8 @@ export function PrivacyAndAccount({ authUser, onDeleted }: { authUser: AuthUser;
         We keep your name, username, centre, school level, lesson progress, friends and chat messages so the Academy
         works. You can download a copy or delete everything at any time.
       </p>
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-col sm:flex-row flex-wrap gap-3">
+        <ChangePin />
         <button onClick={download} className="btn-pop btn-pop-sm btn-pop3">
           <Download size={16} strokeWidth={2.5} /> Download my data
         </button>

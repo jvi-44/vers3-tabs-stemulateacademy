@@ -50,8 +50,17 @@ export function getMe(): Promise<{ user: AuthUser }> {
   return request("/me");
 }
 
-export function updateMe(changes: { username?: string; fullName?: string }): Promise<{ user: AuthUser }> {
+export function updateMe(changes: {
+  username?: string;
+  fullName?: string;
+  schoolLevelId?: number;
+}): Promise<{ user: AuthUser }> {
   return request("/me", { method: "PATCH", body: JSON.stringify(changes) });
+}
+
+/** Changes the PIN; every other device is signed out, this one stays signed in. */
+export async function changeMyPin(currentPin: string, newPin: string): Promise<void> {
+  await request("/me/pin", { method: "POST", body: JSON.stringify({ currentPin, newPin }) });
 }
 
 export async function deleteMe(pin: string): Promise<void> {
