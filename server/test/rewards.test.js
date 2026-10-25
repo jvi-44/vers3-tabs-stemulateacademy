@@ -39,19 +39,19 @@ test("rewards are computed by the server and paid once", async (t) => {
     assert.equal((await kid.post("/api/user/xp", { xp: 999999, level: 99, atoms: 1 })).status, 404);
   });
 
-  await t.test("quiz XP follows the clamped score; video without a URL gives no XP", async () => {
+  await t.test("quiz XP follows the clamped score; a watched video pays 200 XP", async () => {
     const quiz = await kid.post("/api/progress", { lessonId: "mm-sci1-quiz", status: "completed", score: 5000 });
     assert.deepEqual(quiz.json.awarded, { xp: 100, atoms: 25 });
     const quiz2 = await kid.post("/api/progress", { lessonId: "mm-sci2-quiz", status: "completed", score: 0 });
     assert.deepEqual(quiz2.json.awarded, { xp: 50, atoms: 25 });
     const video = await kid.post("/api/progress", { lessonId: "mm-math1-video", status: "completed" });
-    assert.deepEqual(video.json.awarded, { xp: 0, atoms: 100 });
+    assert.deepEqual(video.json.awarded, { xp: 200, atoms: 100 });
   });
 
   await t.test("level is recomputed from XP", async () => {
-    // 500 + 100 + 100 + 50 = 750 XP so far; a second game takes it past 1000.
+    // 500 + 100 + 100 + 50 + 200 = 950 XP so far; a second game takes it past 1000.
     const res = await kid.post("/api/progress", { lessonId: "mm-math-sim", status: "completed" });
-    assert.equal(res.json.user.xp, 1250);
+    assert.equal(res.json.user.xp, 1450);
     assert.equal(res.json.user.level, 2);
   });
 

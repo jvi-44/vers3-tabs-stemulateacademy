@@ -269,7 +269,8 @@ export const GAME_LESSONS: GameLesson[] = [
         title: "Area (Length × Width)",
         topicLabel: "Math Topic 1: Area",
         description: "Learn how to calculate the area of rectangles and irregular shapes by breaking them into smaller rectangles — then use it to plan the perfect Minecraft biome house floor!",
-        duration: "5:00",
+        duration: "2:02",
+        videoUrl: "https://www.youtube-nocookie.com/embed/0YN4DOpc7h0?rel=0",
         completed: false,
         dialogue: [
           { bot: "matthew", text: "Area is the amount of space a 2D shape takes up. For a rectangle: Area = Length × Width. If your biome house floor is 6 blocks long and 4 blocks wide, that's 6 × 4 = 24 blocks!" },
@@ -331,7 +332,8 @@ export const GAME_LESSONS: GameLesson[] = [
         title: "Volume (L × W × H)",
         topicLabel: "Math Topic 2: Volume",
         description: "Add the third dimension! Learn how to calculate the volume of 3D shapes and use it to design your dream Minecraft storage room.",
-        duration: "5:00",
+        duration: "1:46",
+        videoUrl: "https://www.youtube-nocookie.com/embed/3x2PNynskQg?rel=0",
         completed: false,
         dialogue: [
           { bot: "timothy", text: "Wow that was fun! But wait — what if something is 3D, like my arm, or like a house? How much space does that take up?" },
