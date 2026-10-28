@@ -10,6 +10,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { rpc } from "./db.js";
 import { route } from "./route.js";
+import { oneTryAtATime } from "./oneTryAtATime.js";
 import {
   BEATS_BY_ID,
   LESSONS,
@@ -235,21 +236,25 @@ app.post("/api/login", async (req, res) => {
       return res.status(401).json({ error: "Incorrect username or PIN." });
     }
 
-    if (await isLockedOut(username)) {
-      return res.status(429).json({ error: LOCKOUT_MESSAGE });
-    }
+    // One try at a time per username (see oneTryAtATime.js), so tries sent
+    // together can't all read the count before any of them is logged.
+    await oneTryAtATime(username, async () => {
+      if (await isLockedOut(username)) {
+        return res.status(429).json({ error: LOCKOUT_MESSAGE });
+      }
 
-    // The account (exact name first, then ignoring case) and its PIN hash.
-    const found = await rpc("stem_user_for_login", { p_username: username });
-    const ok = found && PIN_REGEX.test(pin) && (await bcrypt.compare(pin, found.pin_hash));
-    if (!ok) {
-      await logAttempt(found?.user.username ?? username, false);
-      return res.status(401).json({ error: "Incorrect username or PIN." });
-    }
+      // The account (exact name first, then ignoring case) and its PIN hash.
+      const found = await rpc("stem_user_for_login", { p_username: username });
+      const ok = found && PIN_REGEX.test(pin) && (await bcrypt.compare(pin, found.pin_hash));
+      if (!ok) {
+        await logAttempt(found?.user.username ?? username, false);
+        return res.status(401).json({ error: "Incorrect username or PIN." });
+      }
 
-    await logAttempt(found.user.username, true);
-    await createSession(res, found.user.user_id);
-    res.json({ user: publicUser(found.user) });
+      await logAttempt(found.user.username, true);
+      await createSession(res, found.user.user_id);
+      res.json({ user: publicUser(found.user) });
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Something went wrong. Please try again." });
@@ -281,18 +286,21 @@ app.post("/api/recover/verify", route(async (req, res) => {
     return res.status(401).json({ error: "Those answers don't match our records." });
   }
 
-  if (await isLockedOut(username)) {
-    return res.status(429).json({ error: LOCKOUT_MESSAGE });
-  }
+  // One try at a time per username, like sign-in.
+  await oneTryAtATime(username, async () => {
+    if (await isLockedOut(username)) {
+      return res.status(429).json({ error: LOCKOUT_MESSAGE });
+    }
 
-  const user = await rpc("stem_recovery_answers", { p_username: username });
-  if (!user || user.recovery_colour_id !== colourId || user.recovery_subject_id !== subjectId) {
-    await logAttempt(username, false);
-    return res.status(401).json({ error: "Those answers don't match our records." });
-  }
+    const user = await rpc("stem_recovery_answers", { p_username: username });
+    if (!user || user.recovery_colour_id !== colourId || user.recovery_subject_id !== subjectId) {
+      await logAttempt(username, false);
+      return res.status(401).json({ error: "Those answers don't match our records." });
+    }
 
-  const token = issueResetToken(username);
-  res.json({ resetToken: token });
+    const token = issueResetToken(username);
+    res.json({ resetToken: token });
+  });
 }));
 
 // ---------------------------------------------------------
