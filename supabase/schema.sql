@@ -96,10 +96,17 @@ CREATE TABLE IF NOT EXISTS login_attempts (
     attempt_id    BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     username      TEXT NOT NULL,
     success       BOOLEAN NOT NULL,
-    attempted_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    attempted_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    -- 'sign_in': a PIN typed to sign in or to change the PIN. 'recovery': a
+    -- Forgot-PIN answer. 'new_pin': a new PIN was saved (always a success).
+    kind          TEXT NOT NULL DEFAULT 'sign_in' CHECK (kind IN ('sign_in', 'recovery', 'new_pin'))
 );
 
--- Used by the "5 failures in 15 minutes" lockout.
+-- Older copies of this file had no kind; their rows count as sign-in tries.
+ALTER TABLE login_attempts ADD COLUMN IF NOT EXISTS kind TEXT NOT NULL DEFAULT 'sign_in'
+    CHECK (kind IN ('sign_in', 'recovery', 'new_pin'));
+
+-- Used by the "5 failures in 15 minutes" lockout and the Forgot-PIN closure.
 DROP INDEX IF EXISTS idx_login_attempts_username;
 CREATE INDEX IF NOT EXISTS idx_login_attempts_user_time ON login_attempts (lower(username), attempted_at);
 
@@ -402,7 +409,7 @@ ON CONFLICT (subject_name) DO NOTHING;
 -- Bump this, and SCHEMA_VERSION in server/db.js, whenever this file changes.
 CREATE OR REPLACE FUNCTION stem_schema_version() RETURNS json
 LANGUAGE sql IMMUTABLE SET search_path = public AS $$
-  SELECT to_json(4)
+  SELECT to_json(5)
 $$;
 
 -- Times go out the way the API has always sent them: "2026-10-17 08:30:00",
@@ -566,6 +573,33 @@ LANGUAGE sql SET search_path = public AS $$
   SELECT NULL::json;
 $$;
 
+-- A wrong Forgot-PIN answer. Like any failure it counts toward the 15-minute
+-- lockout, and 3 of them close Forgot PIN (stem_recovery_misses).
+CREATE OR REPLACE FUNCTION stem_log_recovery_miss(p_username text) RETURNS json
+LANGUAGE sql SET search_path = public AS $$
+  INSERT INTO login_attempts (username, success, kind) VALUES (p_username, false, 'recovery');
+  SELECT NULL::json;
+$$;
+
+-- Wrong Forgot-PIN answers for a username (ignoring case) since its last good
+-- sign-in or new PIN. At 3, Forgot PIN stays closed (server/app.js): there are
+-- only 49 possible answers, so a time limit alone lets them all be tried.
+CREATE OR REPLACE FUNCTION stem_recovery_misses(p_username text) RETURNS json
+LANGUAGE sql STABLE SET search_path = public AS $$
+  SELECT to_json(count(*)) FROM login_attempts a
+   WHERE lower(a.username) = lower(p_username) AND a.kind = 'recovery' AND NOT a.success
+     AND a.attempt_id > coalesce((SELECT max(b.attempt_id) FROM login_attempts b
+                                   WHERE lower(b.username) = lower(p_username) AND b.success), 0)
+$$;
+
+-- Notes that a student's PIN was just changed, which reopens Forgot PIN.
+-- Called by every function that saves a new PIN, as part of the same change.
+CREATE OR REPLACE FUNCTION stem_note_new_pin(p_user_id bigint) RETURNS void
+LANGUAGE sql SET search_path = public AS $$
+  INSERT INTO login_attempts (username, success, kind)
+  SELECT username, true, 'new_pin' FROM users WHERE user_id = p_user_id;
+$$;
+
 -- Forgot PIN, step 1: the recovery answers for an exact username.
 CREATE OR REPLACE FUNCTION stem_recovery_answers(p_username text) RETURNS json
 LANGUAGE sql STABLE SET search_path = public AS $$
@@ -584,6 +618,7 @@ BEGIN
    WHERE username = p_username
   RETURNING user_id INTO v_user_id;
   DELETE FROM sessions WHERE user_id = v_user_id;
+  PERFORM stem_note_new_pin(v_user_id);
   RETURN to_json(v_user_id);
 END $$;
 
@@ -675,6 +710,7 @@ $$;
 CREATE OR REPLACE FUNCTION stem_user_change_pin(p_user_id bigint, p_pin_hash text, p_keep_token text) RETURNS json
 LANGUAGE sql SET search_path = public AS $$
   UPDATE users SET pin_hash = p_pin_hash, updated_at = now() WHERE user_id = p_user_id;
+  SELECT stem_note_new_pin(p_user_id);
   WITH gone AS (DELETE FROM sessions WHERE user_id = p_user_id AND token <> p_keep_token RETURNING 1)
   SELECT to_json(count(*)) FROM gone;
 $$;
@@ -705,7 +741,8 @@ LANGUAGE sql STABLE SET search_path = public AS $$
                        FROM messages m JOIN conversations c ON c.conversation_id = m.conversation_id
                       WHERE m.sender_id = p_user_id),
     'loginHistory', (SELECT coalesce(json_agg(json_build_object(
-                         'success', CASE WHEN a.success THEN 1 ELSE 0 END, 'attempted_at', stem_ts(a.attempted_at))
+                         'success', CASE WHEN a.success THEN 1 ELSE 0 END, 'kind', a.kind,
+                         'attempted_at', stem_ts(a.attempted_at))
                        ORDER BY a.attempt_id), '[]')
                        FROM login_attempts a JOIN users u ON lower(a.username) = lower(u.username)
                       WHERE u.user_id = p_user_id),
@@ -1222,8 +1259,10 @@ LANGUAGE sql STABLE SET search_path = public AS $$
       'completed', (SELECT count(*) FROM lesson_progress p WHERE p.user_id = u.user_id AND p.status = 'completed'),
       'last_active', stem_ts(greatest(
         -- lower() on both sides uses idx_login_attempts_user_time, so this
-        -- stays quick however many sign-ins pile up.
-        (SELECT max(a.attempted_at) FROM login_attempts a WHERE lower(a.username) = lower(u.username) AND a.success),
+        -- stays quick however many sign-ins pile up. Only sign-ins count: a
+        -- new PIN set by staff isn't the student being active.
+        (SELECT max(a.attempted_at) FROM login_attempts a
+          WHERE lower(a.username) = lower(u.username) AND a.success AND a.kind = 'sign_in'),
         (SELECT max(p.last_accessed) FROM lesson_progress p WHERE p.user_id = u.user_id),
         (SELECT max(g.updated_at) FROM game_scores g WHERE g.user_id = u.user_id),
         u.created_at)))
@@ -1764,6 +1803,7 @@ BEGIN
   END IF;
   DELETE FROM sessions WHERE user_id = p_user_id;
   GET DIAGNOSTICS v_ended = ROW_COUNT;
+  PERFORM stem_note_new_pin(p_user_id);
   PERFORM stem_log_as(p_actor, p_user_id, p_action);
   RETURN to_json(v_ended);
 END $$;

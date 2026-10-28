@@ -1,12 +1,14 @@
 // Tries sent together for one username must take turns (see oneTryAtATime.js),
-// so a burst can't get more than 5 wrong guesses past the 5-in-15-minutes
-// lockout by having every request read the count before any try is logged.
+// so a burst can't get more wrong guesses past the 5-in-15-minutes lockout, or
+// the 3 wrong answers that close Forgot PIN, by having every request read the
+// count before any try is logged.
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { startServer, signUp } from "./helpers.js";
 import { oneTryAtATime } from "../oneTryAtATime.js";
 
 const LOCKOUT = /ask your teacher or wait 15 minutes/;
+const CLOSED = /ask your teacher to reset your PIN/;
 
 let srv;
 before(async () => {
@@ -30,9 +32,13 @@ function countStatuses(replies) {
   return counts;
 }
 
-/** Every 429 is the username lockout, not the per-IP limit. */
+/** Every 429 is the username lockout (not the per-IP limit), and every 403 the
+ *  Forgot-PIN closure. */
 function assertLockouts(replies) {
-  for (const r of replies) if (r.status === 429) assert.match(r.json.error, LOCKOUT);
+  for (const r of replies) {
+    if (r.status === 429) assert.match(r.json.error, LOCKOUT);
+    if (r.status === 403) assert.match(r.json.error, CLOSED);
+  }
 }
 
 /** Wrong tries logged for a username in any letter case: the ones that reached the check. */
@@ -59,7 +65,7 @@ test("20 wrong PINs sent together: 5 are checked, the rest are locked out", asyn
   assert.equal(c.cookie, "", "no session while locked out");
 });
 
-test("all 49 Forgot-PIN answers sent together: 5 are checked and no reset token comes back", async () => {
+test("all 49 Forgot-PIN answers sent together: 3 are checked and no reset token comes back", async () => {
   const ref = (await srv.client().get("/api/reference-data")).json;
   const colours = ref.recoveryColours.map((x) => x.id);
   const subjects = ref.recoverySubjects.map((x) => x.id);
@@ -80,10 +86,17 @@ test("all 49 Forgot-PIN answers sent together: 5 are checked and no reset token 
       ),
     ),
   );
-  assert.deepEqual(countStatuses(replies), { 401: 5, 429: 44 });
+  assert.deepEqual(countStatuses(replies), { 401: 3, 403: 46 });
   assertLockouts(replies);
   assert.ok(replies.every((r) => r.json.resetToken === undefined), "no reset token");
-  assert.equal(await failuresLogged(body.username), 5);
+  assert.equal(await failuresLogged(body.username), 3);
+
+  const right = await c.post("/api/recover/verify", {
+    username: body.username,
+    recoveryColourId: colours.at(-1),
+    recoverySubjectId: subjects.at(-1),
+  });
+  assert.equal(right.status, 403, "Forgot PIN stays closed");
 });
 
 test("20 wrong current PINs sent together to change PIN: 5 are checked", async () => {
@@ -115,7 +128,11 @@ test("sign-in, Forgot PIN and change PIN share the turns, in any letter case", a
     );
   }
   const replies = await together(requests);
-  assert.deepEqual(countStatuses(replies), { 401: 5, 429: 19 });
+  // Forgot PIN may close (403) before the lockout starts (429), depending on
+  // which tries go first; either way only 5 are checked.
+  const counts = countStatuses(replies);
+  assert.equal(counts[401], 5, JSON.stringify(counts));
+  assert.equal((counts[429] ?? 0) + (counts[403] ?? 0), 19, JSON.stringify(counts));
   assertLockouts(replies);
   assert.equal(await failuresLogged(name), 5);
 });

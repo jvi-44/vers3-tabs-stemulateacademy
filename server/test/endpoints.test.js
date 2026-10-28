@@ -235,7 +235,7 @@ test("profile, rename and the data export", async (t) => {
       [0, 1],
     );
     for (const h of loginHistory) {
-      assert.deepEqual(keys(h), ["attempted_at", "success"]);
+      assert.deepEqual(keys(h), ["attempted_at", "kind", "success"]);
       assert.match(h.attempted_at, SQL_TIME);
     }
   });

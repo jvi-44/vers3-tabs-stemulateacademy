@@ -1,7 +1,8 @@
 // supabase/schema.sql is run again on the live database for every update, so
 // it must upgrade an older copy that already has students without losing
 // anything. This installs the version 3 file (fixtures/schema-v3.sql, from
-// round 7), adds a student with progress, then runs today's file twice.
+// round 7), adds a student with progress and sign-in tries, then runs today's
+// file twice.
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "fs";
@@ -21,19 +22,26 @@ test("today's schema upgrades a version 3 database and keeps its students", asyn
     await db.query("INSERT INTO lesson_progress (user_id, lesson_id, status, score) VALUES ($1, 'mm-sci1-quiz', 'completed', 80)", [id]);
     await db.query("INSERT INTO game_scores (user_id, game_id, best_score) VALUES ($1, 'mm-sci-sim', 70)", [id]);
     await db.query("INSERT INTO sessions (token, user_id, expires_at) VALUES ('hashed-token', $1, 9999999999999)", [id]);
+    await db.query("INSERT INTO login_attempts (username, success) VALUES ('old_kid', false), ('old_kid', true)");
     const orgsBefore = (await one("SELECT count(*)::int AS n FROM organisations")).n;
 
     const schema = fs.readFileSync(SCHEMA_FILE, "utf8");
     await db.exec(schema);
     await db.exec(schema);
 
-    assert.equal((await one("SELECT stem_schema_version() AS v")).v, 4);
+    assert.equal((await one("SELECT stem_schema_version() AS v")).v, 5);
     const kid = await one("SELECT full_name, pin_hash, school_level_id, org_id, xp, atoms FROM users WHERE user_id = $1", [id]);
     assert.deepEqual(kid, { full_name: "Old Kid", pin_hash: "pin-hash", school_level_id: 2, org_id: 1, xp: 1234, atoms: 56 });
     assert.equal((await one("SELECT score FROM lesson_progress WHERE user_id = $1", [id])).score, 80);
     assert.equal((await one("SELECT best_score FROM game_scores WHERE user_id = $1", [id])).best_score, 70);
     // Students stay signed in.
     assert.equal((await one("SELECT count(*)::int AS n FROM sessions WHERE user_id = $1", [id])).n, 1);
+    // Old tries are kept as sign-in tries, so they don't close Forgot PIN.
+    assert.deepEqual(
+      (await db.query("SELECT success, kind FROM login_attempts ORDER BY attempt_id")).rows,
+      [{ success: false, kind: "sign_in" }, { success: true, kind: "sign_in" }],
+    );
+    assert.equal((await one("SELECT stem_recovery_misses('old_kid') AS n")).n, 0);
     // The fixed lists keep their ids.
     assert.equal((await one("SELECT count(*)::int AS n FROM organisations")).n, orgsBefore);
     // The new tables start empty, and the student shows up in the new list.

@@ -14,7 +14,7 @@ the partner centres or a lawyer before real classes start.
 | Full name, username, centre, school level | Account and progress reports | `users` |
 | 4-digit PIN (bcrypt hash only), recovery colour + subject | Sign-in and PIN reset | `users` |
 | Sign-in sessions (SHA-256 hash of the token only) | Staying signed in | `sessions` |
-| Sign-in attempts (username, success, time) | Spotting misuse | `login_attempts` |
+| Sign-in attempts and PIN changes (username, success, kind, time) | Spotting misuse; closing Forgot PIN after 3 wrong answers | `login_attempts` |
 | Lesson progress, quiz scores, XP, atoms, avatar | Learning features | `lesson_progress`, `users` |
 | Best score per lesson game | High scores in the Games tab | `game_scores` |
 | Friends, friend requests, chats, messages | Social features | `friendships`, `friend_requests`, `conversations`, `messages` |

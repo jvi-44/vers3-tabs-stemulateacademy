@@ -75,6 +75,10 @@ const REFLECTION_MAX = 280;
 
 const LOCKOUT_FAILURES = 5;
 const LOCKOUT_MESSAGE = "Too many tries — ask your teacher or wait 15 minutes";
+// Forgot PIN closes for a username after this many wrong answers, until it
+// signs in or gets a new PIN (stem_recovery_misses in supabase/schema.sql).
+const RECOVERY_MISSES = 3;
+const RECOVERY_CLOSED_MESSAGE = "Too many wrong answers — ask your teacher to reset your PIN.";
 
 // ---------------------------------------------------------
 // Per-IP limit on the sign-in / sign-up / recovery endpoints. A student-care
@@ -301,13 +305,16 @@ app.post("/api/recover/verify", route(async (req, res) => {
 
   // One try at a time per username, like sign-in.
   await oneTryAtATime(username, async () => {
+    if ((await rpc("stem_recovery_misses", { p_username: username })) >= RECOVERY_MISSES) {
+      return res.status(403).json({ error: RECOVERY_CLOSED_MESSAGE });
+    }
     if (await isLockedOut(username)) {
       return res.status(429).json({ error: LOCKOUT_MESSAGE });
     }
 
     const user = await rpc("stem_recovery_answers", { p_username: username });
     if (!user || user.recovery_colour_id !== colourId || user.recovery_subject_id !== subjectId) {
-      await logAttempt(username, false);
+      await rpc("stem_log_recovery_miss", { p_username: username });
       return res.status(401).json({ error: "Those answers don't match our records." });
     }
 

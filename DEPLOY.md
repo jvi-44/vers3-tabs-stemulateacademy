@@ -186,6 +186,21 @@ Changing name servers can take a few hours to spread.
    to the closed Google Forms again (point people to email meanwhile), and
    sign-ups already sent stay in `site_signups` (Table Editor).
 
+## Forgot PIN closure going live (schema version 5)
+
+1. In Supabase's SQL Editor, run the whole of `supabase/schema.sql` again (it
+   is now version 5; nothing is deleted), then push straight away: the old
+   server won't start on a version 5 database. If round 8 isn't live yet, do
+   both at once: version 5 includes everything in version 4, so follow
+   "Round 8 going live" above with today's file.
+2. Check it with a test account: three wrong Forgot-PIN answers, then the
+   right ones, should say "Too many wrong answers — ask your teacher to reset
+   your PIN." Signing in with the PIN, or a PIN reset on the Staff or Admin
+   page, opens Forgot PIN again.
+3. **To roll back**, revert the code and run the previous `supabase/schema.sql`
+   (version 4) again. The new `kind` column and functions stay, unused;
+   nothing is deleted.
+
 ## AI chat: decide first
 
 Google's Gemini API terms (https://ai.google.dev/gemini-api/terms) say the API

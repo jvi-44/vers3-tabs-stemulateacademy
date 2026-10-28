@@ -37,7 +37,7 @@ it changes. It's safe to run more than once: it never deletes students' data.
 |---|---|---|
 | `users` | Every account | One student: first name, username, **hashed** PIN, school level, centre, XP, level, atoms, avatar |
 | `sessions` | Who is signed in | One signed-in browser (only a scrambled copy of the cookie is kept) |
-| `login_attempts` | A security log | One sign-in or Forgot-PIN try, used for the "5 wrong tries, wait 15 minutes" rule |
+| `login_attempts` | A security log | One sign-in or Forgot-PIN try, or a new PIN (`kind` says which), used for the "5 wrong tries, wait 15 minutes" rule and to close Forgot PIN after 3 wrong answers |
 | `lesson_progress` | Progress per activity | One (student, activity) pair: `in_progress` or `completed`, and the score |
 | `game_scores`, `beat_replays` | Games | Best score per game; replays that paid a small reward |
 | `user_cards` | Card albums | How many of each card a student owns |

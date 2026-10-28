@@ -136,7 +136,9 @@ npm run typecheck
   `/api/chat`, ...) works out who you are from that cookie; user ids sent by
   the browser are ignored. `POST /api/logout` ends the session.
 - **PIN guessing** — 5 wrong PINs or Forgot-PIN answers lock that username
-  for 15 minutes, and sign-in/sign-up/recovery are rate-limited per IP.
+  for 15 minutes; 3 wrong Forgot-PIN answers close Forgot PIN for it until
+  the student signs in or a new PIN is set; and sign-in/sign-up/recovery are
+  rate-limited per IP.
 - **Rewards** — XP, levels, atoms, card packs and game replays are worked out
   on the server (`server/lessons.js`, `server/cards.js`); the browser can't
   set them.

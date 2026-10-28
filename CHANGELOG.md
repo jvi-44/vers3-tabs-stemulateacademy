@@ -1,3 +1,19 @@
+# What changed in this update (Forgot PIN safety)
+
+- **Forgot PIN closes after 3 wrong answers.** There are only 49 possible
+  answers (7 colours × 7 subjects), and the 5-tries-per-15-minutes lockout
+  alone let someone who knew a username try them all in about 2¼ hours. Now
+  3 wrong answers close Forgot PIN for that username until the student signs
+  in with their PIN or a new PIN is set (by centre staff, an admin, or on the
+  Me page). The student is told "Too many wrong answers — ask your teacher to
+  reset your PIN." Signing in with the PIN keeps working.
+- "Download my data" now says what each sign-in record was: a sign-in, a
+  Forgot-PIN answer or a new PIN.
+- Database: `supabase/schema.sql` is now version 5 (a `kind` for each sign-in
+  record, and three new functions). Run it in the SQL Editor right before
+  this code goes live (DEPLOY.md "Forgot PIN closure going live"). Nothing is
+  deleted.
+
 # What changed in this update (round 8: team feedback)
 
 - **Questions for every Primary level.** Quizzes, lesson games and story games
