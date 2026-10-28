@@ -4,6 +4,8 @@ import { sfx } from "../../games/kit/audio";
 import { STEMBOTS } from "../../data/mock";
 import type { GameResult } from "../types";
 import { HelperTip, Hud, Meter, MiniGameFrame, Pill, useFrame, type MiniGameProps } from "./kit";
+import { orOriginal } from "../../data/levels";
+import { BUZZER_BANKS } from "../../content/buzzerRound";
 
 // Game-show buzzer round: hit BUZZ before the rival contestant does, then pick
 // the right answer. The lifeline STEMbot can knock out two wrong answers once.
@@ -15,7 +17,7 @@ interface Q {
   why: string;
 }
 
-const QUESTIONS: Q[] = [
+const ORIGINAL_QUESTIONS: Q[] = [
   {
     q: "Plants make their own food using sunlight. What is this called?",
     options: ["Photosynthesis", "Evaporation", "Digestion", "Hibernation"],
@@ -41,7 +43,9 @@ const TO_WIN = 2;
 
 type Stage = "buzz" | "answer" | "reveal";
 
-export function BuzzerRound({ onDone, helper }: MiniGameProps) {
+export function BuzzerRound({ onDone, helper, band }: MiniGameProps) {
+  // The original questions are the P5–6 set; P1–2 and P3–4 have their own.
+  const [questions] = useState(() => (band === "p56" ? ORIGINAL_QUESTIONS : orOriginal(BUZZER_BANKS[band], ORIGINAL_QUESTIONS)));
   const [i, setI] = useState(0);
   const [stage, setStage] = useState<Stage>("buzz");
   const [rival, setRival] = useState(0);
@@ -54,15 +58,15 @@ export function BuzzerRound({ onDone, helper }: MiniGameProps) {
   const [playing, setPlaying] = useState(false);
   const rivalRef = useRef(0);
 
-  const q = QUESTIONS[i];
+  const q = questions[i];
   const bot = STEMBOTS[helper];
 
   const next = (gotIt: boolean) => {
     const s = score + (gotIt ? 1 : 0);
     if (gotIt) setScore(s);
     setTimeout(() => {
-      if (i + 1 >= QUESTIONS.length) {
-        setResult({ won: s >= TO_WIN, score: Math.round((s / QUESTIONS.length) * 100) });
+      if (i + 1 >= questions.length) {
+        setResult({ won: s >= TO_WIN, score: Math.round((s / questions.length) * 100) });
         return;
       }
       setI((n) => n + 1);
@@ -155,7 +159,7 @@ export function BuzzerRound({ onDone, helper }: MiniGameProps) {
       <div className="absolute inset-0 flex flex-col">
         <Hud>
           <Pill>
-            Question {Math.min(i + 1, QUESTIONS.length)} / {QUESTIONS.length}
+            Question {Math.min(i + 1, questions.length)} / {questions.length}
           </Pill>
           <div className="flex-1 min-w-0">
             <Meter value={rival} max={1} color="linear-gradient(90deg,#f43f5e,#a855f7)" label="Rival" />

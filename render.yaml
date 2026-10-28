@@ -58,6 +58,16 @@ services:
       # Old /site links on the Academy's address go to the website.
       - key: WEBSITE_URL
         value: https://projstemulate.com
+      # The two AI chats (Ask STEMbots, the website's "Ask us"). Leave both
+      # empty until the AI provider decision in DEPLOY.md; without them the
+      # chats say they're switched off and everything else works.
+      - key: GEMINI_API_KEY
+        sync: false
+      # Optional: its own key (and quota) for the website's assistant.
+      - key: GEMINI_SITE_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
       # A whole class signs in from one centre's Wi-Fi, i.e. one IP address.
       # Each username still locks after 5 wrong PINs.
       - key: AUTH_RATE_LIMIT_PER_MIN

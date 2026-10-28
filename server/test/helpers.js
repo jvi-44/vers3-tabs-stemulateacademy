@@ -11,6 +11,8 @@ export async function startServer() {
   // Never call the real Gemini API, or a real Supabase project, from tests.
   // Empty rather than unset, because dotenv won't override an empty value.
   process.env.GEMINI_API_KEY = "";
+  process.env.GEMINI_SITE_API_KEY = "";
+  process.env.GEMINI_MODEL = "";
   process.env.SUPABASE_SERVICE_ROLE_KEY = "";
 
   const fake = process.env.TEST_DB === "supabase" ? await startFakeSupabase() : null;
@@ -49,6 +51,8 @@ function makeClient(base) {
     const res = await fetch(base + urlPath, {
       method,
       headers: {
+        // What a browser on the Academy's own pages sends (APP_ORIGIN's default).
+        origin: "http://localhost:5173",
         ...(body !== undefined ? { "content-type": "application/json" } : {}),
         ...(cookie ? { cookie } : {}),
       },

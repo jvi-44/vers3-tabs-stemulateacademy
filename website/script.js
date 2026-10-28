@@ -1,6 +1,8 @@
 // Project STEMulate site behaviour: Academy link, mobile menu, tabs, quiz
-// answer reveals, slide decks with a full-screen viewer, number count-ups and
-// gentle scroll-in animations. Shared by every page. No dependencies.
+// answer reveals, slide decks with a full-screen viewer, number count-ups,
+// gentle scroll-in animations, empty lists kept hidden and the "Ask us"
+// assistant (assistant.js) once it's switched on.
+// Shared by every page. No dependencies.
 
 // ─── The live STEMulate Academy address (hosted on Render, see DEPLOY.md). ───
 // Every "Enter STEMulate Academy" button on the site uses it. When the site is
@@ -13,6 +15,11 @@ const LOCAL_ACADEMY_URL = "http://localhost:5173";
 const servedByAcademy = location.pathname.startsWith("/site/");
 const isLocal = !servedByAcademy && (["localhost", "127.0.0.1"].includes(location.hostname) || location.protocol === "file:");
 const ACADEMY_URL = servedByAcademy ? location.origin + "/" : isLocal ? LOCAL_ACADEMY_URL : LIVE_ACADEMY_URL;
+// The sign-up forms (forms.js) and the assistant send to the Academy's API.
+window.STEMULATE = { academyUrl: ACADEMY_URL };
+// The "Ask us" assistant stays hidden until an AI service is chosen and its
+// key is on the Academy (DEPLOY.md "AI chat: decide first"). Then set this to true.
+const ASSISTANT_ON = false;
 
 document.documentElement.classList.add("js");
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -148,10 +155,20 @@ if (lightbox && typeof lightbox.showModal === "function") {
   // curriculum.html#open-minecraft from the home page, open a deck from slide 1
   const deckNamed = (name) => document.querySelector(`.deck[data-deck="${CSS.escape(name)}"]`);
   document.querySelectorAll("[data-open-deck]").forEach((btn) => {
-    btn.addEventListener("click", () => openDeck(deckNamed(btn.dataset.openDeck)));
+    btn.addEventListener("click", (e) => {
+      const deck = deckNamed(btn.dataset.openDeck);
+      if (!deck) return;
+      // A link's #slides is only for pages without JavaScript.
+      e.preventDefault();
+      openDeck(deck);
+    });
   });
-  const fromLink = /^#open-([a-z]+)$/.exec(location.hash);
-  if (fromLink) openDeck(deckNamed(fromLink[1]));
+  const fromHash = () => {
+    const fromLink = /^#open-([a-z]+)$/.exec(location.hash);
+    if (fromLink) openDeck(deckNamed(fromLink[1]));
+  };
+  fromHash();
+  window.addEventListener("hashchange", fromHash);
   lightbox.querySelector(".lb-prev").addEventListener("click", () => show(at - 1));
   lightbox.querySelector(".lb-next").addEventListener("click", () => show(at + 1));
   lightbox.querySelector(".lb-close").addEventListener("click", () => lightbox.close());
@@ -181,7 +198,7 @@ function countUp(el) {
 // a safety timer reveals the rest so no section can stay blank (for example
 // in previews and screenshots that never scroll).
 const revealTargets = document.querySelectorAll(
-  ".intro, .intro-centred, .wcard, .number, .rhythm li, .partner, .partner-row, .deck-cover, .screens figure, .bots-row li, .pullquote, .quote, .split-photo, .year, .way, .member, .methods li, .growth, .deck, .ws-card, .curr, .total, .faq details, .cta-band, .steps-3 li, .poster, .offer li, .join-cards li, .at-home li, .teaser-shot"
+  ".intro, .intro-centred, .wcard, .number, .rhythm li, .partner, .partner-row, .deck-cover, .screens figure, .bots-row li, .pullquote, .quote, .split-photo, .year, .way, .member, .methods li, .growth, .deck, .ws-card, .curr, .total, .faq details, .cta-band, .steps-3 li, .poster, .offer li, .join-cards li, .at-home li, .teaser-shot, .team-card, .lib-row, .event-list li, .signup-form"
 );
 const counters = document.querySelectorAll("[data-count]");
 if ("IntersectionObserver" in window && !reduceMotion) {
@@ -210,4 +227,21 @@ if ("IntersectionObserver" in window && !reduceMotion) {
     });
   }, { threshold: 0.6 });
   counters.forEach((el) => co.observe(el));
+}
+
+// Lists that fill up over time hide while they're empty (styles.css
+// [data-collection]); browsers without :has() get the same here.
+if (!window.CSS?.supports?.("selector(:has(*))")) {
+  document.querySelectorAll("[data-collection]").forEach((list) => {
+    if (!list.querySelector("[data-item]")) list.style.display = "none";
+  });
+}
+
+// The "Ask us" assistant: a small chat about Project STEMulate on every page,
+// once it's switched on (ASSISTANT_ON above).
+if (ASSISTANT_ON) {
+  const assistant = document.createElement("script");
+  assistant.src = new URL("assistant.js", document.currentScript?.src || location.href).href;
+  assistant.defer = true;
+  document.head.appendChild(assistant);
 }

@@ -71,6 +71,10 @@ import {
   type Reward,
 } from "../api/progress";
 import { setGamePlayer } from "../games/kit/player";
+import { setLevelBand } from "../lib/levelBand";
+import { bandFor } from "../data/levels";
+import { watchStaffArea } from "../lib/staffArea";
+import { StaffPortal } from "../components/StaffPortal";
 import { syncHighScores } from "../games/kit/scores";
 import { getLeaderboard, sendFriendRequest } from "../api/social";
 import { useColourTheme, THEMES, type ThemeId } from "../lib/theme";
@@ -133,6 +137,8 @@ export default function App() {
   // Guest mode: look around without an account. Nothing is sent to or saved
   // on the server, and members-only pages (leaderboard, chat) stay locked.
   const [isGuest, setIsGuest] = useState(false);
+  // The Primary level a guest picked, kept only in this tab.
+  const [guestLevel, setGuestLevel] = useState<string | null>(null);
   const [loginView, setLoginView] = useState<"signin" | "signup">("signin");
   const [user, setUser] = useState<UserType>(MOCK_USER);
   const [userCards, setUserCards] = useState<Record<string, number>>({});
@@ -152,15 +158,29 @@ export default function App() {
   useEffect(() => onMusicChange(setMusicOn), []);
   const [colourTheme, setColourTheme] = useColourTheme();
   const [isAdminRoute, setIsAdminRoute] = useState(() => window.location.hash === "#/admin");
+  const [isStaffRoute, setIsStaffRoute] = useState(() => window.location.hash.startsWith("#/staff"));
   const mainRef = useRef<HTMLElement>(null);
+  // Questions in quizzes and games follow the student's school level (it
+  // changes when they edit it on the Me page) or the level a guest picked.
+  // Sign-in returns only the level's id; ids follow the list's order
+  // (supabase/schema.sql), so "Primary N" is id N until the name arrives.
+  const schoolLevelName = isGuest
+    ? guestLevel
+    : (authUser?.schoolLevelName ?? (authUser ? `Primary ${authUser.schoolLevelId}` : null));
+  useEffect(() => setLevelBand(bandFor(schoolLevelName)), [schoolLevelName]);
   const allGameBeatIds = useMemo(() => GAME_LESSONS.flatMap((l) => l.beats.map((b) => b.id)), []);
   // Bumped on every sign-in/sign-out so late responses for a previous user
   // (on a shared centre device) are ignored instead of leaking into the next.
   const authGen = useRef(0);
 
-  // ---- Admin page lives at /#/admin ----
+  // ---- Admin page lives at /#/admin, the staff page at /#/staff ----
+  // Leaving them for the Academy, the browser's Back included, signs out.
+  useEffect(() => watchStaffArea(), []);
   useEffect(() => {
-    const onHash = () => setIsAdminRoute(window.location.hash === "#/admin");
+    const onHash = () => {
+      setIsAdminRoute(window.location.hash === "#/admin");
+      setIsStaffRoute(window.location.hash.startsWith("#/staff"));
+    };
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);
@@ -291,9 +311,10 @@ export default function App() {
     resetLocalState();
   };
 
-  const handleGuest = () => {
+  const handleGuest = (levelName: string) => {
     startLobbyMusic();
     resetLocalState();
+    setGuestLevel(levelName);
     setUser({ ...MOCK_USER, username: "Guest", xp: 0, level: 1, atoms: 0, badges: [] });
     setGamePlayer({ id: "guest", name: "Guest", avatar: MOCK_USER.avatar });
     setIsGuest(true);
@@ -468,6 +489,7 @@ export default function App() {
   };
 
   if (isAdminRoute) return <AdminPage onExit={() => (window.location.hash = "")} />;
+  if (isStaffRoute) return <StaffPortal onExit={() => (window.location.hash = "")} />;
 
   if (!isLoggedIn)
     return <LoginScreen key={loginView} onLogin={handleLogin} onGuest={handleGuest} initialView={loginView} />;
@@ -929,7 +951,7 @@ function Dashboard({
                 <p className="text-[10px] font-extrabold uppercase tracking-wider text-primary">{lessonTitle}</p>
                 <p className="font-display font-semibold text-foreground">{beat.title}</p>
                 <div className="flex flex-wrap gap-1 mt-2">
-                  {[...beat.levelTags, ...beat.subjectTags].map((t) => (
+                  {beat.subjectTags.map((t) => (
                     <span key={t} className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-soft-1 text-foreground/80">
                       {t}
                     </span>
@@ -1547,7 +1569,7 @@ function AccountMenu({
           {musicOn ? <VolumeX size={15} /> : <Music size={15} />} {musicOn ? "Music off" : "Music on"}
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => (window.location.hash = "#/admin")}>
+        <DropdownMenuItem onSelect={() => (window.location.hash = "#/staff")}>
           <ShieldCheck size={15} /> Teacher &amp; admin
         </DropdownMenuItem>
         <DropdownMenuItem variant="destructive" onSelect={onLogout}>

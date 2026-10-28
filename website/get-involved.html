@@ -27,6 +27,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="forms.css" />
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -136,7 +137,48 @@
           <h2 id="volunteer-title">Volunteer with us</h2>
           <p>Students who love STEM: help plan and run our in-person workshops, 1-to-1 sessions and learning journeys. Any enthusiastic youth volunteer who is passionate about STEM and eager to make a positive difference in the lives of underprivileged children and their families is welcome to join.</p>
           <p class="muted">We also recruit student volunteers for curriculum, graphics, dev, operations and partnerships every year.</p>
-          <a class="btn btn-lime" href="mailto:proj.stemulate@gmail.com?subject=Volunteering%20with%20Project%20STEMulate"><svg class="ico"><use href="#i-mail"/></svg> Email us to volunteer</a>
+          <form class="signup-form" id="volunteer-form" action="https://academy.projstemulate.com/api/site/signup?kind=volunteer" method="post" data-signup novalidate aria-labelledby="volunteer-form-title">
+            <h3 id="volunteer-form-title">Sign up to volunteer</h3>
+            <input type="hidden" name="kind" value="volunteer" />
+            <div class="hp" aria-hidden="true"><label for="v-website">Leave this empty</label><input id="v-website" name="website" tabindex="-1" autocomplete="off" /></div>
+            <div class="field">
+              <label for="v-name">Your name</label>
+              <input id="v-name" name="name" required maxlength="80" autocomplete="name" aria-describedby="v-name-error" data-required="Please tell us your name." />
+              <p class="field-error" id="v-name-error" hidden></p>
+            </div>
+            <div class="field">
+              <label for="v-email">Email</label>
+              <input id="v-email" name="email" type="email" required maxlength="254" autocomplete="email" aria-describedby="v-email-error" data-required="Please enter your email." />
+              <p class="field-error" id="v-email-error" hidden></p>
+            </div>
+            <div class="field">
+              <label for="v-school">School <span class="optional">(optional)</span></label>
+              <input id="v-school" name="school" maxlength="120" autocomplete="organization" aria-describedby="v-school-error" />
+              <p class="field-error" id="v-school-error" hidden></p>
+            </div>
+            <fieldset class="field">
+              <legend>I'd like to help with <span class="optional">(optional)</span></legend>
+              <div class="checks">
+                <label><input type="checkbox" name="interests" value="workshops" /> Workshops</label>
+                <label><input type="checkbox" name="interests" value="curriculum" /> Curriculum</label>
+                <label><input type="checkbox" name="interests" value="graphics" /> Graphics</label>
+                <label><input type="checkbox" name="interests" value="dev" /> Dev</label>
+                <label><input type="checkbox" name="interests" value="operations" /> Operations</label>
+                <label><input type="checkbox" name="interests" value="partnerships" /> Partnerships</label>
+              </div>
+            </fieldset>
+            <div class="field">
+              <label for="v-message">Anything you'd like to tell us? <span class="optional">(optional)</span></label>
+              <textarea id="v-message" name="message" rows="3" maxlength="1000" aria-describedby="v-message-error"></textarea>
+              <p class="field-error" id="v-message-error" hidden></p>
+            </div>
+            <p class="form-note">We only use these details to reply about volunteering. Under 18? Check with a parent or guardian first. <a href="privacy.html#forms">How we look after them</a>.</p>
+            <button class="btn btn-lime" type="submit">Send</button>
+            <p class="form-status" role="status"></p>
+            <p class="form-box form-sent" id="volunteer-sent" tabindex="-1">Thank you! We'll email you about volunteering soon.</p>
+            <p class="form-box form-error" id="volunteer-error" tabindex="-1">That didn't go through. Please check your details and try again in a few minutes, or email <a href="mailto:proj.stemulate@gmail.com">proj.stemulate@gmail.com</a>.</p>
+          </form>
+          <p class="form-alt muted">Prefer email? <a href="mailto:proj.stemulate@gmail.com?subject=Volunteering%20with%20Project%20STEMulate">proj.stemulate@gmail.com</a></p>
         </div>
       </div>
     </section>
@@ -147,8 +189,42 @@
           <h2 id="partner-title">Partner with us</h2>
           <p>Centres and organisations: bring our free workshops to the children you support. We run them in person with student care centres, family service centres, libraries and charities, and we'll send our curriculum packages and session details.</p>
           <p class="muted">Partners can also bring STEMulate Academy, our new online add-on, to their children, so the learning carries on between sessions.</p>
+          <form class="signup-form" id="partner-form" action="https://academy.projstemulate.com/api/site/signup?kind=partner" method="post" data-signup novalidate aria-labelledby="partner-form-title">
+            <h3 id="partner-form-title">Ask about a partnership</h3>
+            <input type="hidden" name="kind" value="partner" />
+            <div class="hp" aria-hidden="true"><label for="p-website">Leave this empty</label><input id="p-website" name="website" tabindex="-1" autocomplete="off" /></div>
+            <div class="field">
+              <label for="p-organisation">Centre or organisation</label>
+              <input id="p-organisation" name="organisation" required maxlength="120" autocomplete="organization" aria-describedby="p-organisation-error" data-required="Please tell us your organisation." />
+              <p class="field-error" id="p-organisation-error" hidden></p>
+            </div>
+            <div class="field">
+              <label for="p-name">Your name</label>
+              <input id="p-name" name="name" required maxlength="80" autocomplete="name" aria-describedby="p-name-error" data-required="Please tell us your name." />
+              <p class="field-error" id="p-name-error" hidden></p>
+            </div>
+            <div class="field">
+              <label for="p-email">Email</label>
+              <input id="p-email" name="email" type="email" required maxlength="254" autocomplete="email" aria-describedby="p-email-error" data-required="Please enter your email." />
+              <p class="field-error" id="p-email-error" hidden></p>
+            </div>
+            <div class="field">
+              <label for="p-phone">Phone <span class="optional">(optional)</span></label>
+              <input id="p-phone" name="phone" type="tel" maxlength="30" autocomplete="tel" aria-describedby="p-phone-error" />
+              <p class="field-error" id="p-phone-error" hidden></p>
+            </div>
+            <div class="field">
+              <label for="p-message">What would you like to run with us? <span class="optional">(optional)</span></label>
+              <textarea id="p-message" name="message" rows="3" maxlength="1000" aria-describedby="p-message-error"></textarea>
+              <p class="field-error" id="p-message-error" hidden></p>
+            </div>
+            <p class="form-note">We only use these details to reply about a partnership. <a href="privacy.html#forms">How we look after them</a>.</p>
+            <button class="btn btn-grape" type="submit">Send</button>
+            <p class="form-status" role="status"></p>
+            <p class="form-box form-sent" id="partner-sent" tabindex="-1">Thank you! We'll get back to you about a partnership soon.</p>
+            <p class="form-box form-error" id="partner-error" tabindex="-1">That didn't go through. Please check your details and try again in a few minutes, or email <a href="mailto:proj.stemulate@gmail.com">proj.stemulate@gmail.com</a>.</p>
+          </form>
           <div class="cta-row">
-            <a class="btn btn-grape" href="mailto:proj.stemulate@gmail.com?subject=Partnering%20with%20Project%20STEMulate"><svg class="ico"><use href="#i-mail"/></svg> Email us</a>
             <a class="text-link" href="impact.html#partners">See who we work with <svg class="ico"><use href="#i-arrow"/></svg></a>
           </div>
         </div>
@@ -166,13 +242,40 @@
           <p>Chapters join our international network to share resources and work across countries, and each gets a STEMulate mentor and our full resource library to help it get started.</p>
           <ol class="steps-3">
             <li><b>Prepare</b><span>Find a few like-minded friends. If your chapter will be based in a school, get your school's approval.</span></li>
-            <li><b>Apply</b><span>Every team member fills in the chapter application form. You'll hear back within a week.</span></li>
+            <li><b>Apply</b><span>Every team member sends the application form below. You'll hear back within a week.</span></li>
             <li><b>Interview</b><span>Once your application is approved, we'll schedule a chat about you and your chapter plans.</span></li>
           </ol>
-          <div class="cta-row">
-            <a class="btn btn-lime" href="https://forms.gle/hVamwo17bEeovGHa7" target="_blank" rel="noopener">Chapter application form <svg class="ico"><use href="#i-out"/></svg></a>
-            <a class="btn btn-outline" href="mailto:proj.stemulate@gmail.com?subject=Starting%20a%20STEMulate%20chapter"><svg class="ico"><use href="#i-mail"/></svg> Ask a question</a>
-          </div>
+          <form class="signup-form" id="chapter-form" action="https://academy.projstemulate.com/api/site/signup?kind=chapter" method="post" data-signup novalidate aria-labelledby="chapter-form-title">
+            <h3 id="chapter-form-title">Apply to start a chapter</h3>
+            <input type="hidden" name="kind" value="chapter" />
+            <div class="hp" aria-hidden="true"><label for="c-website">Leave this empty</label><input id="c-website" name="website" tabindex="-1" autocomplete="off" /></div>
+            <div class="field">
+              <label for="c-name">Your name</label>
+              <input id="c-name" name="name" required maxlength="80" autocomplete="name" aria-describedby="c-name-error" data-required="Please tell us your name." />
+              <p class="field-error" id="c-name-error" hidden></p>
+            </div>
+            <div class="field">
+              <label for="c-email">Email</label>
+              <input id="c-email" name="email" type="email" required maxlength="254" autocomplete="email" aria-describedby="c-email-error" data-required="Please enter your email." />
+              <p class="field-error" id="c-email-error" hidden></p>
+            </div>
+            <div class="field">
+              <label for="c-school">School or group <span class="optional">(optional)</span></label>
+              <input id="c-school" name="school" maxlength="120" autocomplete="organization" aria-describedby="c-school-error" />
+              <p class="field-error" id="c-school-error" hidden></p>
+            </div>
+            <div class="field">
+              <label for="c-message">Tell us about your team and where you'd start <span class="optional">(optional)</span></label>
+              <textarea id="c-message" name="message" rows="3" maxlength="1000" aria-describedby="c-message-error"></textarea>
+              <p class="field-error" id="c-message-error" hidden></p>
+            </div>
+            <p class="form-note">Each team member sends their own. We only use these details for your application. Under 18? Check with a parent or guardian first. <a href="privacy.html#forms">How we look after them</a>.</p>
+            <button class="btn btn-lime" type="submit">Send application</button>
+            <p class="form-status" role="status"></p>
+            <p class="form-box form-sent" id="chapter-sent" tabindex="-1">Thank you! You'll hear back from us within a week.</p>
+            <p class="form-box form-error" id="chapter-error" tabindex="-1">That didn't go through. Please check your details and try again in a few minutes, or email <a href="mailto:proj.stemulate@gmail.com">proj.stemulate@gmail.com</a>.</p>
+          </form>
+          <p class="form-alt"><a href="mailto:proj.stemulate@gmail.com?subject=Starting%20a%20STEMulate%20chapter">Ask us a question first</a></p>
         </div>
         <figure class="poster">
           <img src="assets/photos/chapter-poster.jpg" alt="Project STEMulate chapter application poster: Hey you! Yes, you! Start your own chapter of Project STEMulate" loading="lazy" width="700" height="990" />
@@ -188,7 +291,22 @@
             <h2>Get our monthly newsletter</h2>
             <p>Event dates, workshop photos and what the children made, once a month.</p>
           </div>
-          <a class="btn btn-grape" href="https://forms.gle/DpEq8HYnEuSbjvJ57" target="_blank" rel="noopener">Subscribe <svg class="ico"><use href="#i-out"/></svg></a>
+          <form class="signup-form signup-inline" id="newsletter-form" action="https://academy.projstemulate.com/api/site/signup?kind=newsletter" method="post" data-signup novalidate aria-label="Newsletter sign-up">
+            <input type="hidden" name="kind" value="newsletter" />
+            <div class="hp" aria-hidden="true"><label for="n-website">Leave this empty</label><input id="n-website" name="website" tabindex="-1" autocomplete="off" /></div>
+            <div class="field">
+              <label for="n-email">Your email</label>
+              <div class="form-row">
+                <input id="n-email" name="email" type="email" required maxlength="254" autocomplete="email" aria-describedby="n-email-error" data-required="Please enter your email." />
+                <button class="btn btn-grape" type="submit">Subscribe</button>
+              </div>
+              <p class="field-error" id="n-email-error" hidden></p>
+            </div>
+            <p class="form-note">One email a month. Ask us any time to take you off the list. <a href="privacy.html#forms">Privacy</a></p>
+            <p class="form-status" role="status"></p>
+            <p class="form-box form-sent" id="newsletter-sent" tabindex="-1">You're on the list! Look out for our next newsletter.</p>
+            <p class="form-box form-error" id="newsletter-error" tabindex="-1">That didn't go through. Please check your details and try again in a few minutes, or email <a href="mailto:proj.stemulate@gmail.com">proj.stemulate@gmail.com</a>.</p>
+          </form>
         </div>
       </div>
     </section>
@@ -220,13 +338,14 @@
         <ul>
           <li><a href="mailto:proj.stemulate@gmail.com">proj.stemulate@gmail.com</a></li>
           <li><a href="https://www.instagram.com/proj.stemulate/" target="_blank" rel="noopener">Instagram: @proj.stemulate</a></li>
-          <li><a href="https://forms.gle/DpEq8HYnEuSbjvJ57" target="_blank" rel="noopener">Monthly newsletter</a></li>
+          <li><a href="get-involved.html#newsletter">Monthly newsletter</a></li>
         </ul>
       </div>
     </div>
-    <p class="wrap copyright">© 2026 Project STEMulate. Photos, STEMbot characters, card art and workshop slides belong to Project STEMulate.</p>
+    <p class="wrap copyright">© 2026 Project STEMulate. Photos, STEMbot characters, card art and workshop slides belong to Project STEMulate. <a href="privacy.html">Privacy</a></p>
   </footer>
 
   <script src="script.js"></script>
+  <script src="forms.js"></script>
 </body>
 </html>

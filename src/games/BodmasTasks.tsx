@@ -14,6 +14,7 @@ import { STEMBOTS } from "../data/mock";
 import { sfx } from "./kit/audio";
 import { seededRandom } from "./kit/scores";
 import type { GameProps, RivalInfo } from "./kit/types";
+import type { LevelBand } from "../data/levels";
 
 // ── BODMAS engine (token based) ─────────────────────────────────────────
 
@@ -149,6 +150,8 @@ interface GenCfg {
   max: number;
   sq: boolean;
   bracket: boolean;
+  /** Allow sums where the order doesn't change the answer (first steps for P1–4). */
+  simple?: boolean;
 }
 
 function gen(ops: number, target: number, cfg: GenCfg, rnd: () => number): Node | null {
@@ -214,7 +217,33 @@ interface Puzzle {
   options: number[];
 }
 
-const LEVELS: GenCfg[] = [
+// Eight repairs per run, easiest first, for each school-level band.
+const LEVELS_BY_BAND: Record<LevelBand, GenCfg[]> = {
+  // P1–2: adding and taking away within 20, then two steps that go left to
+  // right, then brackets.
+  p12: [
+    { ops: 1, set: ["+"], lo: 6, hi: 15, max: 20, sq: false, bracket: false, simple: true },
+    { ops: 1, set: ["−"], lo: 3, hi: 12, max: 20, sq: false, bracket: false, simple: true },
+    { ops: 1, set: ["+", "−"], lo: 5, hi: 18, max: 20, sq: false, bracket: false, simple: true },
+    { ops: 2, set: ["+"], lo: 9, hi: 20, max: 20, sq: false, bracket: false, simple: true },
+    { ops: 2, set: ["+", "−"], lo: 5, hi: 20, max: 30, sq: false, bracket: false, simple: true },
+    { ops: 2, set: ["+", "−"], lo: 5, hi: 20, max: 30, sq: false, bracket: false },
+    { ops: 2, set: ["+", "−"], lo: 5, hi: 20, max: 30, sq: false, bracket: true },
+    { ops: 2, set: ["+", "−"], lo: 8, hi: 25, max: 30, sq: false, bracket: true },
+  ],
+  // P3–4: times tables and sharing, then × before + and −, then brackets.
+  p34: [
+    { ops: 1, set: ["×"], lo: 12, hi: 60, max: 60, sq: false, bracket: false, simple: true },
+    { ops: 1, set: ["÷"], lo: 2, hi: 9, max: 60, sq: false, bracket: false, simple: true },
+    { ops: 2, set: ["+", "−"], lo: 10, hi: 50, max: 60, sq: false, bracket: false },
+    { ops: 2, set: ["+", "×"], lo: 10, hi: 40, max: 60, sq: false, bracket: false },
+    { ops: 2, set: ["+", "−", "×"], lo: 10, hi: 40, max: 60, sq: false, bracket: false },
+    { ops: 2, set: ["+", "−", "×"], lo: 10, hi: 40, max: 60, sq: false, bracket: true },
+    { ops: 2, set: ["+", "−", "×", "÷"], lo: 6, hi: 30, max: 60, sq: false, bracket: false },
+    { ops: 2, set: ["+", "−", "×", "÷"], lo: 6, hi: 30, max: 60, sq: false, bracket: true },
+  ],
+  // P5–6: the workshop's own BODMAS tasks.
+  p56: [
   { ops: 2, set: ["+", "−", "×"], lo: 10, hi: 30, max: 60, sq: false, bracket: false },
   { ops: 2, set: ["+", "−", "×", "÷"], lo: 6, hi: 30, max: 60, sq: false, bracket: true },
   { ops: 3, set: ["+", "−", "×", "÷"], lo: 10, hi: 40, max: 80, sq: false, bracket: false },
@@ -223,7 +252,15 @@ const LEVELS: GenCfg[] = [
   { ops: 3, set: ["+", "−", "×", "÷"], lo: 15, hi: 50, max: 100, sq: false, bracket: true },
   { ops: 4, set: ["+", "−", "×", "÷"], lo: 15, hi: 60, max: 100, sq: true, bracket: false },
   { ops: 4, set: ["+", "−", "×", "÷"], lo: 15, hi: 60, max: 100, sq: true, bracket: true },
-];
+  ],
+};
+
+// The emergency meeting's suspects show their working on sums like these.
+const VOTE_BY_BAND: Record<LevelBand, GenCfg> = {
+  p12: { ops: 2, set: ["+", "−"], lo: 5, hi: 20, max: 30, sq: false, bracket: false },
+  p34: { ops: 2, set: ["+", "−", "×"], lo: 10, hi: 40, max: 60, sq: false, bracket: false },
+  p56: { ops: 3, set: ["+", "−", "×", "÷"], lo: 10, hi: 40, max: 80, sq: false, bracket: false },
+};
 
 function makePuzzle(cfg: GenCfg, rnd: () => number, needWrong?: Strategy[]): Puzzle & { wrong?: { strat: Strategy; lines: string[]; answer: number } } {
   const ri = (a: number, b: number) => a + Math.floor(rnd() * (b - a + 1));
@@ -243,7 +280,7 @@ function makePuzzle(cfg: GenCfg, rnd: () => number, needWrong?: Strategy[]): Puz
     const l2r = solve(tokens, "l2r").answer;
     const add = solve(tokens, "addFirst").answer;
     const noBr = hasBr ? solve(tokens.filter((t) => t.k !== "(" && t.k !== ")"), "bodmas").answer : target;
-    if (l2r === target && add === target && noBr === target) continue; // order would not matter
+    if (!cfg.simple && l2r === target && add === target && noBr === target) continue; // order would not matter
     if (nums.filter((n) => n.v === 1).length >= 2) continue;
     let wrong: { strat: Strategy; lines: string[]; answer: number } | undefined;
     if (needWrong) {
@@ -267,6 +304,18 @@ function makePuzzle(cfg: GenCfg, rnd: () => number, needWrong?: Strategy[]): Puz
     const options = [...opts].sort(() => rnd() - 0.5);
     best = { tokens, answer: target, ops: cfg.ops, working: s.lines, options, wrong };
     break;
+  }
+  if (!best && !cfg.set.includes("×")) {
+    // Adding and taking away only (P1–2).
+    const tokens: Tok[] = [{ k: "n", v: 15 }, { k: "o", o: "−" }, { k: "n", v: 4 }, { k: "o", o: "+" }, { k: "n", v: 2 }];
+    best = {
+      tokens,
+      answer: 13,
+      ops: 2,
+      working: ["11 + 2", "13"],
+      options: [13, 9, 12, 14],
+      wrong: { strat: "addFirst", lines: ["15 − 6", "9"], answer: 9 },
+    };
   }
   if (!best) {
     const tokens: Tok[] = [{ k: "n", v: 4 }, { k: "o", o: "+" }, { k: "n", v: 3 }, { k: "o", o: "×" }, { k: "n", v: 5 }];
@@ -362,15 +411,17 @@ const STRAT_MISTAKE: Record<Strategy, string> = {
 
 // ── Main component ──────────────────────────────────────────────────────
 
-export function BodmasTasks({ seed, rivals = [], reportProgress, finish }: GameProps) {
+export function BodmasTasks({ seed, band, rivals = [], reportProgress, finish }: GameProps) {
   const data = useMemo(() => {
     const rnd = seededRandom(seed * 7 + 13);
-    const puzzles = LEVELS.map((cfg) => makePuzzle(cfg, rnd));
+    const puzzles = LEVELS_BY_BAND[band].map((cfg) => makePuzzle(cfg, rnd));
     const impostor = Math.floor(rnd() * 4);
-    const voteCfg: GenCfg = { ops: 3, set: ["+", "−", "×", "÷"], lo: 10, hi: 40, max: 80, sq: false, bracket: false };
+    const voteCfg = VOTE_BY_BAND[band];
     const suspects = SUSPECTS.map((s, i) => {
       const order: Strategy[] = rnd() < 0.5 ? ["addFirst", "l2r"] : ["l2r", "addFirst"];
-      const p = makePuzzle({ ...voteCfg, bracket: i % 2 === 1 }, rnd, i === impostor ? order : undefined);
+      // With no × or ÷, brackets can hide the impostor's slip, so theirs has none.
+      const bracket = i % 2 === 1 && (band === "p56" || i !== impostor);
+      const p = makePuzzle({ ...voteCfg, bracket }, rnd, i === impostor ? order : undefined);
       const isImp = i === impostor && !!p.wrong;
       return {
         ...s,
@@ -380,7 +431,7 @@ export function BodmasTasks({ seed, rivals = [], reportProgress, finish }: GameP
       };
     });
     return { puzzles, impostor, suspects };
-  }, [seed]);
+  }, [seed, band]);
 
   const [phase, setPhase] = useState<"play" | "allFixed" | "meeting" | "eject" | "lost" | "done">("play");
   const [started, setStarted] = useState(false);

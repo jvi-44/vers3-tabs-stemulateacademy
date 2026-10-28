@@ -24,7 +24,7 @@ steps 1–3 together.
      `DROP` and `DELETE` lines for upgrades and inside its functions; on a new
      project it deletes nothing.
    - Afterwards **Advisors → Security Advisor** lists "RLS Enabled No Policy" for
-     all 18 tables. That's intended: with no policies, only the server's secret
+     all 26 tables. That's intended: with no policies, only the server's secret
      key can reach students' data.
 3. **Project Settings → API Keys**. You need two values for Render:
    - **Project URL**, like `https://abcdefghijkl.supabase.co` (nothing after `.co`).
@@ -143,8 +143,86 @@ Changing name servers can take a few hours to spread.
 - **Supabase pauses free projects after a week without activity.** The data
   stays; press **Restore** in the Supabase dashboard if the Academy can't reach
   the database after a quiet week.
-- **The AI lesson helper** stays off until `GEMINI_API_KEY` is added to the
-  Academy's Environment tab. Everything else works without it.
+- **The AI chats** (the lesson helper and the website's "Ask us") stay off until
+  `GEMINI_API_KEY` is added to the Academy's Environment tab. Decide first: see
+  "AI chat: decide first" below. Everything else works without it.
+
+## Round 8 going live (staff accounts, sign-up forms, school levels)
+
+1. **Database first.** In Supabase's SQL Editor, run the whole of
+   `supabase/schema.sql` again (it is now version 4; nothing is deleted). Do it
+   outside class time: from then until the new code is live, the old Academy
+   can't start, and the free instance restarts every time it wakes up.
+2. **Then push straight away**, and watch the `stemulate-academy` deploy in
+   Render reach **Live** (5 to 10 minutes). If a visit failed while it was
+   building, press **Manual Deploy → Deploy latest commit**. The website is
+   live within a minute, so until the Academy is Live its new forms show an
+   error.
+3. **The first admin account.** Open `https://academy.projstemulate.com/#/admin`,
+   sign in with the passkey, open **Staff & volunteers → Add someone**, add
+   yourself with the **Admin** role and copy the set-up link it shows. Open it
+   to choose your password. From then on you can sign in at `/#/staff` and
+   open the admin page from there (for an hour at a time) without the passkey.
+   Keep the passkey for emergencies: anything done with it shows in the
+   Activity tab as "Admin passkey", not as a person.
+4. **Add centre staff and volunteers** the same way, with the centres each one
+   follows. Send each person their own link (it works once, for 7 days).
+   Volunteers only see progress; centre staff can also reset a PIN.
+5. **Check the students' centres.** Staff see students by the centre picked at
+   sign-up. On the admin page, open a student and use **Move to another
+   centre** for anyone at the wrong one, including the "Other: …" students.
+6. **Before mailing the newsletter list**, confirm the addresses: anyone can
+   type someone else's email into the form. Import the list into a mail tool
+   that sends a confirmation email first (double opt-in), and mail only the
+   people who confirm.
+7. Re-record the story line that changed in Space Busters (Emily before the
+   launch game) with `npm run story:lines`, then `scripts/story-voices/generate.py`;
+   until then it plays in the browser's own voice.
+8. **To roll back**, revert the code *and* run the previous `supabase/schema.sql`
+   (version 3) in the SQL Editor again: the old server won't start on a version
+   4 database. The new tables stay, unused; nothing is deleted. A few functions
+   then exist in both their old and new forms, which the old server doesn't
+   mind; running version 4 again removes the old ones. The website then links
+   to the closed Google Forms again (point people to email meanwhile), and
+   sign-ups already sent stay in `site_signups` (Table Editor).
+
+## AI chat: decide first
+
+Google's Gemini API terms (https://ai.google.dev/gemini-api/terms) say the API
+mustn't be used in a service "directed towards or is likely to be accessed by"
+people under 18. STEMulate Academy is for 7 to 12 year olds, and the website is
+read by teenage volunteers. Unpaid keys also let Google use what's sent to
+improve its products, and people at Google may read it. So before adding
+`GEMINI_API_KEY` or `GEMINI_SITE_API_KEY` (either one switches on the website's
+assistant):
+
+- choose a provider and plan whose terms allow services used by children and
+  that don't train on what's sent (a paid plan with a data processing
+  agreement), and name it in `website/privacy.html`; or
+- keep both chats switched off (no key): the lesson chat says so politely,
+  the website's "Ask us" button stays hidden, and nothing is sent to an AI
+  service.
+
+If you do add a key:
+
+1. **Cap it on Google's side first (required).** In Google Cloud console, open
+   APIs & Services → Generative Language API → Quotas and lower the requests
+   per day to what you're happy to pay for, and add a budget alert under
+   Billing → Budgets & alerts. The Academy stops the website's assistant after
+   `ASSISTANT_DAILY_LIMIT` questions a day (300 by default, for everyone
+   together, counted in the database; the day starts at 8 a.m. Singapore
+   time), and each address may ask 10 a minute and 60 a day (counted in
+   memory, so they start again when the server restarts). Only Google's quota
+   caps the bill.
+2. Give the website its own key (`GEMINI_SITE_API_KEY`), so a busy day on the
+   website can't use up the children's lesson chat, or keep
+   `ASSISTANT_DAILY_LIMIT` under half the key's daily quota (Google's day and
+   the Academy's start at different times).
+3. Name the AI service in `website/privacy.html` (the "Ask us" and "Ask
+   STEMbots" sections) before switching anything on.
+4. To show the website's "Ask us" button, set `ASSISTANT_ON = true` in
+   `website/script.js` and push. `ASSISTANT_DAILY_LIMIT=0` keeps the website's
+   assistant off even when the lesson chat has a key.
 
 ## When the code changes
 

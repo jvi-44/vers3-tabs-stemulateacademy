@@ -16,6 +16,10 @@ import {
 import { cn } from "./ui/utils";
 import type { GameLesson, LessonBeat } from "../data/lessonContent";
 import { pointsFor } from "../data/lessonContent";
+import { forBand } from "../data/levels";
+import { useLevelBand } from "../lib/levelBand";
+import { QUIZ_BANDS } from "../content/quizzes";
+import type { QuizBeatId } from "../content/types";
 import { SpeechBubbles } from "./SpeechBubble";
 import { IntroEpisodeCard } from "../episodes/IntroEpisode";
 import { EPISODE_BY_BEAT } from "../episodes/stories";
@@ -632,7 +636,11 @@ function QuizBeat({
   onFinish: (scoreRatio: number) => void;
   host: Host;
 }) {
-  const questions = beat.quizQuestions ?? [];
+  const band = useLevelBand();
+  // Fixed when the quiz opens, so a level change can't swap questions mid-quiz.
+  const [questions] = useState(() =>
+    forBand(QUIZ_BANDS[beat.id as QuizBeatId], band, beat.quizQuestions ?? []),
+  );
   const [qi, setQi] = useState(0);
   const [picked, setPicked] = useState<number | null>(null);
   const [score, setScore] = useState(0);

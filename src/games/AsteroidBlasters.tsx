@@ -12,6 +12,8 @@ import { sfx } from "./kit/audio";
 import { seededRandom } from "./kit/scores";
 import { clamp, loadImage, roundRect, shuffled, useCanvasLoop } from "./kit/canvas";
 import type { BotId, GameProps, RivalInfo } from "./kit/types";
+import { orOriginal, type LevelBand } from "../data/levels";
+import { BLASTER_BANKS } from "../content/asteroidBlasters";
 
 // ── World (units: the play area is 16 × 10) ───────────
 const W = 16;
@@ -66,6 +68,21 @@ const WAVES: Wave[] = [
   { name: "Wave 2", topic: "Energy", say: "Now it's energy. Remember: moving things have kinetic energy, food and fuel store chemical energy.", every: 0.64, fall: 1.5 },
   { name: "Wave 3", topic: "Impostor attack!", say: "The impostor is throwing everything at us! Forces AND energy. Stay sharp, crew!", every: 0.55, fall: 1.7 },
 ];
+// What Emily says each wave for the younger bands, to match their questions
+// (src/content/asteroidBlasters.ts): P1–2 pushes, pulls, floating and everyday energy;
+// P3–4 magnets, then light and heat.
+const SAY_BY_BAND: Partial<Record<LevelBand, string[]>> = {
+  p12: [
+    "Asteroids ahead! Blast the ones that answer the question!",
+    "Now it's energy: what makes things move, light up, warm up or make a sound!",
+    "The impostor is throwing everything at us! Stay sharp, crew!",
+  ],
+  p34: [
+    "Asteroids ahead! Each one carries an answer about magnets. Blast the right ones!",
+    "Now it's light and heat: shadows, conductors and insulators!",
+    "The impostor is throwing everything at us! Magnets AND light and heat. Stay sharp, crew!",
+  ],
+};
 
 // ── Precomputed match plan (same for every player) ────
 interface Rock {
@@ -94,10 +111,12 @@ interface Plan {
   end: number;
 }
 
-function makePlan(seed: number): Plan {
+function makePlan(seed: number, band: LevelBand): Plan {
   const rnd = seededRandom(seed + 404);
-  const f = shuffled(FORCES, rnd);
-  const e = shuffled(ENERGY, rnd);
+  // The original questions are the P5–6 set; P1–2 and P3–4 have their own.
+  const bank = band === "p56" ? undefined : BLASTER_BANKS[band];
+  const f = shuffled(orOriginal(bank?.forces, FORCES), rnd);
+  const e = shuffled(orOriginal(bank?.energy, ENERGY), rnd);
   const picks: Q[][] = [f.slice(0, 3), e.slice(0, 3), shuffled([f[3], e[3], f[4]], rnd)];
   const slots: Slot[] = [];
   const rocks: Rock[] = [];
@@ -300,8 +319,8 @@ interface Toast {
   text: string;
 }
 
-export function AsteroidBlasters({ seed, mode, me, live, playing, reportProgress, reportBots, finish }: GameProps) {
-  const plan = useMemo(() => makePlan(seed), [seed]);
+export function AsteroidBlasters({ seed, band, mode, me, live, playing, reportProgress, reportBots, finish }: GameProps) {
+  const plan = useMemo(() => makePlan(seed, band), [seed, band]);
   const isLive = mode === "live" && !!live;
   const isHost = !isLive || !!live?.isHost;
   const emily = STEMBOTS.emily;
@@ -866,7 +885,7 @@ export function AsteroidBlasters({ seed, mode, me, live, playing, reportProgress
               <p className="game-pixel text-[10px] text-violet-600">
                 EMILY · {wave.name.toUpperCase()}: {wave.topic.toUpperCase()}
               </p>
-              <p className="text-[13px] sm:text-sm font-semibold text-slate-800 leading-snug mt-0.5">{wave.say}</p>
+              <p className="text-[13px] sm:text-sm font-semibold text-slate-800 leading-snug mt-0.5">{SAY_BY_BAND[band]?.[hud.wave] ?? wave.say}</p>
             </div>
           </div>
         </div>

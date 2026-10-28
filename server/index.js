@@ -2,6 +2,7 @@
 // the tests can import the app without opening a port.
 import app from "./app.js";
 import { databaseDescription, ready } from "./db.js";
+import { scheduleRetention } from "./retention.js";
 
 // Log instead of crashing if a promise rejection ever slips past a handler.
 process.on("unhandledRejection", (e) => console.error(e));
@@ -14,6 +15,7 @@ try {
   process.exit(1);
 }
 console.log(`[db] Saving to ${databaseDescription}`);
+scheduleRetention();
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {

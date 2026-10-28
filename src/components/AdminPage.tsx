@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from "motion/react";
 import {
   Activity,
   ArrowDown,
+  Building2,
   ArrowLeft,
   ArrowUp,
   ArrowUpDown,
@@ -15,6 +16,7 @@ import {
   Hash,
   KeyRound,
   Lock,
+  LogOut,
   MessageSquare,
   RefreshCw,
   RotateCcw,
@@ -39,12 +41,19 @@ import {
   adminResetProgress,
   adminResetPin,
   adminDeleteUser,
+  adminSession,
+  adminSetCentre,
+  readAdminToken,
+  saveAdminToken,
   type AdminStats,
   type AdminUser,
   type AdminProgressRow,
   type AdminGameRow,
 } from "../api/admin";
-import { GAME_LESSONS } from "../data/lessonContent";
+import { fetchReferenceData } from "../api/auth";
+import { staffMe } from "../api/staff";
+import { clearPendingSignOut, finishPendingSignOut, signOutStaff } from "../lib/staffArea";
+import type { ReferenceOption } from "../types-auth";
 import { avatarFor } from "./FriendsTab";
 import { cn } from "./ui/utils";
 import stemulateLogo from "../assets/stemulate_logo.png";
@@ -53,116 +62,108 @@ import stembotBlue from "../assets/stembot_blue.png";
 import stembotCream from "../assets/stembot_cream.png";
 import stembotRed from "../assets/stembot_red.png";
 import "../styles/admin.css";
-
-// The admin token lasts for this browser tab only.
-const ADMIN_TOKEN_KEY = "stemulate_admin_token";
+import {
+  BEATS,
+  ConfirmPin,
+  Modal,
+  ProgressCard,
+  TOTAL_BEATS,
+  centreLabel,
+  exportCsv,
+  pctDone,
+  savedFileToast,
+  shortDate,
+  useBusy,
+  useIdle,
+  useOnVisible,
+} from "./admin/shared";
+import { StaffAccounts } from "./admin/StaffAccounts";
+import { SignupsList } from "./admin/SignupsList";
+import { ActivityLog } from "./admin/ActivityLog";
 
 // Same rule the Academy uses when a student earns XP (App.tsx handleEarnXP).
 const XP_PER_LEVEL = 1000;
 const levelForXp = (xp: number) => Math.floor(Math.max(0, xp) / XP_PER_LEVEL) + 1;
 
-const BEATS: Record<string, { lesson: string; title: string }> = Object.fromEntries(
-  GAME_LESSONS.flatMap((l) => l.beats.map((b) => [b.id, { lesson: l.title, title: b.title }])),
-);
-const TOTAL_BEATS = GAME_LESSONS.reduce((n, l) => n + l.beats.length, 0);
-
-function readToken() {
-  try {
-    return sessionStorage.getItem(ADMIN_TOKEN_KEY);
-  } catch {
-    return null;
-  }
-}
-
-function saveToken(token: string | null) {
-  try {
-    if (token) sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
-    else sessionStorage.removeItem(ADMIN_TOKEN_KEY);
-  } catch {
-    // Not saved: the admin signs in again after a refresh.
-  }
-}
-
-function parseSql(sql: string | null) {
-  if (!sql) return null;
-  const d = new Date(sql.replace(" ", "T") + "Z");
-  return Number.isNaN(d.getTime()) ? null : d;
-}
-
-function shortDate(sql: string | null) {
-  const d = parseSql(sql);
-  if (!d) return sql ? sql : "Never";
-  return d.toLocaleDateString([], { day: "numeric", month: "short", year: "numeric" });
-}
-
-function prettyId(id: string) {
-  return BEATS[id]?.title ?? id.replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-const pctDone = (u: AdminUser) => Math.round((Math.min(u.completed, TOTAL_BEATS) / Math.max(TOTAL_BEATS, 1)) * 100);
-
-/** A listed centre, or "Other: <name>" for one typed under "Others (please specify)". */
-const centreLabel = (u: AdminUser) => (u.orgOther ? `Other: ${u.orgOther}` : u.orgName);
-
-// ---------------------------------------------------------------------------
-// CSV export (client side, of the students currently shown)
-// ---------------------------------------------------------------------------
-function csvCell(value: unknown) {
-  let s = value === null || value === undefined ? "" : String(value);
-  // Stop spreadsheet apps from running a cell as a formula.
-  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
-  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
-
-function exportCsv(users: AdminUser[]) {
-  const header = [
-    "User ID",
-    "Full name",
-    "Username",
-    "Organisation",
-    "School level",
-    "Level",
-    "XP",
-    "Atoms",
-    "Activities completed",
-    "Last active (UTC)",
-    "Joined (UTC)",
-  ];
-  const rows = users.map((u) => [
-    u.userId,
-    u.fullName,
-    u.username,
-    centreLabel(u),
-    u.schoolLevelName,
-    u.level,
-    u.xp,
-    u.atoms,
-    u.completed,
-    u.lastActive ?? "",
-    u.createdAt,
-  ]);
-  const csv = [header, ...rows].map((r) => r.map(csvCell).join(",")).join("\r\n");
-  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `stemulate-students-${new Date().toISOString().slice(0, 10)}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
 // ---------------------------------------------------------------------------
 // Page shell
 // ---------------------------------------------------------------------------
 export function AdminPage({ onExit }: { onExit: () => void }) {
-  const [token, setToken] = useState<string | null>(readToken);
+  const [token, setToken] = useState<string | null>(readAdminToken);
+  // Signed in on the staff page with an admin account: its cookie works here
+  // too (for an hour after signing in), with no passkey.
+  const [accountAdmin, setAccountAdmin] = useState<string | null>(null);
+  // Signed in with an admin account whose hour here is up.
+  const [accountExpired, setAccountExpired] = useState(false);
+  const [checking, setChecking] = useState(true);
 
-  const signOut = () => {
-    saveToken(null);
+  // Ask the server how this tab is signed in: a passkey token from before
+  // (past its hour, or from before the server restarted) no longer counts.
+  useEffect(() => {
+    const dropToken = () => {
+      saveAdminToken(null);
+      setToken(null);
+    };
+    (async () => {
+      // A sign-out that couldn't reach the server before is finished first
+      // (it also drops the passkey token).
+      if (!(await finishPendingSignOut())) return dropToken();
+      const stored = readAdminToken();
+      if (!stored) setToken(null);
+      try {
+        const s = await adminSession(stored ?? "");
+        if (s.via === "passkey") return;
+        if (stored) dropToken();
+        setAccountAdmin(s.fullName);
+      } catch {
+        if (stored) dropToken();
+        await staffMe()
+          .then(({ staff }) => setAccountExpired(staff.role === "admin"))
+          .catch(() => {});
+      }
+    })().finally(() => setChecking(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const lock = () => {
+    toast.dismiss();
+    saveAdminToken(null);
     setToken(null);
+    setAccountAdmin(null);
   };
+  const expired = () => {
+    if (accountAdmin) setAccountExpired(true);
+    lock();
+  };
+  // An admin account signs out of the staff page too (the same cookie opens
+  // both). The page goes blank while it waits; if the server can't be
+  // reached it comes back, with Sign out to try again. True once signed out.
+  const signOutAccount = async () => {
+    const name = accountAdmin;
+    lock();
+    if (await signOutStaff()) {
+      toast.success("Signed out.");
+      return true;
+    }
+    setAccountAdmin(name);
+    toast.error("Couldn't sign out. Check the internet connection and try again.");
+    return false;
+  };
+  // Leaving locks the page (and signs an admin account out), so the next
+  // person on a shared tablet can't come back in.
+  const leave = async () => {
+    if (accountAdmin && !(await signOutAccount())) return;
+    lock();
+    onExit();
+  };
+  const signedIn = token !== null || accountAdmin !== null;
+  useIdle(signedIn, () => (accountAdmin ? signOutAccount() : lock()));
+  // A tablet woken up later: check the admin access is still there.
+  useOnVisible(signedIn, () => {
+    adminSession(token ?? "").catch((e) => {
+      if (e instanceof ApiError && e.status === 401) expired();
+    });
+  });
 
   return (
     <div className="min-h-screen bg-playful text-foreground">
@@ -178,26 +179,50 @@ export function AdminPage({ onExit }: { onExit: () => void }) {
           </div>
           <div className="flex items-center gap-2">
             {token && (
-              <button onClick={signOut} className="btn-pop btn-pop-sm" aria-label="Lock admin">
+              <button onClick={lock} className="btn-pop btn-pop-sm" aria-label="Lock admin">
                 <Lock size={15} strokeWidth={2.6} />
                 <span className="hidden sm:inline">Lock</span>
               </button>
             )}
-            <button onClick={onExit} className="btn-pop btn-pop-sm btn-primary" aria-label="Back to Academy">
+            {accountAdmin && (
+              <>
+                <a href="#/staff" className="btn-pop btn-pop-sm" aria-label="Staff page">
+                  <Users size={15} strokeWidth={2.6} />
+                  <span className="hidden sm:inline">Staff page</span>
+                </a>
+                <button onClick={signOutAccount} className="btn-pop btn-pop-sm" aria-label="Sign out">
+                  <LogOut size={15} strokeWidth={2.6} />
+                  <span className="hidden sm:inline">Sign out</span>
+                </button>
+              </>
+            )}
+            <button onClick={leave} className="btn-pop btn-pop-sm btn-primary" aria-label="Back to Academy">
               <ArrowLeft size={15} strokeWidth={2.6} />
               <span className="hidden sm:inline">Back to Academy</span>
             </button>
           </div>
         </div>
+        {signedIn && (
+          // Always on screen, because centre tablets are shared with children.
+          <p className="bg-soft-1 border-t-2 border-ink/15 px-4 md:px-8 py-1.5 text-center text-xs font-bold">
+            {accountAdmin
+              ? `Signed in as ${accountAdmin} (Admin). Sign out before you hand this device to a student.`
+              : "Opened with the admin passkey. Lock it before you hand this device to a student."}
+          </p>
+        )}
       </header>
       <main className="px-4 py-6 md:px-8 md:py-8">
         <div className="max-w-6xl mx-auto">
-          {token ? (
-            <AdminDashboard token={token} onExpired={signOut} />
+          {checking ? (
+            <p className="p-10 text-center font-bold text-muted-foreground">Loading…</p>
+          ) : signedIn ? (
+            <AdminTabs token={token ?? ""} onExpired={expired} />
           ) : (
             <PasskeyGate
+              accountExpired={accountExpired}
               onSuccess={(t) => {
-                saveToken(t);
+                clearPendingSignOut();
+                saveAdminToken(t);
                 setToken(t);
               }}
             />
@@ -209,9 +234,54 @@ export function AdminPage({ onExit }: { onExit: () => void }) {
 }
 
 // ---------------------------------------------------------------------------
+// Sections
+// ---------------------------------------------------------------------------
+const TABS = [
+  { id: "students", label: "Students" },
+  { id: "staff", label: "Staff & volunteers" },
+  { id: "signups", label: "Website sign-ups" },
+  { id: "activity", label: "Activity" },
+] as const;
+type Tab = (typeof TABS)[number]["id"];
+
+/** `token` is the passkey's, or "" when an admin account's cookie signs the calls. */
+function AdminTabs({ token, onExpired }: { token: string; onExpired: () => void }) {
+  const [tab, setTab] = useState<Tab>("students");
+  const handle = (e: unknown) => {
+    if (e instanceof ApiError && e.status === 401) onExpired();
+    toast.error((e as Error).message);
+  };
+  return (
+    <>
+      <div role="tablist" aria-label="Admin sections" className="flex flex-wrap gap-2 mb-6">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            role="tab"
+            id={`admin-tab-${t.id}`}
+            aria-selected={tab === t.id}
+            aria-controls="admin-panel"
+            onClick={() => setTab(t.id)}
+            className={cn("btn-pop btn-pop-sm", tab === t.id && "btn-primary")}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <div role="tabpanel" id="admin-panel" aria-labelledby={`admin-tab-${tab}`}>
+        {tab === "students" && <AdminDashboard token={token} onExpired={onExpired} />}
+        {tab === "staff" && <StaffAccounts token={token} onError={handle} />}
+        {tab === "signups" && <SignupsList token={token} onError={handle} />}
+        {tab === "activity" && <ActivityLog token={token} onError={handle} />}
+      </div>
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Passkey gate
 // ---------------------------------------------------------------------------
-function PasskeyGate({ onSuccess }: { onSuccess: (token: string) => void }) {
+function PasskeyGate({ accountExpired, onSuccess }: { accountExpired: boolean; onSuccess: (token: string) => void }) {
   const [passkey, setPasskey] = useState("");
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -300,8 +370,24 @@ function PasskeyGate({ onSuccess }: { onSuccess: (token: string) => void }) {
           {busy ? "Checking…" : "Unlock Admin HQ"}
         </button>
         <p className="mt-5 text-center text-xs font-semibold text-muted-foreground">
-          The passkey lives in the server's <code className="font-bold">.env</code> file as{" "}
-          <code className="font-bold">ADMIN_PASSKEY</code>.
+          {accountExpired ? (
+            <>
+              Your admin account opens this page for an hour after you sign in. To come back in,{" "}
+              <a href="#/staff" className="underline font-bold">
+                sign out on the staff page
+              </a>{" "}
+              and sign in again.
+            </>
+          ) : (
+            <>
+              The passkey lives in the server's <code className="font-bold">.env</code> file as{" "}
+              <code className="font-bold">ADMIN_PASSKEY</code>. Have an admin account?{" "}
+              <a href="#/staff" className="underline font-bold">
+                Sign in on the staff page
+              </a>
+              .
+            </>
+          )}
         </p>
       </form>
     </div>
@@ -410,7 +496,7 @@ function AdminDashboard({ token, onExpired }: { token: string; onExpired: () => 
             <button
               onClick={() => {
                 exportCsv(shown);
-                toast.success(`Exported ${shown.length} student${shown.length === 1 ? "" : "s"} to CSV.`);
+                savedFileToast(`${shown.length} student${shown.length === 1 ? "" : "s"}`);
               }}
               disabled={!users || shown.length === 0}
               className="btn-pop"
@@ -665,7 +751,7 @@ function StatTile({
 // ---------------------------------------------------------------------------
 // Student drawer
 // ---------------------------------------------------------------------------
-type Confirm = "progress" | "pin" | "delete" | null;
+type Confirm = "progress" | "pin" | "delete" | "centre" | null;
 
 function UserDrawer({
   user,
@@ -789,6 +875,12 @@ function UserDrawer({
                     onClick={() => setConfirm("pin")}
                   />
                   <ToolButton
+                    icon={<Building2 size={18} strokeWidth={2.6} />}
+                    title="Move to another centre"
+                    hint="Staff see students by centre, so fix a wrong pick here"
+                    onClick={() => setConfirm("centre")}
+                  />
+                  <ToolButton
                     icon={<RotateCcw size={18} strokeWidth={2.6} />}
                     title="Reset lesson progress"
                     hint="Clear activities and game high scores"
@@ -836,6 +928,21 @@ function UserDrawer({
                   toast.success(`@${user.username}'s new PIN is ${pin}. They've been signed out everywhere.`, {
                     duration: 10000,
                   });
+                  setConfirm(null);
+                } catch (e) {
+                  onError(e);
+                }
+              }}
+            />
+            <ConfirmCentre
+              open={confirm === "centre"}
+              user={user}
+              onClose={() => setConfirm(null)}
+              onConfirm={async (centre) => {
+                try {
+                  const r = await adminSetCentre(token, user.userId, centre);
+                  onPatched(user.userId, { orgName: r.orgName, orgOther: r.orgOther });
+                  toast.success(`Moved @${user.username} to ${r.orgOther ? `Other: ${r.orgOther}` : r.orgName}.`);
                   setConfirm(null);
                 } catch (e) {
                   onError(e);
@@ -1020,145 +1127,9 @@ function NumberField({
   );
 }
 
-function ProgressCard({
-  user,
-  progress,
-  games,
-}: {
-  user: AdminUser;
-  progress: AdminProgressRow[] | null;
-  games: AdminGameRow[];
-}) {
-  const done = progress ? progress.filter((p) => p.status === "completed").length : user.completed;
-  const pct = Math.round((Math.min(done, TOTAL_BEATS) / Math.max(TOTAL_BEATS, 1)) * 100);
-  return (
-    <section className="admin-card p-5">
-      <div className="flex items-center justify-between gap-3 mb-3">
-        <h3 className="font-display !text-lg">Lesson progress</h3>
-        <span className="chip-ink text-xs">{pct}%</span>
-      </div>
-      <div className="meter mb-1.5">
-        <span style={{ width: `${pct}%` }} />
-      </div>
-      <p className="text-xs font-bold text-muted-foreground mb-4">
-        {done} of {TOTAL_BEATS} activities complete
-      </p>
-
-      {progress === null ? (
-        <p className="text-sm font-semibold text-muted-foreground">Loading…</p>
-      ) : progress.length === 0 && games.length === 0 ? (
-        <div className="rounded-2xl bg-soft-1 border-2 border-dashed border-ink/25 p-4 text-center">
-          <p className="font-display font-semibold">Nothing yet</p>
-          <p className="text-xs font-semibold text-muted-foreground">No lesson activity for this student.</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {progress.length > 0 && (
-            <ul className="space-y-2.5">
-              {progress.map((p) => (
-                <li key={p.lesson_id} className="flex items-center gap-2.5 text-sm">
-                  <span
-                    className={cn(
-                      "w-3 h-3 rounded-full border-2 border-ink shrink-0",
-                      p.status === "completed" ? "bg-pop-2" : "bg-primary",
-                    )}
-                    title={p.status === "completed" ? "Completed" : "In progress"}
-                  />
-                  <span className="flex-1 min-w-0">
-                    <span className="block truncate font-semibold leading-tight">{prettyId(p.lesson_id)}</span>
-                    {BEATS[p.lesson_id] && (
-                      <span className="block truncate text-[11px] font-semibold text-muted-foreground">{BEATS[p.lesson_id].lesson}</span>
-                    )}
-                  </span>
-                  {p.score !== null && <span className="font-display font-bold tabular-nums">{p.score}%</span>}
-                  <span className="text-xs font-semibold text-muted-foreground shrink-0">
-                    {shortDate(p.completed_at ?? p.last_accessed)}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-          {games.length > 0 && (
-            <div>
-              <p className="text-[11px] font-extrabold uppercase tracking-[0.12em] text-muted-foreground mb-2">Game high scores</p>
-              <ul className="space-y-1.5">
-                {games.map((g) => (
-                  <li key={g.game_id} className="flex items-center gap-2.5 text-sm">
-                    <span className="flex-1 min-w-0 truncate font-semibold">{prettyId(g.game_id)}</span>
-                    <span className="font-display font-bold tabular-nums">{g.best_score}</span>
-                    <span className="text-xs font-semibold text-muted-foreground w-16 text-right">
-                      {g.plays} play{g.plays === 1 ? "" : "s"}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      )}
-    </section>
-  );
-}
-
 // ---------------------------------------------------------------------------
-// Confirm boxes
+// Confirm boxes (the shared ones are in ./admin/shared)
 // ---------------------------------------------------------------------------
-function Modal({
-  open,
-  onClose,
-  bot,
-  title,
-  children,
-}: {
-  open: boolean;
-  onClose: () => void;
-  bot: string;
-  title: string;
-  children: ReactNode;
-}) {
-  return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-        >
-          <div className="absolute inset-0 bg-[color-mix(in_srgb,var(--ink)_50%,transparent)]" onClick={onClose} />
-          <motion.div
-            role="alertdialog"
-            aria-modal="true"
-            aria-label={title}
-            initial={{ y: 30, scale: 0.96 }}
-            animate={{ y: 0, scale: 1 }}
-            exit={{ y: 30, scale: 0.96 }}
-            transition={{ type: "spring", damping: 24, stiffness: 320 }}
-            className="relative w-full max-w-[420px] admin-card px-6 pb-6 pt-14"
-          >
-            <img src={bot} alt="" className="absolute -top-14 left-1/2 -translate-x-1/2 h-24 die-cut" />
-            <h3 className="font-display !text-xl text-center mb-2">{title}</h3>
-            {children}
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
-
-function useBusy() {
-  const [busy, setBusy] = useState(false);
-  const run = async (fn: () => Promise<void>) => {
-    setBusy(true);
-    try {
-      await fn();
-    } finally {
-      setBusy(false);
-    }
-  };
-  return [busy, run] as const;
-}
-
 function ConfirmProgress({
   open,
   user,
@@ -1189,9 +1160,9 @@ function ConfirmProgress({
   );
 }
 
-const randomPin = () => String(Math.floor(Math.random() * 10000)).padStart(4, "0");
+const OTHER = "other";
 
-function ConfirmPin({
+function ConfirmCentre({
   open,
   user,
   onClose,
@@ -1200,53 +1171,61 @@ function ConfirmPin({
   open: boolean;
   user: AdminUser;
   onClose: () => void;
-  onConfirm: (pin: string) => Promise<void>;
+  onConfirm: (centre: { orgId: number } | { orgOther: string }) => Promise<void>;
 }) {
-  const [pin, setPin] = useState("");
+  const [centres, setCentres] = useState<ReferenceOption[] | null>(null);
+  const [pick, setPick] = useState("");
+  const [other, setOther] = useState("");
   const [busy, run] = useBusy();
-  const ref = useRef<HTMLInputElement>(null);
-
   useEffect(() => {
-    if (open) {
-      setPin("");
-      setTimeout(() => ref.current?.focus(), 50);
-    }
-  }, [open]);
-
-  const ok = /^\d{4}$/.test(pin);
+    if (!open) return;
+    setPick("");
+    setOther(user.orgOther ?? "");
+    fetchReferenceData()
+      .then((r) => setCentres(r.organisations))
+      .catch(() => setCentres([]));
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  const ok = pick === OTHER ? other.trim().length > 0 : pick !== "";
   return (
-    <Modal open={open} onClose={onClose} bot={stembotGreen} title="Set a new PIN">
+    <Modal open={open} onClose={onClose} bot={stembotBlue} title={`Move @${user.username}?`}>
       <p className="text-sm font-semibold text-muted-foreground text-center mb-4">
-        Pick 4 digits for <b className="text-foreground">@{user.username}</b>. They'll be signed out and need the new PIN to get
-        back in.
+        Now at <b className="text-foreground">{centreLabel(user)}</b>. Staff and volunteers who follow the new centre will see them,
+        and those who follow only this one won't. Admins and accounts that follow every centre see all students.
       </p>
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          if (ok) run(() => onConfirm(pin));
+          if (ok) run(() => onConfirm(pick === OTHER ? { orgOther: other.trim() } : { orgId: Number(pick) }));
         }}
       >
-        <div className="flex gap-2.5 mb-5">
+        <label htmlFor="admin-centre" className="block !text-sm font-bold mb-2">
+          New centre
+        </label>
+        <select id="admin-centre" value={pick} onChange={(e) => setPick(e.target.value)} className="ink-input mb-3" disabled={!centres}>
+          <option value="">{centres ? "Pick a centre" : "Loading…"}</option>
+          {(centres ?? []).map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+          <option value={OTHER}>Others (please specify)</option>
+        </select>
+        {pick === OTHER && (
           <input
-            ref={ref}
-            value={pin}
-            onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
-            inputMode="numeric"
-            autoComplete="off"
-            placeholder="••••"
-            aria-label="New 4-digit PIN"
-            className="ink-input pin-input flex-1 min-w-0"
+            value={other}
+            onChange={(e) => setOther(e.target.value)}
+            maxLength={80}
+            placeholder="The centre's name"
+            aria-label="The centre's name"
+            className="ink-input mb-3"
           />
-          <button type="button" onClick={() => setPin(randomPin())} className="btn-pop btn-pop2 !px-4 !rounded-[1.25rem]" aria-label="Random PIN" title="Random PIN">
-            <Dices size={20} strokeWidth={2.4} />
-          </button>
-        </div>
-        <div className="flex gap-2.5">
+        )}
+        <div className="flex gap-2.5 mt-2">
           <button type="button" onClick={onClose} className="btn-pop flex-1">
             Cancel
           </button>
           <button type="submit" disabled={!ok || busy} className="btn-pop btn-primary flex-1">
-            <KeyRound size={16} strokeWidth={2.6} /> {busy ? "Saving…" : "Set PIN"}
+            <Building2 size={16} strokeWidth={2.6} /> {busy ? "Moving…" : "Move"}
           </button>
         </div>
       </form>

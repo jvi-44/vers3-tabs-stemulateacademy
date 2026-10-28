@@ -66,6 +66,9 @@ export async function startFakeSupabase() {
     }
     try {
       const result = await db.transaction(async (tx) => {
+        // Like PostgREST: a STABLE or IMMUTABLE function runs read-only.
+        const fn = await tx.query("SELECT provolatile FROM pg_proc WHERE proname = $1 AND pronamespace = 'public'::regnamespace", [match[1]]);
+        if (fn.rows[0] && fn.rows[0].provolatile !== "v") await tx.query("SET TRANSACTION READ ONLY");
         await tx.query("SET LOCAL ROLE service_role");
         return callFunction(tx, match[1], args);
       });

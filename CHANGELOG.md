@@ -1,3 +1,46 @@
+# What changed in this update (round 8: team feedback)
+
+- **Questions for every Primary level.** Quizzes, lesson games and story games
+  now ask questions for the school level on the student's account: Primary
+  1–2, 3–4 or 5–6. P5–6 keeps the workshops' own questions; the P1–2 and P3–4
+  sets are new, for the Curriculum team to check. Guests pick their level when
+  they start. Live games use the host's level so everyone gets the same
+  puzzles. The STEMbots' chat answers in words for the student's level, and
+  knows all three lessons (it used to describe only Minecraft Masterminds).
+  The home page's Primary-level filter is gone, as every activity now fits
+  every level.
+- **A new Space Busters launch game.** "Hold to fire the engines" became three
+  step-by-step launches: add engine power until thrust beats the Sun's pull
+  (and, for P5–6, drag), then fire. One more than the pull is a perfect,
+  fuel-saving launch.
+- **Staff and volunteer accounts.** Centre staff and volunteers sign in at
+  `/#/staff` to follow their centres' students and progress; staff can also
+  reset a forgotten PIN. Admins add each person (Admin page → Staff &
+  volunteers) with a one-time set-up link, and can move a student to another
+  centre. The new Activity tab shows, for 12 months and a page at a time, who
+  opened the student list, looked at a student's progress or changed a student
+  or staff account. The staff and admin pages clear themselves after an hour
+  unused, and leaving them, the browser's Back button included, signs out
+  (centre tablets are shared).
+  Admin accounts can open the admin page without the passkey.
+- **Website: inline sign-up forms** for volunteering, partnering, starting a
+  chapter and the newsletter (both old Google Forms were closed). They arrive
+  in the admin page under Website sign-ups, with CSV export.
+- **Website: an "Ask us" assistant** on every page, which answers from
+  `llms.txt`. Its button stays hidden, and both it and the lesson chat stay
+  off, until an AI service is chosen: DEPLOY.md "AI chat: decide first".
+- **Website: Impact** has the story year by year 2023–2026, the workshops with
+  each partner, other events, and recognitions & grants. **About us** has team
+  cards ready for photos and bios, and **Curriculum** has a curriculum library.
+  Sections fill in as Janhvi's team adds content (website/README.md).
+- **Website: a privacy page** for the forms, the assistant and the Academy.
+- **Sign-in fix.** Sign-in, Forgot PIN and change PIN now take one try at a
+  time per username, so tries sent together can't get past the 5-tries
+  lockout.
+- Database: `supabase/schema.sql` is now version 4 (staff accounts, sign-ups,
+  the activity log). Run it in the SQL Editor right before this code goes
+  live (DEPLOY.md "Round 8 going live"). Nothing is deleted.
+
 # What changed in this update (round 7: Me page and lesson videos)
 
 - Students can change their own school level on the Me page (Edit → School

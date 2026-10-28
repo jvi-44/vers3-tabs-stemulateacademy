@@ -113,7 +113,11 @@ export function ProfileDetails({ authUser, onChange }: { authUser: AuthUser; onC
           <DialogHeader>
             <DialogTitle>Edit my details</DialogTitle>
             <DialogDescription>
-              Friends see your username. Your name is only shown to you and your teachers.
+              Friends see your username. Your name and progress are only shown to you, your centre's teachers, STEMulate
+              volunteers and the STEMulate team.{" "}
+              <a href="https://projstemulate.com/privacy.html#academy" target="_blank" rel="noopener" className="underline font-semibold">
+                More about privacy
+              </a>
             </DialogDescription>
           </DialogHeader>
           <label className="block space-y-1.5">

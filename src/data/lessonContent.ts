@@ -307,8 +307,8 @@ export const GAME_LESSONS: GameLesson[] = [
           {
             question: "A farmer has an L-shaped field split into two rectangles: one is 4m × 3m and another is 6m × 2m. What is the total area?",
             options: ["24 m²", "30 m²", "20 m²", "15 m²"],
-            correctAnswer: 1,
-            explanation: "(4 × 3) + (6 × 2) = 12 + 18 = 30 m². Split irregular shapes into rectangles and add the areas.",
+            correctAnswer: 0,
+            explanation: "(4 × 3) + (6 × 2) = 12 + 12 = 24 m². Split irregular shapes into rectangles and add the areas.",
           },
           {
             question: "Which real-world job uses area calculations most directly?",

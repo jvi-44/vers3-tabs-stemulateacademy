@@ -3,6 +3,8 @@ import { AnimatePresence, motion } from "motion/react";
 import { sfx } from "../../games/kit/audio";
 import type { GameResult } from "../types";
 import { Hud, MiniGameFrame, Pill, shuffle, useFrame, type MiniGameProps } from "./kit";
+import { orOriginal } from "../../data/levels";
+import { MATTER_ITEMS } from "../../content/matterSorter";
 
 // States of matter: blocks float up out of the ground; tap SOLID, LIQUID or GAS
 // before each one drifts off the top.
@@ -33,14 +35,15 @@ const ITEMS: Item[] = [
 
 const ROUNDS = 10;
 const TO_WIN = 7;
-const BUTTONS: Array<{ state: State; label: string; key: string; cls: string }> = [
-  { state: "solid", label: "Solid", key: "1", cls: "bg-[#a3a3a3]" },
-  { state: "liquid", label: "Liquid", key: "2", cls: "bg-[#60a5fa]" },
-  { state: "gas", label: "Gas", key: "3", cls: "bg-[#e2e8f0]" },
+const BUTTONS: Array<{ state: State; label: string; easy: string; key: string; cls: string }> = [
+  { state: "solid", label: "Solid", easy: "Solid (hard)", key: "1", cls: "bg-[#a3a3a3]" },
+  { state: "liquid", label: "Liquid", easy: "Liquid (runny)", key: "2", cls: "bg-[#60a5fa]" },
+  { state: "gas", label: "Gas", easy: "Gas (floaty)", key: "3", cls: "bg-[#e2e8f0]" },
 ];
 
-export function MatterSorter({ onDone }: MiniGameProps) {
-  const deck = useMemo(() => shuffle(ITEMS).slice(0, ROUNDS), []);
+export function MatterSorter({ onDone, band }: MiniGameProps) {
+  // The original items are the P5–6 set; P1–2 and P3–4 have their own.
+  const deck = useMemo(() => shuffle(band === "p56" ? ITEMS : orOriginal(MATTER_ITEMS[band], ITEMS)).slice(0, ROUNDS), [band]);
   const [i, setI] = useState(0);
   const [y, setY] = useState(0); // 0 = ground, 1 = top
   const yRef = useRef(0);
@@ -163,7 +166,7 @@ export function MatterSorter({ onDone }: MiniGameProps) {
         <div className="absolute inset-x-0 bottom-0 p-3 sm:p-4 grid grid-cols-3 gap-2 sm:gap-3">
           {BUTTONS.map((b) => (
             <button key={b.state} onClick={() => answer(b.state)} className={`ep-btn !py-3 sm:!py-4 text-base sm:text-xl ${b.cls}`}>
-              {b.label}
+              {band === "p12" ? b.easy : b.label}
               <span className="hidden sm:inline text-xs opacity-60 ml-1">[{b.key}]</span>
             </button>
           ))}

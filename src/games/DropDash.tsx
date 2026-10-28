@@ -13,6 +13,8 @@ import { sfx } from "./kit/audio";
 import { seededRandom } from "./kit/scores";
 import { clamp, fitText, loadImage, roundRect, shuffled, useCanvasLoop } from "./kit/canvas";
 import type { BotId, GameProps, RivalInfo } from "./kit/types";
+import { orOriginal, type LevelBand } from "../data/levels";
+import { DROP_DASH_BANKS } from "../content/dropDash";
 
 // ── World constants (units are blocks) ────────────────
 const ROWS = 14; // visible height
@@ -309,7 +311,7 @@ function obstacleCells(zone: number, x0: number, gapTop: number, gapH: number, r
   return cells;
 }
 
-function buildWorld(seed: number): World {
+function buildWorld(seed: number, band: LevelBand): World {
   const rnd = seededRandom(seed + 101);
   const obstacles: Obstacle[] = [];
   const gates: Gate[] = [];
@@ -335,7 +337,9 @@ function buildWorld(seed: number): World {
     }
     // The question gate for this stage.
     const gx = x + 2;
-    const bank = QUESTIONS[ZONES[z].key];
+    const key = ZONES[z].key;
+    // The original questions are the P5–6 set; P1–2 and P3–4 have their own.
+    const bank = band === "p56" ? QUESTIONS[key] : orOriginal(DROP_DASH_BANKS[band]?.[key], QUESTIONS[key]);
     const q = bank[Math.floor(rnd() * bank.length)];
     const order = shuffled([0, 1, 2], rnd);
     gates.push({ x: gx, zone: z, q: q.q, options: order.map((k) => q.a[k]), correct: order.indexOf(0), why: q.why });
@@ -491,8 +495,8 @@ interface Toast {
   text: string;
 }
 
-export function DropDash({ seed, mode, me, live, playing, reportProgress, reportBots, finish }: GameProps) {
-  const world = useMemo(() => buildWorld(seed), [seed]);
+export function DropDash({ seed, band, mode, me, live, playing, reportProgress, reportBots, finish }: GameProps) {
+  const world = useMemo(() => buildWorld(seed, band), [seed, band]);
   const isLive = mode === "live" && !!live;
   const sophia = STEMBOTS.sophia;
 

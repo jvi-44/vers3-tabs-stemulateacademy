@@ -1,4 +1,4 @@
-import { PRIMARY_LEVEL_TAGS, SCIENCE_TOPIC_TAGS, MATH_TOPIC_TAGS } from "../data/lessonContent";
+import { SCIENCE_TOPIC_TAGS, MATH_TOPIC_TAGS } from "../data/lessonContent";
 import { cn } from "./ui/utils";
 
 export interface TagSelection {
@@ -37,7 +37,6 @@ export function TagFilterBar({
   onChange: (s: TagSelection) => void;
 }) {
   const groups: { key: keyof TagSelection; tags: string[] }[] = [
-    { key: "level", tags: PRIMARY_LEVEL_TAGS },
     { key: "science", tags: SCIENCE_TOPIC_TAGS },
     { key: "math", tags: MATH_TOPIC_TAGS },
   ];

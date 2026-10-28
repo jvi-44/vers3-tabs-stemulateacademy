@@ -11,6 +11,23 @@ import { BEATS, BEATS_BY_ID, LESSONS, pointsFor, REPLAY_REWARD as SERVER_REPLAY 
 import { AVATAR_KEYS as SERVER_AVATAR_KEYS } from "../../server/avatars.js";
 // @ts-ignore -- plain JS module shared with the Node server
 import { CARD_POOLS, ALBUM_PACKS as SERVER_PACKS } from "../../server/cards.js";
+// @ts-ignore -- plain JS module shared with the Node server
+import { BANDS, bandForLevelName } from "../../server/levels.js";
+import { LEVEL_BANDS, bandFor } from "../data/levels";
+
+describe("server/levels.js mirrors src/data/levels.ts", () => {
+  it("puts every school level in the same band", () => {
+    const names = [1, 2, 3, 4, 5, 6].map((n) => `Primary ${n}`);
+    for (const name of [...names, "primary 3", " Primary 2 ", "Secondary 1", "", null, undefined]) {
+      expect(bandForLevelName(name), String(name)).toBe(bandFor(name));
+    }
+    expect(names.map(bandFor)).toEqual(["p12", "p12", "p34", "p34", "p56", "p56"]);
+  });
+
+  it("has the same bands", () => {
+    expect(BANDS).toEqual(LEVEL_BANDS.map((b) => b.id));
+  });
+});
 
 describe("server/lessons.js mirrors src/data/lessonContent.ts", () => {
   it("has the same lessons", () => {

@@ -10,6 +10,7 @@ import { STEMBOTS } from "../../data/mock";
 import { cn } from "../../components/ui/utils";
 import { isMuted, onMuteChange, primeAudio, setMuted, sfx, startMusic, stopMusic } from "./audio";
 import { getHighScore, recordScore, seededRandom, starsFor } from "./scores";
+import { useLevelBand } from "../../lib/levelBand";
 import { useLiveRoom, type LiveRoom, type PlayerIdentity } from "./live";
 import type { BotId, GameDef, GameSummaryItem, RivalInfo } from "./types";
 import "./games.css";
@@ -174,6 +175,9 @@ export function GameShell({
   const isLive = !!liveCode;
   const live = useLiveRoom(liveCode, me);
   const room = live.room;
+  const playerBand = useLevelBand();
+  // A live room uses its host's band, so everyone gets the same puzzles.
+  const band = isLive && room ? room.band ?? "p56" : playerBand;
   const isHost = !!room && room.hostId === me.id;
 
   const [phase, setPhase] = useState<Phase>(isLive ? "lobby" : "intro");
@@ -391,11 +395,11 @@ export function GameShell({
         <div className="relative flex-none lg:flex-1 min-w-0 rounded-2xl overflow-hidden bg-slate-900 h-[600px]">
           {phase === "intro" && (
             <div className={cn("absolute inset-0 flex flex-col items-center justify-center gap-6 p-6 game-checker", def.gradient)}>
-              <BotBubble bot={def.bot} text={def.intro} className="max-w-xl" />
+              <BotBubble bot={def.bot} text={def.introByBand?.[band] ?? def.intro} className="max-w-xl" />
               <div className="bg-white/95 text-slate-800 rounded-2xl p-4 game-panel max-w-xl w-full">
                 <p className="game-pixel text-[10px] text-slate-500 mb-2">HOW TO PLAY</p>
                 <ul className="space-y-1.5 text-sm game-fun">
-                  {def.howTo.map((h) => (
+                  {(def.howToByBand?.[band] ?? def.howTo).map((h) => (
                     <li key={h} className="flex gap-2">
                       <span>▸</span>
                       <span>{h}</span>
@@ -426,6 +430,7 @@ export function GameShell({
                 key={runKey}
                 mode={isLive ? "live" : "solo"}
                 seed={seed}
+                band={band}
                 me={me}
                 live={liveApi}
                 reportProgress={phase === "playing" ? reportProgress : () => {}}

@@ -1,0 +1,67 @@
+/* Inline sign-up forms on get-involved.html, sent by forms.js. Without
+   JavaScript a form posts to the Academy and comes back to its "sent" or
+   "error" box (#volunteer-sent …), shown here with :target. */
+
+.signup-form {
+  position: relative;
+  display: grid;
+  gap: 14px;
+  margin: 22px 0 10px;
+  padding: 20px;
+  max-width: 560px;
+  color: var(--ink);
+  background: var(--white);
+  border: 2.5px solid var(--ink);
+  border-radius: var(--r-md);
+  box-shadow: 0 6px 0 var(--ink);
+}
+.signup-form h3 { margin: 0; font-family: var(--head); font-size: 1.3rem; }
+
+.field { display: grid; gap: 6px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.field label,
+.field legend { padding: 0; font-weight: 800; font-size: 0.95rem; }
+.optional { font-weight: 600; color: var(--muted); }
+.field input:not([type="checkbox"]),
+.field textarea {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 14px;
+  font: inherit;
+  font-size: 1rem;
+  color: var(--ink);
+  background: var(--cream);
+  border: 2px solid var(--ink);
+  border-radius: var(--r-sm);
+}
+.field textarea { resize: vertical; }
+.field input:focus-visible,
+.field textarea:focus-visible { outline: 3px solid var(--grape); outline-offset: 2px; }
+.field [aria-invalid="true"] { border-color: #b42318; background: #fff4f2; }
+.field-error { margin: 0; font-size: 0.9rem; font-weight: 700; color: #b42318; }
+
+.checks { display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.checks label { display: inline-flex; align-items: center; gap: 8px; min-height: 32px; font-weight: 600; }
+.checks input { width: 18px; height: 18px; accent-color: var(--grape); }
+
+.form-note { margin: 0; font-size: 0.85rem; color: var(--muted); }
+.form-status { margin: 0; font-weight: 700; }
+.form-status:empty { display: none; }
+.form-alt { margin: 4px 0 0; font-size: 0.95rem; }
+.on-dark .form-alt a { color: var(--on-forest); }
+
+/* A field anyone can't see, which only bots fill in. */
+.hp { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+
+.form-box { display: none; margin: 0; padding: 12px 14px; font-weight: 700; border: 2px solid var(--ink); border-radius: var(--r-sm); }
+.form-box:target,
+.form-box.is-shown { display: block; }
+.form-sent { background: var(--mint); }
+.form-error { background: #fff4f2; }
+.signup-form.is-done .field,
+.signup-form.is-done .form-note,
+.signup-form.is-done button[type="submit"] { display: none; }
+
+/* The newsletter band's one-line form */
+.signup-inline { margin: 0; padding: 0; max-width: 460px; background: none; border: 0; box-shadow: none; }
+.form-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.form-row input { flex: 1 1 220px; }

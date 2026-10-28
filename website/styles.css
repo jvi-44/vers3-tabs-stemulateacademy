@@ -164,6 +164,11 @@ ul, ol { margin: 0; padding: 0; }
 .mt-lg { margin-top: 48px; }
 .mt-md { margin-top: 28px; }
 
+/* Lists that fill up over time (year figures, workshops per partner, events, the
+   curriculum library): a [data-collection] shows only once it holds a [data-item].
+   Each one has an HTML comment with a copy-paste template for a new item. */
+[data-collection]:not(:has([data-item])) { display: none !important; }
+
 /* ───────── Home hero: the session photo with the headline on a forest panel ───────── */
 .hero { position: relative; background: var(--forest); }
 .hero-photo { margin: 0; height: clamp(520px, 80vh, 780px); }
@@ -311,6 +316,11 @@ ul, ol { margin: 0; padding: 0; }
 .partner-row h3 { font-size: 1.18rem; margin-bottom: 4px; }
 .partner-row p { margin: 0; color: var(--muted); font-size: 0.97rem; line-height: 1.45; }
 .since { display: inline-block; font: 700 0.8rem var(--head); color: var(--forest); background: var(--lime); border-radius: 999px; padding: 3px 10px; margin-bottom: 6px; }
+/* The workshops we ran with each partner */
+.org-workshops { list-style: none; display: grid; gap: 6px; margin-top: 12px; padding-top: 10px; border-top: 2px dashed var(--line); }
+.org-workshops li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 12px; font-size: 0.95rem; line-height: 1.35; }
+.org-workshops b { font: 600 1rem var(--head); }
+.org-workshops span { color: var(--muted); font-weight: 700; font-size: 0.88rem; }
 
 /* ───────── Slide decks ───────── */
 .deck-shelf { list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
@@ -493,6 +503,21 @@ ul, ol { margin: 0; padding: 0; }
 .at-home b { display: block; font: 600 1.12rem var(--head); }
 .at-home span { display: block; font-size: 0.93rem; color: var(--muted); line-height: 1.4; }
 
+/* Curriculum library: one row per workshop, with a button for each file */
+.library { list-style: none; display: grid; gap: 14px; }
+.lib-row { display: grid; grid-template-columns: 112px minmax(0, 1fr) auto; gap: 14px 18px; align-items: center; background: var(--white); border: 2px solid var(--line); border-radius: var(--r-md); padding: 12px 18px 12px 12px; }
+.lib-row img { width: 112px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 10px; }
+.lib-name b { display: block; font: 600 1.15rem var(--head); }
+.lib-name span { display: block; font-size: 0.93rem; font-weight: 700; color: var(--muted); }
+.lib-files { display: flex; flex-wrap: wrap; gap: 10px; margin: 0; }
+.lib-files a {
+  display: inline-flex; align-items: center; font: 600 0.95rem/1 var(--head); color: var(--ink); text-decoration: none;
+  padding: 10px 16px; border-radius: 999px; background: var(--lime); border: 3px solid var(--ink); box-shadow: 0 4px 0 var(--ink);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.lib-files a:hover { transform: translateY(-2px); box-shadow: 0 6px 0 var(--ink); }
+.lib-files a:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--ink); }
+
 /* ───────── Voices ───────── */
 .pullquote { margin: 0 auto 48px; max-width: 900px; text-align: center; }
 .pullquote p { font: 600 clamp(1.5rem, 3vw, 2.2rem)/1.3 var(--head); margin-bottom: 16px; }
@@ -506,7 +531,7 @@ ul, ol { margin: 0; padding: 0; }
 .quote-volunteer { border-top-color: var(--grape); }
 .quote-volunteer footer { color: var(--grape-deep); }
 
-/* ───────── Timeline (2023 → 2025) ───────── */
+/* ───────── Timeline (2023 → 2026) ───────── */
 .years { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
 .year { background: var(--white); border-radius: var(--r-lg); padding: 26px 26px 22px; border: 2px solid var(--line); }
 .year h3 { font-size: 2.6rem; color: var(--leaf-deep); margin-bottom: 14px; }
@@ -518,6 +543,11 @@ ul, ol { margin: 0; padding: 0; }
 .years-key span::before { content: ""; display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin: 0 6px 0 14px; vertical-align: -1px; background: var(--leaf); }
 .years-key span:first-child::before { margin-left: 0; }
 .years-key .k-partner::before { background: var(--grape); }
+/* A year's figures (Impact page): big number on top, label below */
+.year .year-figures { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; margin-top: 18px; padding-top: 14px; border-top: 2px dashed var(--line); }
+.year .year-figures li { padding-left: 0; font-size: 0.88rem; line-height: 1.3; color: var(--muted); }
+.year .year-figures li::before { content: none; }
+.year-figures b { display: block; font: 700 1.7rem/1.1 var(--head); color: var(--leaf-deep); }
 
 /* ───────── Growth bars (Impact) ───────── */
 .growth { padding: 26px 28px 18px; background: var(--white); border: 2px solid var(--line); border-radius: var(--r-lg); }
@@ -540,6 +570,13 @@ ul, ol { margin: 0; padding: 0; }
 .methods li::before { content: counter(m); display: grid; place-items: center; width: 34px; height: 34px; margin-bottom: 10px; border-radius: 50%; font: 700 1rem var(--head); background: var(--lime); color: var(--forest); }
 .methods b { display: block; font: 600 1.08rem var(--head); margin-bottom: 4px; }
 .methods span { font-size: 0.92rem; color: var(--muted); line-height: 1.4; display: block; }
+
+/* Other events, and recognitions & grants (Impact) */
+.event-list { list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 18px; }
+.event-list li { background: var(--white); border: 2px solid var(--line); border-radius: var(--r-md); padding: 20px 22px; }
+.event-list h3 { font-size: 1.3rem; margin-bottom: 6px; }
+.event-list p { margin: 0; color: var(--muted); }
+.event-list .text-link { margin-top: 10px; }
 
 /* ───────── Ways to get involved ───────── */
 .ways { list-style: none; display: grid; gap: 14px; }
@@ -584,6 +621,14 @@ ul, ol { margin: 0; padding: 0; }
 .m-initial { flex: none; width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; font: 700 1.5rem var(--head); color: #fff; background: var(--bot, var(--leaf-deep)); }
 .member div b { display: block; font: 600 1.15rem var(--head); line-height: 1.2; }
 .member div span { display: block; font-size: 0.9rem; font-weight: 700; color: var(--muted); line-height: 1.3; }
+/* Team cards: an initial (.m-initial) until a photo from assets/team/ takes its place */
+.team-card { background: var(--white); border: 2px solid var(--line); border-radius: var(--r-md); padding: 20px 16px 18px; text-align: center; }
+.team-card .m-initial, .team-card > img { width: 96px; height: 96px; margin: 0 auto 12px; border-radius: 50%; }
+.team-card .m-initial { font-size: 2.3rem; }
+.team-card > img { object-fit: cover; box-shadow: 0 0 0 4px var(--bot, var(--leaf-deep)); }
+.team-card b { display: block; font: 600 1.18rem var(--head); line-height: 1.2; }
+.team-role { display: block; margin-top: 3px; font-size: 0.9rem; font-weight: 700; color: var(--muted); line-height: 1.3; }
+.team-bio { margin: 10px 0 0; font-size: 0.93rem; color: var(--muted); line-height: 1.45; }
 .steps-3 { list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; counter-reset: s3; margin: 26px 0 30px; }
 .steps-3 li { counter-increment: s3; background: rgba(243, 251, 230, 0.08); border: 2px solid rgba(243, 251, 230, 0.2); border-radius: var(--r-md); padding: 18px; }
 .steps-3 li::before { content: counter(s3); display: grid; place-items: center; width: 34px; height: 34px; margin-bottom: 10px; border-radius: 50%; font: 700 1rem var(--head); background: var(--lime); color: var(--forest); }
@@ -720,6 +765,13 @@ ul, ol { margin: 0; padding: 0; }
   .screens figure:first-child { grid-column: auto; }
   .partner-row { grid-template-columns: 72px minmax(0, 1fr); padding: 14px; }
   .partner-row img, .partner-row .logo-text { width: 72px; height: 60px; }
+  .members { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .team-card { padding: 16px 10px 14px; }
+  .team-card .m-initial, .team-card > img { width: 72px; height: 72px; }
+  .team-card .m-initial { font-size: 1.8rem; }
+  .lib-row { grid-template-columns: 72px minmax(0, 1fr); padding: 12px; }
+  .lib-row img { width: 72px; }
+  .lib-files { grid-column: 1 / -1; }
   .footer-grid { grid-template-columns: minmax(0, 1fr); }
   .footer-brand { grid-column: auto; }
   .page-hero { padding: 56px 0 64px; }

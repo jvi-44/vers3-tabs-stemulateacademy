@@ -228,6 +228,145 @@ CREATE TABLE IF NOT EXISTS story_choices (
     PRIMARY KEY (user_id, beat_id)
 );
 
+-- Centre staff and STEMulate volunteers, who sign in with an email and their
+-- own password to follow their centres' students (server/routes/staff.js).
+-- An admin adds each person and hands them a one-time set-up link, so nobody
+-- else ever knows the password. "admin" accounts also get the admin page.
+CREATE TABLE IF NOT EXISTS staff (
+    staff_id       BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    full_name      TEXT NOT NULL,
+    email          TEXT NOT NULL,
+    -- bcrypt hash; null until the set-up link has been used.
+    password_hash  TEXT,
+    role           TEXT NOT NULL DEFAULT 'staff' CHECK (role IN ('admin', 'staff', 'volunteer')),
+    -- Follows every centre, students under "Others" included.
+    all_centres    BOOLEAN NOT NULL DEFAULT false,
+    disabled       BOOLEAN NOT NULL DEFAULT false,
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+    last_login_at  TIMESTAMPTZ
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_staff_email_lower ON staff (lower(email));
+
+-- Volunteers follow the centres they help at, never every centre. A table rule,
+-- so two admin changes at once can't leave a volunteer seeing every centre.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'staff_volunteer_not_all_centres') THEN
+    -- Any such account from before the rule goes back to its own centres.
+    UPDATE staff SET all_centres = false WHERE role = 'volunteer' AND all_centres;
+    ALTER TABLE staff ADD CONSTRAINT staff_volunteer_not_all_centres CHECK (NOT (role = 'volunteer' AND all_centres));
+  END IF;
+END $$;
+
+-- The centres each staff member follows.
+CREATE TABLE IF NOT EXISTS staff_centres (
+    staff_id  BIGINT NOT NULL REFERENCES staff(staff_id) ON DELETE CASCADE,
+    org_id    BIGINT NOT NULL REFERENCES organisations(org_id) ON DELETE CASCADE,
+    PRIMARY KEY (staff_id, org_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_staff_centres_org ON staff_centres (org_id);
+
+-- Like `sessions`: `token` is the SHA-256 hash of the stem_staff cookie's
+-- value. Times are Unix milliseconds: a session ends 12 hours after sign-in or
+-- after an hour unused, whichever comes first (centre tablets are shared).
+CREATE TABLE IF NOT EXISTS staff_sessions (
+    token       TEXT PRIMARY KEY,
+    staff_id    BIGINT NOT NULL REFERENCES staff(staff_id) ON DELETE CASCADE,
+    expires_at  BIGINT NOT NULL,
+    created_at  BIGINT NOT NULL,
+    last_seen   BIGINT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_staff_sessions_staff ON staff_sessions (staff_id);
+CREATE INDEX IF NOT EXISTS idx_staff_sessions_expiry ON staff_sessions (expires_at);
+
+-- One-time set-up links: the SHA-256 hash of the token in the link. An account
+-- has one link at most: a new link replaces the old one, and using it deletes it.
+CREATE TABLE IF NOT EXISTS staff_setup_tokens (
+    token       TEXT PRIMARY KEY,
+    staff_id    BIGINT NOT NULL REFERENCES staff(staff_id) ON DELETE CASCADE,
+    expires_at  BIGINT NOT NULL
+);
+
+-- One link per account, even when two are asked for at the same moment. A
+-- database from before this rule keeps each account's newest link.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE schemaname = 'public' AND indexname = 'idx_staff_setup_tokens_one') THEN
+    DELETE FROM staff_setup_tokens t
+     WHERE EXISTS (SELECT 1 FROM staff_setup_tokens n
+                    WHERE n.staff_id = t.staff_id AND (n.expires_at, n.token) > (t.expires_at, t.token));
+    CREATE UNIQUE INDEX idx_staff_setup_tokens_one ON staff_setup_tokens (staff_id);
+  END IF;
+END $$;
+DROP INDEX IF EXISTS idx_staff_setup_tokens_staff;
+
+-- For the "5 wrong passwords in 15 minutes" lockout. Rows older than 30 days
+-- are cleared as new ones come in.
+CREATE TABLE IF NOT EXISTS staff_login_attempts (
+    attempt_id    BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    email         TEXT NOT NULL,
+    success       BOOLEAN NOT NULL,
+    attempted_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_staff_login_attempts_email_time ON staff_login_attempts (lower(email), attempted_at);
+CREATE INDEX IF NOT EXISTS idx_staff_login_attempts_time ON staff_login_attempts (attempted_at);
+
+-- The activity log: who opened the student list, looked at a student's
+-- progress, reset a PIN or changed a student, and every change to a staff
+-- account, set-up link or website sign-up. Kept 12 months. `staff_name` and
+-- `staff_email` are the account's as they were at the time (null staff_id:
+-- the admin passkey); a deleted student or account leaves the row without it.
+CREATE TABLE IF NOT EXISTS staff_actions (
+    action_id   BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    staff_id    BIGINT REFERENCES staff(staff_id) ON DELETE SET NULL,
+    staff_name  TEXT NOT NULL,
+    user_id     BIGINT REFERENCES users(user_id) ON DELETE SET NULL,
+    action      TEXT NOT NULL,
+    at          TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE staff_actions ADD COLUMN IF NOT EXISTS staff_email TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_staff_actions_at ON staff_actions (at);
+CREATE INDEX IF NOT EXISTS idx_staff_actions_staff ON staff_actions (staff_id);
+CREATE INDEX IF NOT EXISTS idx_staff_actions_user ON staff_actions (user_id);
+
+-- Sign-ups from the website's forms (website/get-involved.html), listed on the
+-- admin page. Adults and teenage volunteers, not the Academy's children.
+-- Volunteer, partner and chapter sign-ups are deleted after 12 months; newsletter
+-- emails stay until the person asks to be taken off.
+CREATE TABLE IF NOT EXISTS site_signups (
+    signup_id     BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    kind          TEXT NOT NULL CHECK (kind IN ('volunteer', 'partner', 'chapter', 'newsletter')),
+    name          TEXT,
+    email         TEXT NOT NULL,
+    organisation  TEXT,
+    school        TEXT,
+    phone         TEXT,
+    interests     TEXT,
+    message       TEXT,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_site_signups_time ON site_signups (created_at);
+
+-- How many times something shared by everyone (website sign-ups, the website
+-- assistant) was used in a window, for caps that survive the free server
+-- sleeping and restarting. Rows older than two days are cleared as it goes.
+CREATE TABLE IF NOT EXISTS site_counters (
+    name          TEXT NOT NULL,
+    window_start  TIMESTAMPTZ NOT NULL,
+    uses          INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (name, window_start)
+);
+-- An email is on the newsletter list once.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_site_signups_newsletter ON site_signups (lower(email)) WHERE kind = 'newsletter';
+
 -- ---------------------------------------------------------------------------
 -- Fixed lists for the sign-up drop-downs. The order sets the ids the app
 -- uses. "Other" is the row behind "Others (please specify)".
@@ -263,7 +402,7 @@ ON CONFLICT (subject_name) DO NOTHING;
 -- Bump this, and SCHEMA_VERSION in server/db.js, whenever this file changes.
 CREATE OR REPLACE FUNCTION stem_schema_version() RETURNS json
 LANGUAGE sql IMMUTABLE SET search_path = public AS $$
-  SELECT to_json(3)
+  SELECT to_json(4)
 $$;
 
 -- Times go out the way the API has always sent them: "2026-10-17 08:30:00",
@@ -584,9 +723,11 @@ LANGUAGE sql STABLE SET search_path = public AS $$
 $$;
 
 -- Removes an account and everything tied to it ("Delete my account" and the
--- admin page). Group chats the student was in stay, minus them; chats left
--- with fewer than two people go. False if there was no such account.
-CREATE OR REPLACE FUNCTION stem_user_delete(p_user_id bigint) RETURNS json
+-- admin page, which records it as p_actor's p_action; null records nothing).
+-- Group chats the student was in stay, minus them; chats left with fewer than
+-- two people go. False if there was no such account.
+DROP FUNCTION IF EXISTS stem_user_delete(bigint);
+CREATE OR REPLACE FUNCTION stem_user_delete(p_user_id bigint, p_actor json, p_action text) RETURNS json
 LANGUAGE plpgsql SET search_path = public AS $$
 DECLARE v_username text;
 BEGIN
@@ -613,6 +754,7 @@ BEGIN
   DELETE FROM login_attempts WHERE lower(username) = lower(v_username);
   UPDATE conversations SET created_by = NULL WHERE created_by = p_user_id;
   DELETE FROM users WHERE user_id = p_user_id;
+  PERFORM stem_log_as(p_actor, NULL, p_action);
   RETURN to_json(true);
 END $$;
 
@@ -1022,25 +1164,55 @@ LANGUAGE sql STABLE SET search_path = public AS $$
 $$;
 
 -- ---------------------------------------------------------------------------
--- Admin page (server/routes/admin.js, behind ADMIN_PASSKEY)
+-- Staff and volunteer accounts (server/routes/staff.js and the admin page)
 -- ---------------------------------------------------------------------------
 
-CREATE OR REPLACE FUNCTION stem_admin_stats() RETURNS json
+-- An account as the server uses it, without the password hash.
+CREATE OR REPLACE FUNCTION stem_staff_json(s staff) RETURNS json
 LANGUAGE sql STABLE SET search_path = public AS $$
-  SELECT json_build_object(
-    'users', (SELECT count(*) FROM users),
-    'activeThisWeek', (SELECT count(DISTINCT user_id) FROM lesson_progress
-                        WHERE last_accessed >= now() - interval '7 days'),
-    'activitiesCompleted', (SELECT count(*) FROM lesson_progress WHERE status = 'completed'),
-    'messages', (SELECT count(*) FROM messages),
-    'groups', (SELECT count(*) FROM conversations WHERE is_group))
+  SELECT CASE WHEN s.staff_id IS NULL THEN NULL ELSE json_build_object(
+    'staff_id', s.staff_id,
+    'full_name', s.full_name,
+    'email', s.email,
+    'role', s.role,
+    'all_centres', s.all_centres,
+    'disabled', s.disabled,
+    'has_password', s.password_hash IS NOT NULL,
+    'created_at', stem_ts(s.created_at),
+    'last_login_at', stem_ts(s.last_login_at),
+    'centres', (SELECT coalesce(json_agg(json_build_object('id', o.org_id, 'name', o.org_name) ORDER BY o.org_id), '[]')
+                  FROM staff_centres c JOIN organisations o ON o.org_id = c.org_id
+                 WHERE c.staff_id = s.staff_id)) END
 $$;
 
--- Every student, newest first, with their centre (and the name typed for
+-- True when p_org_ids is a JSON array of listed centres' ids ("Other" is not
+-- a centre anyone follows; "all centres" covers it).
+CREATE OR REPLACE FUNCTION stem_valid_centres(p_org_ids json) RETURNS boolean
+LANGUAGE sql STABLE SET search_path = public AS $$
+  SELECT json_typeof(p_org_ids) = 'array' AND NOT EXISTS (
+    SELECT 1 FROM json_array_elements_text(p_org_ids) AS e(id)
+     WHERE e.id IS NULL OR e.id !~ '^[0-9]{1,15}$' OR NOT EXISTS (
+       SELECT 1 FROM organisations o WHERE o.org_id = e.id::bigint AND o.org_name <> 'Other'))
+$$;
+
+-- Can this staff member see this student? Admin and "all centres" accounts
+-- see everyone; others only students at the centres they follow.
+CREATE OR REPLACE FUNCTION stem_staff_can_see(p_staff_id bigint, p_user_id bigint) RETURNS json
+LANGUAGE sql STABLE SET search_path = public AS $$
+  SELECT to_json(EXISTS (
+    SELECT 1 FROM users u JOIN staff s ON s.staff_id = p_staff_id
+     WHERE u.user_id = p_user_id AND NOT s.disabled
+       AND (s.role = 'admin' OR s.all_centres
+            OR EXISTS (SELECT 1 FROM staff_centres c WHERE c.staff_id = s.staff_id AND c.org_id = u.org_id))))
+$$;
+
+-- Students, newest first, with their centre (and the name typed for
 -- "Others"), level, lessons completed and when they were last active: the
 -- latest sign-in, lesson or game score, or else when they joined. Students
 -- stay signed in for 30 days, so sign-ins alone would say "Never" for most.
-CREATE OR REPLACE FUNCTION stem_admin_users() RETURNS json
+-- p_staff_id null lists everyone (the admin page); otherwise only the students
+-- that staff member may see (see stem_staff_can_see).
+CREATE OR REPLACE FUNCTION stem_students_for(p_staff_id bigint) RETURNS json
 LANGUAGE sql STABLE SET search_path = public AS $$
   SELECT coalesce(json_agg(json_build_object(
       'user_id', u.user_id, 'full_name', u.full_name, 'username', u.username,
@@ -1059,6 +1231,445 @@ LANGUAGE sql STABLE SET search_path = public AS $$
     FROM users u
     JOIN organisations o ON o.org_id = u.org_id
     JOIN school_levels s ON s.level_id = u.school_level_id
+   WHERE p_staff_id IS NULL OR EXISTS (
+     SELECT 1 FROM staff st
+      WHERE st.staff_id = p_staff_id AND NOT st.disabled
+        AND (st.role = 'admin' OR st.all_centres
+             OR EXISTS (SELECT 1 FROM staff_centres c WHERE c.staff_id = st.staff_id AND c.org_id = u.org_id)))
+$$;
+
+-- Sign-in: the account for an email (ignoring case) with its password hash.
+CREATE OR REPLACE FUNCTION stem_staff_for_login(p_email text) RETURNS json
+LANGUAGE sql STABLE SET search_path = public AS $$
+  SELECT json_build_object('staff', stem_staff_json(s), 'password_hash', s.password_hash)
+    FROM staff s WHERE lower(s.email) = lower(p_email)
+$$;
+
+-- Starts a sign-in try for an email (ignoring case). The try counts as a wrong
+-- password until stem_staff_login_succeeded says otherwise, and tries for one
+-- email take turns here, so tries sent at the same moment can't all get past
+-- the lockout. Returns {locked: true} once there are p_max_failures wrong
+-- passwords in the last 15 minutes, else {locked: false, attempt_id}.
+CREATE OR REPLACE FUNCTION stem_staff_login_begin(p_email text, p_max_failures integer) RETURNS json
+LANGUAGE plpgsql SET search_path = public AS $$
+DECLARE v_id bigint;
+BEGIN
+  PERFORM pg_advisory_xact_lock(hashtextextended('stem_staff_login:' || lower(p_email), 0));
+  IF (SELECT count(*) FROM staff_login_attempts
+       WHERE lower(email) = lower(p_email) AND NOT success
+         AND attempted_at > now() - interval '15 minutes') >= p_max_failures THEN
+    RETURN json_build_object('locked', true);
+  END IF;
+  INSERT INTO staff_login_attempts (email, success) VALUES (p_email, false)
+  RETURNING attempt_id INTO v_id;
+  RETURN json_build_object('locked', false, 'attempt_id', v_id);
+END $$;
+
+-- The password was right: that try no longer counts towards the lockout.
+CREATE OR REPLACE FUNCTION stem_staff_login_succeeded(p_attempt_id bigint) RETURNS json
+LANGUAGE sql SET search_path = public AS $$
+  UPDATE staff_login_attempts SET success = true WHERE attempt_id = p_attempt_id;
+  SELECT NULL::json;
+$$;
+
+-- Signs an account in. p_token is the SHA-256 hash of the cookie's value;
+-- times are Unix milliseconds from the server. Only while the account's
+-- password is still p_password_hash (the one just checked) and it isn't
+-- switched off, so a password reset that lands while the password is being
+-- checked wins. True when signed in. Clears out expired sessions as it goes.
+DROP FUNCTION IF EXISTS stem_staff_session_create(text, bigint, bigint, bigint);
+CREATE OR REPLACE FUNCTION stem_staff_session_create(p_token text, p_staff_id bigint, p_expires_at bigint, p_now bigint,
+  p_password_hash text) RETURNS json
+LANGUAGE plpgsql SET search_path = public AS $$
+BEGIN
+  -- The account's row first, as stem_staff_setup_use does, so they take turns.
+  PERFORM 1 FROM staff
+    WHERE staff_id = p_staff_id AND password_hash = p_password_hash AND NOT disabled
+    FOR NO KEY UPDATE;
+  IF NOT FOUND THEN
+    RETURN to_json(false);
+  END IF;
+  DELETE FROM staff_sessions WHERE expires_at <= p_now;
+  INSERT INTO staff_sessions (token, staff_id, expires_at, created_at, last_seen)
+  VALUES (p_token, p_staff_id, p_expires_at, p_now, p_now);
+  UPDATE staff SET last_login_at = now() WHERE staff_id = p_staff_id;
+  RETURN to_json(true);
+END $$;
+
+-- The signed-in account for a session token, with when it signed in, or null
+-- once the session has expired, gone unused for p_idle_ms or the account is
+-- disabled. Each use counts as activity.
+DROP FUNCTION IF EXISTS stem_staff_session_staff(text, bigint);
+CREATE OR REPLACE FUNCTION stem_staff_session_staff(p_token text, p_now bigint, p_idle_ms bigint) RETURNS json
+LANGUAGE sql SET search_path = public AS $$
+  UPDATE staff_sessions t SET last_seen = p_now
+    FROM staff s
+   WHERE t.token = p_token AND s.staff_id = t.staff_id AND NOT s.disabled
+     AND t.expires_at > p_now AND t.last_seen > p_now - p_idle_ms
+  RETURNING json_build_object('staff', stem_staff_json(s), 'signed_in_at', t.created_at);
+$$;
+
+CREATE OR REPLACE FUNCTION stem_staff_session_delete(p_token text) RETURNS json
+LANGUAGE sql SET search_path = public AS $$
+  DELETE FROM staff_sessions WHERE token = p_token;
+  SELECT NULL::json;
+$$;
+
+-- A new one-time set-up link for an account (any older link stops working).
+-- An account's links are made one at a time (its row is locked). With p_log
+-- the new link goes in the activity log as p_actor's (stem_log_as). Returns
+-- the account, or null when there's no such account.
+DROP FUNCTION IF EXISTS stem_staff_setup_create(bigint, text, bigint, bigint);
+CREATE OR REPLACE FUNCTION stem_staff_setup_create(p_staff_id bigint, p_token text, p_expires_at bigint, p_now bigint,
+  p_actor json, p_log boolean) RETURNS json
+LANGUAGE plpgsql SET search_path = public AS $$
+DECLARE s staff;
+BEGIN
+  SELECT * INTO s FROM staff WHERE staff_id = p_staff_id FOR UPDATE;
+  IF s.staff_id IS NULL THEN
+    RETURN NULL;
+  END IF;
+  DELETE FROM staff_setup_tokens WHERE staff_id = p_staff_id OR expires_at <= p_now;
+  INSERT INTO staff_setup_tokens (token, staff_id, expires_at) VALUES (p_token, p_staff_id, p_expires_at);
+  IF p_log THEN
+    PERFORM stem_log_as(p_actor, NULL, 'made a new set-up link for ' || s.full_name);
+  END IF;
+  RETURN stem_staff_json(s);
+END $$;
+
+-- Who a set-up link is for, or null when it's used, expired or the account is
+-- disabled.
+CREATE OR REPLACE FUNCTION stem_staff_setup_check(p_token text, p_now bigint) RETURNS json
+LANGUAGE sql STABLE SET search_path = public AS $$
+  SELECT json_build_object('full_name', s.full_name, 'email', s.email)
+    FROM staff_setup_tokens t JOIN staff s ON s.staff_id = t.staff_id
+   WHERE t.token = p_token AND t.expires_at > p_now AND NOT s.disabled
+$$;
+
+-- Uses a set-up link: sets the password, deletes the link and signs the
+-- account out everywhere. Returns the account, or null for a bad link.
+CREATE OR REPLACE FUNCTION stem_staff_setup_use(p_token text, p_password_hash text, p_now bigint) RETURNS json
+LANGUAGE plpgsql SET search_path = public AS $$
+DECLARE
+  v_staff_id bigint;
+  s staff;
+BEGIN
+  -- The account's row first, as making a link, changing the account and
+  -- signing in do, so they take turns.
+  SELECT staff_id INTO v_staff_id FROM staff_setup_tokens WHERE token = p_token;
+  IF v_staff_id IS NULL THEN
+    RETURN NULL;
+  END IF;
+  PERFORM 1 FROM staff WHERE staff_id = v_staff_id FOR UPDATE;
+  v_staff_id := NULL;
+  DELETE FROM staff_setup_tokens t USING staff st
+   WHERE t.token = p_token AND t.expires_at > p_now AND st.staff_id = t.staff_id AND NOT st.disabled
+  RETURNING t.staff_id INTO v_staff_id;
+  IF v_staff_id IS NULL THEN
+    RETURN NULL;
+  END IF;
+  UPDATE staff SET password_hash = p_password_hash, updated_at = now()
+   WHERE staff_id = v_staff_id
+  RETURNING * INTO s;
+  DELETE FROM staff_sessions WHERE staff_id = v_staff_id;
+  RETURN stem_staff_json(s);
+END $$;
+
+-- Every account, by name.
+CREATE OR REPLACE FUNCTION stem_staff_list() RETURNS json
+LANGUAGE sql STABLE SET search_path = public AS $$
+  SELECT coalesce(json_agg(stem_staff_json(s) ORDER BY lower(s.full_name) COLLATE "C", s.staff_id), '[]')
+    FROM staff s
+$$;
+
+-- Adds an account with no password yet (an admin hands them a set-up link),
+-- recorded as p_actor's (stem_log_as).
+-- Returns {staff}, {error: 'taken'} for an email in use or {error: 'centre'}
+-- for a centre that isn't on the list.
+DROP FUNCTION IF EXISTS stem_staff_create(text, text, text, boolean, json);
+CREATE OR REPLACE FUNCTION stem_staff_create(p_full_name text, p_email text, p_role text, p_all_centres boolean,
+  p_org_ids json, p_actor json) RETURNS json
+LANGUAGE plpgsql SET search_path = public AS $$
+DECLARE s staff;
+BEGIN
+  IF NOT stem_valid_centres(p_org_ids) THEN
+    RETURN json_build_object('error', 'centre');
+  END IF;
+  IF EXISTS (SELECT 1 FROM staff WHERE lower(email) = lower(p_email)) THEN
+    RETURN json_build_object('error', 'taken');
+  END IF;
+  INSERT INTO staff (full_name, email, role, all_centres)
+  VALUES (p_full_name, p_email, p_role, p_all_centres)
+  RETURNING * INTO s;
+  INSERT INTO staff_centres (staff_id, org_id)
+  SELECT DISTINCT s.staff_id, e.id::bigint FROM json_array_elements_text(p_org_ids) AS e(id);
+  PERFORM stem_log_as(p_actor, NULL, 'added an account for ' || s.full_name || ' (' || s.role || ')');
+  RETURN json_build_object('staff', stem_staff_json(s));
+EXCEPTION
+  WHEN unique_violation THEN
+    -- Two admins added the same email at once; the unique index decided.
+    RETURN json_build_object('error', 'taken');
+  WHEN check_violation THEN
+    -- A volunteer following every centre (staff_volunteer_not_all_centres).
+    RETURN json_build_object('error', 'volunteer');
+END $$;
+
+-- Changes an account; a null argument leaves that part as it is. Disabling an
+-- account signs it out and voids its set-up link, and so does a new email for
+-- the link. Each thing that changed gets a line in the activity log as
+-- p_actor's (stem_log_as). Returns {staff, link_voided}, {error} as
+-- stem_staff_create does, or null when there's no such account.
+DROP FUNCTION IF EXISTS stem_staff_update(bigint, text, text, text, boolean, boolean, json);
+CREATE OR REPLACE FUNCTION stem_staff_update(p_staff_id bigint, p_full_name text, p_email text, p_role text,
+  p_all_centres boolean, p_disabled boolean, p_org_ids json, p_actor json) RETURNS json
+LANGUAGE plpgsql SET search_path = public AS $$
+DECLARE
+  s staff;
+  v_old staff;
+  v_old_centres text;
+  v_new_centres text;
+  v_link_voided boolean := false;
+BEGIN
+  IF p_org_ids IS NOT NULL AND NOT stem_valid_centres(p_org_ids) THEN
+    RETURN json_build_object('error', 'centre');
+  END IF;
+  IF p_email IS NOT NULL AND EXISTS (SELECT 1 FROM staff WHERE lower(email) = lower(p_email) AND staff_id <> p_staff_id) THEN
+    RETURN json_build_object('error', 'taken');
+  END IF;
+  -- The account as it was, locked so changes, links and sign-ins take turns.
+  SELECT * INTO v_old FROM staff WHERE staff_id = p_staff_id FOR UPDATE;
+  IF v_old.staff_id IS NULL THEN
+    RETURN NULL;
+  END IF;
+  SELECT string_agg(org_id::text, ',' ORDER BY org_id) INTO v_old_centres FROM staff_centres WHERE staff_id = p_staff_id;
+  UPDATE staff
+     SET full_name = coalesce(p_full_name, full_name), email = coalesce(p_email, email),
+         role = coalesce(p_role, role), all_centres = coalesce(p_all_centres, all_centres),
+         disabled = coalesce(p_disabled, disabled), updated_at = now()
+   WHERE staff_id = p_staff_id
+  RETURNING * INTO s;
+  IF s.staff_id IS NULL THEN
+    RETURN NULL;
+  END IF;
+  IF p_org_ids IS NOT NULL THEN
+    DELETE FROM staff_centres WHERE staff_id = p_staff_id;
+    INSERT INTO staff_centres (staff_id, org_id)
+    SELECT DISTINCT p_staff_id, e.id::bigint FROM json_array_elements_text(p_org_ids) AS e(id);
+  END IF;
+  SELECT string_agg(org_id::text, ',' ORDER BY org_id) INTO v_new_centres FROM staff_centres WHERE staff_id = p_staff_id;
+  -- A set-up link sent to the old address mustn't choose this account's password.
+  IF lower(s.email) <> lower(v_old.email) THEN
+    WITH gone AS (DELETE FROM staff_setup_tokens WHERE staff_id = p_staff_id RETURNING 1)
+    SELECT EXISTS (SELECT 1 FROM gone) INTO v_link_voided;
+  END IF;
+  IF s.disabled THEN
+    DELETE FROM staff_sessions WHERE staff_id = p_staff_id;
+    DELETE FROM staff_setup_tokens WHERE staff_id = p_staff_id;
+  END IF;
+  -- One line in the activity log for each thing that changed.
+  IF s.full_name <> v_old.full_name THEN
+    PERFORM stem_log_as(p_actor, NULL, 'renamed ' || v_old.full_name || ' to ' || s.full_name);
+  END IF;
+  IF s.email <> v_old.email THEN
+    PERFORM stem_log_as(p_actor, NULL, 'changed the email of ' || s.full_name);
+  END IF;
+  IF s.role <> v_old.role THEN
+    PERFORM stem_log_as(p_actor, NULL, 'made ' || s.full_name || ' '
+      || CASE s.role WHEN 'admin' THEN 'an admin' WHEN 'staff' THEN 'centre staff' ELSE 'a volunteer' END);
+  END IF;
+  IF s.all_centres <> v_old.all_centres OR v_new_centres IS DISTINCT FROM v_old_centres THEN
+    PERFORM stem_log_as(p_actor, NULL, 'changed the centres of ' || s.full_name);
+  END IF;
+  IF s.disabled <> v_old.disabled THEN
+    PERFORM stem_log_as(p_actor, NULL, 'switched ' || CASE WHEN s.disabled THEN 'off' ELSE 'on' END || ' the account of ' || s.full_name);
+  END IF;
+  RETURN json_build_object('staff', stem_staff_json(s), 'link_voided', v_link_voided);
+EXCEPTION
+  WHEN unique_violation THEN
+    RETURN json_build_object('error', 'taken');
+  WHEN check_violation THEN
+    RETURN json_build_object('error', 'volunteer');
+END $$;
+
+-- Removes an account with its sessions, link and centres, recorded as
+-- p_actor's (stem_log_as). True if it existed.
+DROP FUNCTION IF EXISTS stem_staff_delete(bigint);
+CREATE OR REPLACE FUNCTION stem_staff_delete(p_staff_id bigint, p_actor json) RETURNS json
+LANGUAGE plpgsql SET search_path = public AS $$
+DECLARE v_name text;
+BEGIN
+  DELETE FROM staff WHERE staff_id = p_staff_id RETURNING full_name INTO v_name;
+  IF v_name IS NULL THEN
+    RETURN to_json(false);
+  END IF;
+  PERFORM stem_log_as(p_actor, NULL, 'deleted the account of ' || v_name);
+  RETURN to_json(true);
+END $$;
+
+-- Records what an account did (p_staff_id null: the admin passkey), under the
+-- name and email it had when it did it. A student or account deleted in the
+-- meantime is left out of the row rather than losing the row. Looking at the
+-- same thing again within the hour ("viewed ...") isn't recorded again.
+-- Clears out rows older than 12 months as it goes.
+DROP FUNCTION IF EXISTS stem_staff_log_action(bigint, bigint, text);
+CREATE OR REPLACE FUNCTION stem_staff_log_action(p_staff_id bigint, p_staff_name text, p_staff_email text,
+  p_user_id bigint, p_action text) RETURNS json
+LANGUAGE plpgsql SET search_path = public AS $$
+BEGIN
+  DELETE FROM staff_actions WHERE at < now() - interval '12 months';
+  IF p_action LIKE 'viewed %' AND EXISTS (
+       SELECT 1 FROM staff_actions
+        WHERE staff_id IS NOT DISTINCT FROM p_staff_id AND user_id IS NOT DISTINCT FROM p_user_id
+          AND action = p_action AND at > now() - interval '1 hour') THEN
+    RETURN NULL;
+  END IF;
+  BEGIN
+    INSERT INTO staff_actions (staff_id, staff_name, staff_email, user_id, action)
+    VALUES (p_staff_id, coalesce(p_staff_name, 'Admin passkey'), p_staff_email, p_user_id, p_action);
+  EXCEPTION WHEN foreign_key_violation THEN
+    INSERT INTO staff_actions (staff_id, staff_name, staff_email, user_id, action)
+    VALUES ((SELECT staff_id FROM staff WHERE staff_id = p_staff_id), coalesce(p_staff_name, 'Admin passkey'),
+            p_staff_email, (SELECT user_id FROM users WHERE user_id = p_user_id), p_action);
+  END;
+  RETURN NULL;
+END $$;
+
+-- Records an action in the activity log as part of the change it describes,
+-- in the same transaction, so no change goes unrecorded. p_actor is {id,
+-- name, email} of the signed-in account (server/staffAuth.js actorOf), or null
+-- for the admin passkey. Nothing is recorded when p_action is null.
+CREATE OR REPLACE FUNCTION stem_log_as(p_actor json, p_user_id bigint, p_action text) RETURNS void
+LANGUAGE plpgsql SET search_path = public AS $$
+BEGIN
+  IF p_action IS NOT NULL THEN
+    PERFORM stem_staff_log_action((p_actor->>'id')::bigint, p_actor->>'name', p_actor->>'email', p_user_id, p_action);
+  END IF;
+END $$;
+
+-- Up to p_limit actions, newest first, older than action p_before when it's
+-- given (the next page), and without the "viewed ..." ones when
+-- p_changes_only. With the student's username while they exist. Clears out
+-- rows older than 12 months first.
+DROP FUNCTION IF EXISTS stem_staff_actions(integer);
+CREATE OR REPLACE FUNCTION stem_staff_actions(p_limit integer, p_before bigint, p_changes_only boolean) RETURNS json
+LANGUAGE sql SET search_path = public AS $$
+  DELETE FROM staff_actions WHERE at < now() - interval '12 months';
+  SELECT coalesce(json_agg(json_build_object(
+      'action_id', a.action_id, 'staff_id', a.staff_id, 'staff_name', a.staff_name,
+      'staff_email', a.staff_email, 'user_id', a.user_id, 'username', u.username,
+      'action', a.action, 'at', stem_ts(a.at))
+    ORDER BY a.action_id DESC), '[]')
+    FROM (SELECT * FROM staff_actions
+           WHERE (p_before IS NULL OR action_id < p_before)
+             AND NOT (coalesce(p_changes_only, false) AND action LIKE 'viewed %')
+           ORDER BY action_id DESC LIMIT p_limit) a
+    LEFT JOIN users u ON u.user_id = a.user_id
+$$;
+
+-- ---------------------------------------------------------------------------
+-- Website sign-ups (server/routes/site.js, listed on the admin page)
+-- ---------------------------------------------------------------------------
+
+-- Saves a sign-up. An email already on the newsletter list isn't added again.
+-- Returns the sign-up's id.
+CREATE OR REPLACE FUNCTION stem_site_signup_add(p_kind text, p_name text, p_email text, p_organisation text,
+  p_school text, p_phone text, p_interests text, p_message text) RETURNS json
+LANGUAGE plpgsql SET search_path = public AS $$
+DECLARE v_id bigint;
+BEGIN
+  DELETE FROM site_signups WHERE kind <> 'newsletter' AND created_at < now() - interval '12 months';
+  IF p_kind = 'newsletter' THEN
+    SELECT signup_id INTO v_id FROM site_signups WHERE kind = 'newsletter' AND lower(email) = lower(p_email);
+    IF v_id IS NOT NULL THEN
+      RETURN to_json(v_id);
+    END IF;
+  END IF;
+  INSERT INTO site_signups (kind, name, email, organisation, school, phone, interests, message)
+  VALUES (p_kind, p_name, p_email, p_organisation, p_school, p_phone, p_interests, p_message)
+  RETURNING signup_id INTO v_id;
+  RETURN to_json(v_id);
+EXCEPTION WHEN unique_violation THEN
+  -- The same newsletter email arrived twice at once.
+  RETURN (SELECT to_json(signup_id) FROM site_signups WHERE kind = 'newsletter' AND lower(email) = lower(p_email));
+END $$;
+
+-- Every sign-up, newest first. Volunteer, partner and chapter sign-ups older
+-- than 12 months are deleted first.
+CREATE OR REPLACE FUNCTION stem_site_signups() RETURNS json
+LANGUAGE sql SET search_path = public AS $$
+  DELETE FROM site_signups WHERE kind <> 'newsletter' AND created_at < now() - interval '12 months';
+  SELECT coalesce(json_agg(json_build_object(
+      'signup_id', signup_id, 'kind', kind, 'name', name, 'email', email, 'organisation', organisation,
+      'school', school, 'phone', phone, 'interests', interests, 'message', message,
+      'created_at', stem_ts(created_at))
+    ORDER BY created_at DESC, signup_id DESC), '[]')
+    FROM site_signups
+$$;
+
+-- Counts one use of p_name in the current window of p_window_seconds (windows
+-- start on the hour or at midnight UTC) and says whether that use is within
+-- p_limit.
+CREATE OR REPLACE FUNCTION stem_site_count(p_name text, p_window_seconds integer, p_limit integer) RETURNS json
+LANGUAGE plpgsql SET search_path = public AS $$
+DECLARE
+  v_start timestamptz := to_timestamp(floor(extract(epoch FROM now()) / p_window_seconds) * p_window_seconds);
+  v_uses integer;
+BEGIN
+  DELETE FROM site_counters WHERE window_start < now() - interval '2 days';
+  INSERT INTO site_counters (name, window_start, uses) VALUES (p_name, v_start, 1)
+  ON CONFLICT (name, window_start) DO UPDATE SET uses = site_counters.uses + 1
+  RETURNING uses INTO v_uses;
+  RETURN to_json(v_uses <= p_limit);
+END $$;
+
+-- Deletes what is past its keeping time: website sign-ups (not newsletter
+-- emails) and the activity log after 12 months, staff sign-in tries after 30
+-- days, the website's counts after two days, and ended staff sessions and
+-- set-up links (p_now: Unix ms). The server runs it when it starts and then
+-- daily (server/retention.js); the tables also clear old rows as they're used.
+CREATE OR REPLACE FUNCTION stem_retention_purge(p_now bigint) RETURNS json
+LANGUAGE sql SET search_path = public AS $$
+  DELETE FROM site_signups WHERE kind <> 'newsletter' AND created_at < now() - interval '12 months';
+  DELETE FROM staff_actions WHERE at < now() - interval '12 months';
+  DELETE FROM staff_login_attempts WHERE attempted_at < now() - interval '30 days';
+  DELETE FROM site_counters WHERE window_start < now() - interval '2 days';
+  DELETE FROM staff_sessions WHERE expires_at <= p_now;
+  DELETE FROM staff_setup_tokens WHERE expires_at <= p_now;
+  SELECT NULL::json;
+$$;
+
+-- Deletes a sign-up, recorded as p_actor's (stem_log_as). True if it existed.
+DROP FUNCTION IF EXISTS stem_site_signup_delete(bigint);
+CREATE OR REPLACE FUNCTION stem_site_signup_delete(p_signup_id bigint, p_actor json) RETURNS json
+LANGUAGE plpgsql SET search_path = public AS $$
+BEGIN
+  DELETE FROM site_signups WHERE signup_id = p_signup_id;
+  IF NOT FOUND THEN
+    RETURN to_json(false);
+  END IF;
+  PERFORM stem_log_as(p_actor, NULL, 'deleted a website sign-up');
+  RETURN to_json(true);
+END $$;
+
+-- ---------------------------------------------------------------------------
+-- Admin page (server/routes/admin.js, behind ADMIN_PASSKEY or an admin account)
+-- ---------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION stem_admin_stats() RETURNS json
+LANGUAGE sql STABLE SET search_path = public AS $$
+  SELECT json_build_object(
+    'users', (SELECT count(*) FROM users),
+    'activeThisWeek', (SELECT count(DISTINCT user_id) FROM lesson_progress
+                        WHERE last_accessed >= now() - interval '7 days'),
+    'activitiesCompleted', (SELECT count(*) FROM lesson_progress WHERE status = 'completed'),
+    'messages', (SELECT count(*) FROM messages),
+    'groups', (SELECT count(*) FROM conversations WHERE is_group))
+$$;
+
+-- Every student (see stem_students_for).
+CREATE OR REPLACE FUNCTION stem_admin_users() RETURNS json
+LANGUAGE sql STABLE SET search_path = public AS $$
+  SELECT stem_students_for(NULL)
 $$;
 
 CREATE OR REPLACE FUNCTION stem_admin_user_progress(p_user_id bigint) RETURNS json
@@ -1075,31 +1686,87 @@ LANGUAGE sql STABLE SET search_path = public AS $$
                 FROM game_scores WHERE user_id = p_user_id))
 $$;
 
--- Sets a student's XP, level and/or atoms (null leaves that one as it is).
-CREATE OR REPLACE FUNCTION stem_admin_set_stats(p_user_id bigint, p_xp integer, p_level integer, p_atoms integer) RETURNS json
-LANGUAGE sql SET search_path = public AS $$
+-- Sets a student's XP, level and/or atoms (null leaves that one as it is),
+-- recorded as p_actor's p_action (stem_log_as).
+DROP FUNCTION IF EXISTS stem_admin_set_stats(bigint, integer, integer, integer);
+CREATE OR REPLACE FUNCTION stem_admin_set_stats(p_user_id bigint, p_xp integer, p_level integer, p_atoms integer,
+  p_actor json, p_action text) RETURNS json
+LANGUAGE plpgsql SET search_path = public AS $$
+DECLARE v_row json;
+BEGIN
   UPDATE users
      SET xp = coalesce(p_xp, xp), level = coalesce(p_level, level), atoms = coalesce(p_atoms, atoms), updated_at = now()
    WHERE user_id = p_user_id
-  RETURNING json_build_object('xp', xp, 'level', level, 'atoms', atoms);
-$$;
+  RETURNING json_build_object('xp', xp, 'level', level, 'atoms', atoms) INTO v_row;
+  IF v_row IS NOT NULL THEN
+    PERFORM stem_log_as(p_actor, p_user_id, p_action);
+  END IF;
+  RETURN v_row;
+END $$;
 
 -- Wipes a student's lesson progress and game scores (XP, atoms, friends and
--- chats stay). Returns how many rows went.
-CREATE OR REPLACE FUNCTION stem_admin_reset_progress(p_user_id bigint) RETURNS json
-LANGUAGE sql SET search_path = public AS $$
-  WITH lessons AS (DELETE FROM lesson_progress WHERE user_id = p_user_id RETURNING 1),
-       games AS (DELETE FROM game_scores WHERE user_id = p_user_id RETURNING 1)
-  SELECT json_build_object('lessons', (SELECT count(*) FROM lessons), 'games', (SELECT count(*) FROM games))
-$$;
+-- chats stay), recorded as p_actor's p_action. Returns how many rows went.
+DROP FUNCTION IF EXISTS stem_admin_reset_progress(bigint);
+CREATE OR REPLACE FUNCTION stem_admin_reset_progress(p_user_id bigint, p_actor json, p_action text) RETURNS json
+LANGUAGE plpgsql SET search_path = public AS $$
+DECLARE
+  v_lessons integer;
+  v_games integer;
+BEGIN
+  DELETE FROM lesson_progress WHERE user_id = p_user_id;
+  GET DIAGNOSTICS v_lessons = ROW_COUNT;
+  DELETE FROM game_scores WHERE user_id = p_user_id;
+  GET DIAGNOSTICS v_games = ROW_COUNT;
+  PERFORM stem_log_as(p_actor, p_user_id, p_action);
+  RETURN json_build_object('lessons', v_lessons, 'games', v_games);
+END $$;
 
--- A new PIN hash; signs the student out everywhere. Returns how many sessions ended.
-CREATE OR REPLACE FUNCTION stem_admin_set_pin(p_user_id bigint, p_pin_hash text) RETURNS json
-LANGUAGE sql SET search_path = public AS $$
+-- Moves a student to another centre: a listed one, or "Others" with the
+-- name typed (p_org_other). Staff see students by centre, so this fixes a
+-- wrong pick at sign-up. Returns {org_name, org_other}, {error: 'centre'} for
+-- a centre that isn't listed, or null when there's no such student. Recorded
+-- as p_actor's p_action (stem_log_as).
+DROP FUNCTION IF EXISTS stem_admin_set_centre(bigint, bigint, text);
+CREATE OR REPLACE FUNCTION stem_admin_set_centre(p_user_id bigint, p_org_id bigint, p_org_other text,
+  p_actor json, p_action text) RETURNS json
+LANGUAGE plpgsql SET search_path = public AS $$
+DECLARE
+  v_org bigint;
+  v_name text;
+BEGIN
+  IF p_org_other IS NOT NULL THEN
+    SELECT org_id, org_name INTO v_org, v_name FROM organisations WHERE org_name = 'Other';
+  ELSE
+    SELECT org_id, org_name INTO v_org, v_name FROM organisations WHERE org_id = p_org_id AND org_name <> 'Other';
+  END IF;
+  IF v_org IS NULL THEN
+    RETURN json_build_object('error', 'centre');
+  END IF;
+  UPDATE users SET org_id = v_org, org_other = p_org_other, updated_at = now() WHERE user_id = p_user_id;
+  IF NOT FOUND THEN
+    RETURN NULL;
+  END IF;
+  PERFORM stem_log_as(p_actor, p_user_id, p_action);
+  RETURN json_build_object('org_name', v_name, 'org_other', p_org_other);
+END $$;
+
+-- A new PIN hash; signs the student out everywhere. Recorded as p_actor's
+-- p_action (stem_log_as). Returns how many sessions ended (0 when there's no
+-- such student).
+DROP FUNCTION IF EXISTS stem_admin_set_pin(bigint, text);
+CREATE OR REPLACE FUNCTION stem_admin_set_pin(p_user_id bigint, p_pin_hash text, p_actor json, p_action text) RETURNS json
+LANGUAGE plpgsql SET search_path = public AS $$
+DECLARE v_ended integer;
+BEGIN
   UPDATE users SET pin_hash = p_pin_hash, updated_at = now() WHERE user_id = p_user_id;
-  WITH gone AS (DELETE FROM sessions WHERE user_id = p_user_id RETURNING 1)
-  SELECT to_json(count(*)) FROM gone;
-$$;
+  IF NOT FOUND THEN
+    RETURN to_json(0);
+  END IF;
+  DELETE FROM sessions WHERE user_id = p_user_id;
+  GET DIAGNOSTICS v_ended = ROW_COUNT;
+  PERFORM stem_log_as(p_actor, p_user_id, p_action);
+  RETURN to_json(v_ended);
+END $$;
 
 -- ---------------------------------------------------------------------------
 -- Lock everything to the server
@@ -1123,6 +1790,14 @@ ALTER TABLE user_cards           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reflections          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE beat_replays         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE story_choices        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE staff                ENABLE ROW LEVEL SECURITY;
+ALTER TABLE staff_centres        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE staff_sessions       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE staff_setup_tokens   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE staff_login_attempts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE site_signups         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE staff_actions        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE site_counters        ENABLE ROW LEVEL SECURITY;
 
 -- On Supabase the browser roles (anon, authenticated) can use every new table
 -- and function by default. Take that away from ours and give it to the
@@ -1142,7 +1817,9 @@ BEGIN
       FROM unnest(ARRAY['organisations', 'school_levels', 'recovery_colours', 'recovery_subjects', 'users',
                         'lesson_progress', 'login_attempts', 'sessions', 'friend_requests', 'friendships',
                         'conversations', 'conversation_members', 'messages', 'game_scores', 'user_cards',
-                        'reflections', 'beat_replays', 'story_choices']) AS t
+                        'reflections', 'beat_replays', 'story_choices', 'staff', 'staff_centres',
+                        'staff_sessions', 'staff_setup_tokens', 'staff_login_attempts', 'site_signups',
+                        'staff_actions', 'site_counters']) AS t
   LOOP
     IF item LIKE 'FUNCTION %' THEN
       EXECUTE format('REVOKE ALL ON %s FROM PUBLIC', item);

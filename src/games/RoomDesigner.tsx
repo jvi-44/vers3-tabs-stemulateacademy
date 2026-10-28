@@ -15,6 +15,7 @@ import { sfx } from "./kit/audio";
 import { seededRandom } from "./kit/scores";
 import { BLOCKS, Voxel, VoxelWorld, type BlockColors } from "./kit/Voxel";
 import type { BotId, GameProps, RivalInfo } from "./kit/types";
+import type { LevelBand } from "../data/levels";
 
 // ── Rules & limits ─────────────────────────────────────
 const MAX_LW = 8;
@@ -68,9 +69,31 @@ const pick = <T,>(rnd: () => number, arr: readonly T[]) => arr[Math.floor(rnd() 
 const plural = (r: string) => (r.endsWith("y") ? r.slice(0, -1) + "ies" : r + "s");
 const shapeKey = (l: number, w: number) => `${Math.min(l, w)}x${Math.max(l, w)}`;
 
-function makeTickets(seed: number): Ticket[] {
+function makeTickets(seed: number, band: LevelBand): Ticket[] {
   const rnd = seededRandom(seed);
   const rooms = [...ROOMS].sort(() => rnd() - 0.5);
+  const who: BotId[] = ["sophia", "timothy", "emily", "sophia", "matthew", "timothy", "emily", "matthew"];
+  if (band !== "p56") {
+    // P1–2 count the squares in a small floor; P3–4 multiply length × width.
+    // Volume comes in P5, so neither gets volume orders.
+    const small = band === "p12";
+    const areas = small ? [4, 6, 8, 9, 10, 12] : [12, 15, 20, 24, 28, 30, 35];
+    // Areas with two different shapes inside the 8×8 plot, for "same area, new shape".
+    const twoShapes = small ? [6, 8, 12] : [12, 16, 24];
+    const A3 = pick(rnd, twoShapes);
+    const A8 = pick(rnd, twoShapes);
+    const orders: Order[] = [
+      { k: "area", A: pick(rnd, areas) },
+      { k: "areaH", A: pick(rnd, areas), H: 2 + Math.floor(rnd() * 2) },
+      { k: "area", A: A3 },
+      { k: "sameShape", A: A3 },
+      { k: "same3", A: pick(rnd, small ? [4, 6, 8] : [12, 15, 16]) },
+      { k: "area", A: pick(rnd, areas) },
+      { k: "areaH", A: A8, H: 2 + Math.floor(rnd() * 3) },
+      { k: "sameShape", A: A8 },
+    ];
+    return orders.map((order, i) => ({ order, who: who[i], ...rooms[i] }));
+  }
   const A1 = pick(rnd, [12, 15, 18, 20, 24, 28, 30, 35]);
   const A2 = pick(rnd, [10, 14, 16, 21, 25, 32, 36, 40]);
   const H2 = 2 + Math.floor(rnd() * 3);
@@ -95,13 +118,28 @@ function makeTickets(seed: number): Ticket[] {
     { k: "lenVol", L: L7, V: V7 },
     { k: "volArea", V: V8, A: A8 },
   ];
-  const who: BotId[] = ["sophia", "timothy", "emily", "sophia", "matthew", "timothy", "emily", "matthew"];
   return orders.map((order, i) => ({ order, who: who[i], ...rooms[i] }));
 }
 
 /** What the villager says. */
-function orderText(t: Ticket): { say: string; chips: string[] } {
+function orderText(t: Ticket, band: LevelBand): { say: string; chips: string[] } {
   const o = t.order;
+  // P1–2 count floor squares; "blocks²" comes later.
+  if (band === "p12") {
+    switch (o.k) {
+      case "area":
+        return { say: `I need a ${t.room} with a floor of exactly ${o.A} squares. Any height is fine!`, chips: [`${o.A} squares`] };
+      case "areaH":
+        return { say: `Build me a ${t.room}: a floor of ${o.A} squares, ${o.H} blocks tall.`, chips: [`${o.A} squares`, `Height = ${o.H}`] };
+      case "sameShape":
+        return { say: `Make a ${t.room} with the SAME number of floor squares as the last room, but a DIFFERENT shape!`, chips: [`Same squares`, `New shape`] };
+      case "same3":
+        return {
+          say: `Special challenge! Build 3 ${plural(t.room)}, each with a floor of ${o.A} squares, and make each one a DIFFERENT height.`,
+          chips: [`${o.A} squares`, `3 different heights`],
+        };
+    }
+  }
   switch (o.k) {
     case "area":
       return { say: `I need a ${t.room} with a floor area of exactly ${o.A} blocks². Any height is fine!`, chips: [`Area = ${o.A}`] };
@@ -132,13 +170,16 @@ function orderText(t: Ticket): { say: string; chips: string[] } {
 }
 
 /** null when the build matches the order, otherwise a hint. */
-function checkBuild(o: Order, b: Built, wrongs: number, last: Built | null, sub: Built[]): string | null {
+function checkBuild(o: Order, b: Built, wrongs: number, last: Built | null, sub: Built[], band: LevelBand): string | null {
   const { l, w, h } = b;
   const a = l * w;
   const v = a * h;
   const areaMsg = (A: number) =>
-    `Floor area is ${l} × ${w} = ${a}, but it needs ${A}. ${a < A ? "Too small!" : "Too big!"}` +
-    (wrongs >= 1 ? ` Find two numbers that multiply to ${A}.` : "");
+    band === "p12"
+      ? `Your floor has ${a} squares, but it needs ${A}. ${a < A ? "Too few!" : "Too many!"}` +
+        (wrongs >= 1 ? ` Count the squares in one row, then add a row at a time.` : "")
+      : `Floor area is ${l} × ${w} = ${a}, but it needs ${A}. ${a < A ? "Too small!" : "Too big!"}` +
+        (wrongs >= 1 ? ` Find two numbers that multiply to ${A}.` : "");
   const volMsg = (V: number) =>
     `Volume is ${l} × ${w} × ${h} = ${v}, but it needs ${V}. ${v < V ? "Too small!" : "Too big!"}`;
   switch (o.k) {
@@ -195,8 +236,8 @@ const FLOWER_SPOTS: [number, number, string][] = [
   [9, 6, "#f472b6"],
 ];
 
-export function RoomDesigner({ seed, rivals = [], reportProgress, finish }: GameProps) {
-  const tickets = useMemo(() => makeTickets(seed), [seed]);
+export function RoomDesigner({ seed, band, rivals = [], reportProgress, finish }: GameProps) {
+  const tickets = useMemo(() => makeTickets(seed, band), [seed, band]);
 
   const [l, setL] = useState(3);
   const [w, setW] = useState(3);
@@ -300,7 +341,7 @@ export function RoomDesigner({ seed, rivals = [], reportProgress, finish }: Game
   const build = () => {
     if (!ticket || phase !== "build" || done || !started) return;
     const b = { l, w, h };
-    const miss = checkBuild(ticket.order, b, wrongs, lastBuilt, sub);
+    const miss = checkBuild(ticket.order, b, wrongs, lastBuilt, sub, band);
     if (miss) {
       sfx.wrong();
       setWrongs((x) => x + 1);
@@ -404,7 +445,7 @@ export function RoomDesigner({ seed, rivals = [], reportProgress, finish }: Game
   const S = Math.max(13, Math.min(36, Math.floor(Math.min(box.w / 15.5, box.h / 11.6))));
 
   const timeLeft = Math.max(0, Math.ceil(ROUND_SECONDS - elapsed));
-  const text = ticket ? orderText(ticket) : null;
+  const text = ticket ? orderText(ticket, band) : null;
   const bot = ticket ? STEMBOTS[ticket.who] : STEMBOTS.matthew;
   const locked = phase !== "build" || done || !started;
 

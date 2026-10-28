@@ -6,6 +6,7 @@ import { GameShell } from "../games/kit/GameShell";
 import { useGamePlayer } from "../games/kit/player";
 import { getAllHighScores, starsFor } from "../games/kit/scores";
 import { createRoom, joinRoom, listRooms, type LiveRoom } from "../games/kit/live";
+import { useLevelBand } from "../lib/levelBand";
 import { primeAudio, sfx } from "../games/kit/audio";
 import type { GameDef } from "../games/kit/types";
 import { REPLAY_REWARD } from "../data/lessonContent";
@@ -60,6 +61,8 @@ export function GamesTab({
     return () => clearInterval(id);
   }, [session, isGuest]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // A live room asks everyone the host's level of questions.
+  const band = useLevelBand();
   const unlocked = (def: GameDef) => !!completedBeats[def.id];
   const lessonIdFor = (def: GameDef) =>
     ({ "mm-": "minecraft-masterminds", "mi-": "mission-millionaire", "sb-": "space-busters" })[def.id.slice(0, 3)] ?? "";
@@ -70,7 +73,7 @@ export function GamesTab({
     setBusy(true);
     setJoinError(null);
     try {
-      const room = await createRoom(def.id, player);
+      const room = await createRoom(def.id, player, band);
       setSession({ def, liveCode: room.code });
     } catch (e) {
       setJoinError((e as Error).message);

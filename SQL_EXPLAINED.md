@@ -45,6 +45,9 @@ it changes. It's safe to run more than once: it never deletes students' data.
 | `story_choices` | Intro episodes | The choices a student made in an episode |
 | `friend_requests`, `friendships`, `conversations`, `conversation_members`, `messages` | Friends and chats | Requests, friendships, chats and their messages |
 | `organisations`, `school_levels`, `recovery_colours`, `recovery_subjects` | Sign-up lists | The options in the sign-up form |
+| `staff`, `staff_centres`, `staff_sessions`, `staff_setup_tokens`, `staff_login_attempts` | Staff and volunteer accounts | One account, a centre it follows, a signed-in browser, a one-time set-up link (tokens **hashed**), one sign-in try |
+| `staff_actions` | The Activity log | Who opened the student list, looked at or changed a student or a staff account, and when (kept 12 months) |
+| `site_signups`, `site_counters` | The website's forms and assistant | One sign-up from the website; a shared count for the website's hourly and daily caps |
 
 ## 3. The functions: every read and write has a name
 
@@ -98,8 +101,9 @@ every test run.
   ```sql
   SELECT username, xp, level, atoms FROM users ORDER BY xp DESC;
   ```
-- **The admin page:** set `ADMIN_PASSKEY`, open `/#/admin` in the Academy and
-  enter the passkey to see every student and their progress.
+- **The admin page:** open `/#/admin` in the Academy with the passkey
+  (`ADMIN_PASSKEY`) or an admin account to see every student and their
+  progress.
 - **On your laptop:** the local database is a folder, not a file you can open.
   The easiest view is the admin page above.
 

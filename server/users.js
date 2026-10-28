@@ -22,6 +22,26 @@ export function publicUser(row) {
   };
 }
 
+// A row of stem_students_for(), as the admin and staff pages list students.
+export function studentListItem(r) {
+  return {
+    userId: r.user_id,
+    fullName: r.full_name,
+    username: r.username,
+    orgName: r.org_name,
+    // The centre typed for "Others (please specify)"; orgName is then "Other".
+    orgOther: r.org_other,
+    schoolLevelName: r.level_name,
+    xp: r.xp,
+    level: r.level,
+    atoms: r.atoms,
+    avatar: r.avatar,
+    completed: r.completed,
+    lastActive: r.last_active,
+    createdAt: r.created_at,
+  };
+}
+
 // What other students can see about an account: never the full name or
 // organisation, only the username and avatar they chose.
 export function otherUser(row) {
@@ -33,8 +53,10 @@ export function usernameTaken(username, exceptUserId) {
 }
 
 // Removes an account and everything tied to it, sessions included. Used by
-// "Delete my account" and by the admin page. Group chats the user was in stay,
-// minus the user; chats left with fewer than two people are removed.
-export function deleteUserCompletely(userId) {
-  return rpc("stem_user_delete", { p_user_id: userId });
+// "Delete my account" and by the admin page, which passes who did it (`actor`,
+// staffAuth.js actorOf) and `action` for the activity log, saved in the same
+// step. Group chats the user was in stay, minus the user; chats left with
+// fewer than two people are removed.
+export function deleteUserCompletely(userId, { actor = null, action = null } = {}) {
+  return rpc("stem_user_delete", { p_user_id: userId, p_actor: actor, p_action: action });
 }

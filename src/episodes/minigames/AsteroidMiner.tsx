@@ -3,6 +3,7 @@ import { motion } from "motion/react";
 import { sfx } from "../../games/kit/audio";
 import type { GameResult } from "../types";
 import { HelperTip, Hud, MiniGameFrame, Pill, shuffle, useFrame, type MiniGameProps } from "./kit";
+import type { LevelBand } from "../../data/levels";
 
 // BODMAS: each asteroid is locked with a code. Solve it and blast the asteroid
 // showing the right answer. The others show common order-of-operations slips.
@@ -15,6 +16,46 @@ interface Puzzle {
 }
 
 const r = (lo: number, hi: number) => lo + Math.floor(Math.random() * (hi - lo + 1));
+
+// P1–2: adding and taking away within 20. P3–4: times tables, then
+// × before + and −, then brackets. P5–6 (MAKERS below): the workshop's BODMAS.
+const MAKERS_P12: Array<() => Puzzle> = [
+  () => {
+    const [a, b] = [r(2, 9), r(2, 9)];
+    return { expr: `${a} + ${b}`, answer: a + b, wrong: [a + b + 1, a + b - 1], tip: "Count on from the bigger number." };
+  },
+  () => {
+    const [a, b] = [r(10, 18), r(2, 9)];
+    return { expr: `${a} − ${b}`, answer: a - b, wrong: [a + b, a - b + 1], tip: "Count back to take away." };
+  },
+  () => {
+    const [a, b, c] = [r(2, 6), r(2, 6), r(2, 6)];
+    return { expr: `${a} + ${b} + ${c}`, answer: a + b + c, wrong: [a + b, a + b + c + 2], tip: "Add two numbers, then add the last one." };
+  },
+  () => {
+    const [a, b, c] = [r(10, 16), r(2, 5), r(1, 4)];
+    return { expr: `${a} − ${b} + ${c}`, answer: a - b + c, wrong: [a - (b + c), a - b - c], tip: "Go from left to right." };
+  },
+];
+
+const MAKERS_P34: Array<() => Puzzle> = [
+  () => {
+    const [a, b] = [r(2, 9), r(2, 9)];
+    return { expr: `${a} × ${b}`, answer: a * b, wrong: [a + b, a * b + a], tip: `${a} × ${b} means ${b} groups of ${a}.` };
+  },
+  () => {
+    const [b, q] = [r(2, 9), r(2, 9)];
+    return { expr: `${b * q} ÷ ${b}`, answer: q, wrong: [q + 1, b * q - b], tip: `How many ${b}s make ${b * q}?` };
+  },
+  () => {
+    const [a, b, c] = [r(2, 9), r(2, 5), r(2, 5)];
+    return { expr: `${a} + ${b} × ${c}`, answer: a + b * c, wrong: [(a + b) * c, a + b + c], tip: "Multiply before you add!" };
+  },
+  () => {
+    const [a, b, c] = [r(2, 6), r(2, 6), r(2, 4)];
+    return { expr: `(${a} + ${b}) × ${c}`, answer: (a + b) * c, wrong: [a + b * c, a + b + c], tip: "Brackets first, always!" };
+  },
+];
 
 const MAKERS: Array<() => Puzzle> = [
   () => {
@@ -55,8 +96,9 @@ const MAKERS: Array<() => Puzzle> = [
   },
 ];
 
-function makePuzzle(k: number): Puzzle {
-  const p = MAKERS[k % MAKERS.length]();
+function makePuzzle(k: number, band: LevelBand): Puzzle {
+  const makers = band === "p12" ? MAKERS_P12 : band === "p34" ? MAKERS_P34 : MAKERS;
+  const p = makers[k % makers.length]();
   // Make sure the distractors are different from the answer and each other.
   const wrong = [...new Set(p.wrong.filter((w) => w !== p.answer))];
   while (wrong.length < 2) {
@@ -70,8 +112,8 @@ const ROUNDS = 6;
 const TO_WIN = 4;
 const LANES = [0.22, 0.5, 0.78];
 
-export function AsteroidMiner({ onDone, helper }: MiniGameProps) {
-  const puzzles = useMemo(() => shuffle(Array.from({ length: ROUNDS }, (_, k) => makePuzzle(k))), []);
+export function AsteroidMiner({ onDone, helper, band }: MiniGameProps) {
+  const puzzles = useMemo(() => shuffle(Array.from({ length: ROUNDS }, (_, k) => makePuzzle(k, band))), [band]);
   const [i, setI] = useState(0);
   const [firstTry, setFirstTry] = useState(0);
   const [missed, setMissed] = useState<number[]>([]);

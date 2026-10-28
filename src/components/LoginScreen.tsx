@@ -50,11 +50,12 @@ export function LoginScreen({
   initialView = "signin",
 }: {
   onLogin: (user: AuthUser) => void;
-  /** Look around without an account. Nothing is saved. */
-  onGuest: () => void;
+  /** Look around without an account, at the Primary level picked ("Primary 3"). Nothing is saved. */
+  onGuest: (levelName: string) => void;
   initialView?: "signin" | "signup";
 }) {
   const [view, setView] = useState<View>(initialView);
+  const [pickingGuestLevel, setPickingGuestLevel] = useState(false);
   const [refData, setRefData] = useState<ReferenceData | null>(null);
   const [loadError, setLoadError] = useState(false);
 
@@ -205,16 +206,48 @@ export function LoginScreen({
         </AnimatePresence>
 
         <div className="mt-6 pt-5 border-t-2 border-dashed border-[#1b2e1c]/10 text-center">
-          <button
-            onClick={onGuest}
-            className="w-full py-3 rounded-full border-2 border-dashed border-[#7c4dff]/50 text-[#5a2fd8] font-display font-semibold hover:bg-[#efe7ff] transition-colors"
-          >
-            Just looking? Continue as guest
-          </button>
+          {pickingGuestLevel ? (
+            <div role="group" aria-labelledby="guest-level-label">
+              <p id="guest-level-label" className="font-display font-semibold text-[#1b2e1c]">
+                Which Primary level are you in?
+              </p>
+              <p className="text-xs text-[#4e5f50]/80 mt-1">So the questions are just right for you.</p>
+              <div className="grid grid-cols-3 gap-2 mt-3">
+                {[1, 2, 3, 4, 5, 6].map((n) => (
+                  <button
+                    key={n}
+                    onClick={() => onGuest(`Primary ${n}`)}
+                    className="min-h-11 rounded-full border-2 border-[#7c4dff]/40 text-[#5a2fd8] font-display font-semibold hover:bg-[#efe7ff] transition-colors"
+                  >
+                    P{n}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => setPickingGuestLevel(false)}
+                className="mt-3 text-sm font-semibold text-[#4e5f50] underline underline-offset-2"
+              >
+                Back
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setPickingGuestLevel(true)}
+              className="w-full py-3 rounded-full border-2 border-dashed border-[#7c4dff]/50 text-[#5a2fd8] font-display font-semibold hover:bg-[#efe7ff] transition-colors"
+            >
+              Just looking? Continue as guest
+            </button>
+          )}
           <p className="text-xs text-[#4e5f50]/80 mt-2">
             Guests can explore lessons and games, but progress isn't saved and the leaderboard and chat are
             for members only.
           </p>
+          <a
+            href="#/staff"
+            className="inline-block mt-4 text-sm font-semibold text-[#4e5f50] underline underline-offset-2 hover:text-[#1b2e1c]"
+          >
+            Staff or volunteer? Sign in here
+          </a>
         </div>
       </motion.div>
       </div>
@@ -520,7 +553,11 @@ function SignUpForm({
       </Field>
 
       <p className="text-xs text-slate-500 pt-2">
-        We save your first name, school level and centre so your teacher can see your progress.
+        We save your first name, school level and centre so your centre's teachers, STEMulate volunteers and the STEMulate team
+        can see your progress.{" "}
+        <a href="https://projstemulate.com/privacy.html#academy" target="_blank" rel="noopener" className="underline font-semibold">
+          More about privacy
+        </a>
       </p>
       <div className="flex items-start gap-2.5">
         <Checkbox

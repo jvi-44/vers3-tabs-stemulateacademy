@@ -9,6 +9,7 @@ import { castFor, linesFor, matches, recapFor, resolveNext } from "./engine";
 import { DEFAULT_HELPER, MINI_GAMES } from "./minigames";
 import { SceneArt } from "./SceneArt";
 import { useStoryVoice } from "./useStoryVoice";
+import { useLevelBand } from "../lib/levelBand";
 import type {
   BotId,
   Camera,
@@ -210,6 +211,7 @@ export function EpisodePlayer({ episode, carried, playerName, onFinish, onClose,
     return node.type === "game" ? DEFAULT_HELPER[node.game] : "sophia";
   }, [flags, node]);
   const Game = node.type === "game" ? MINI_GAMES[node.game] : null;
+  const band = useLevelBand();
   const recap = view.kind === "recap" ? recapFor(episode, flags) : [];
 
   return (
@@ -257,7 +259,7 @@ export function EpisodePlayer({ episode, carried, playerName, onFinish, onClose,
       {view.kind === "game" && Game && (
         <div className="absolute inset-0 z-50 bg-[#0b0a14]/55 pt-12 sm:pt-14">
           <div className="relative w-full h-full">
-            <Game key={nodeId} helper={helper} onDone={gameDone} />
+            <Game key={nodeId} helper={helper} band={band} onDone={gameDone} />
           </div>
         </div>
       )}

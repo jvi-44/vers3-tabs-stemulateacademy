@@ -26,26 +26,37 @@ the frontend.
 
 | Variable | Needed for | Default |
 |---|---|---|
-| `GEMINI_API_KEY` | The in-lesson "Ask STEMbots" chat | none (chat replies "STEMbots are resting right now") |
+| `GEMINI_API_KEY` | The in-lesson "Ask STEMbots" chat and the website's "Ask us" assistant (read DEPLOY.md "AI chat: decide first") | none (both say they're switched off) |
+| `GEMINI_SITE_API_KEY` | Optional own key for the website's assistant (its button also needs `ASSISTANT_ON` in `website/script.js`) | `GEMINI_API_KEY` |
+| `ASSISTANT_DAILY_LIMIT` | Website assistant questions a day for everyone together (a UTC day; `0` keeps it off) | `300` |
 | `GEMINI_MODEL` | Chat model | `gemini-2.5-flash` |
 | `SESSION_SECRET` | Signing the login cookie (32+ random bytes) | random per start (everyone is signed out on restart) |
-| `APP_ORIGIN` | CORS: the only origin allowed to call the API with the login cookie | `http://localhost:5173` |
+| `APP_ORIGIN` | The Academy's own address: the only origin allowed to call the API with the login cookie (CORS), staff sign-in and set-up included, and the start of every staff set-up link | `http://localhost:5173` |
 | `SUPABASE_URL` | The Supabase project to save students' data in (on the host) | none (the local database is used) |
 | `SUPABASE_SECRET_KEY` | That project's secret key (`sb_secret_...`), server-only. Never the publishable key | none |
 | `DB_PATH` | Folder for the local database when Supabase isn't set (`memory://` keeps it in memory) | `server/.pglite` |
 | `PORT` | API port | `4000` |
-| `ADMIN_PASSKEY` | The admin page at `/#/admin` (use something long) | none (admin page switched off) |
-| `AUTH_RATE_LIMIT_PER_MIN` | Per-IP sign-in / sign-up / Forgot PIN / admin-login requests per minute | `20` |
-| `WEBSITE_URL` | On the host: where old `/site` links redirect (the public website) | none (`/site` serves `website/`) |
+| `ADMIN_PASSKEY` | The admin page at `/#/admin` (use something long) | none (only admin accounts can open it) |
+| `AUTH_RATE_LIMIT_PER_MIN` | Per address: sign-in, sign-up, Forgot PIN, admin passkey, staff sign-in and set-up link requests per minute | `20` |
+| `WEBSITE_URL` | On the host: where old `/site` links redirect, and the only site whose pages may send the website's forms and assistant | none (`/site` serves `website/`) |
+| `SITE_ORIGINS` | Instead of `WEBSITE_URL`'s two addresses (with and without `www`): the website addresses allowed, comma-separated | from `WEBSITE_URL` |
+| `SIGNUPS_PER_15_MIN` | Website sign-ups per address per 15 minutes (a class after a school talk shares one) | `30` |
+| `SIGNUPS_PER_HOUR` | Website sign-ups an hour for everyone together, counted in the database | `200` |
 
-### Gemini (STEMbot chat)
+### Gemini (STEMbot chat and the website's assistant)
+
+Read DEPLOY.md "AI chat: decide first" before adding a key anywhere: Google's
+Gemini API terms don't allow services likely to be used by under-18s, and
+unpaid keys let Google use what's sent. To try it on your own computer:
 
 1. Create a key at https://aistudio.google.com/apikey, restrict it to the
-   Generative Language API and give it a low daily quota.
+   Generative Language API and give it a low daily quota. Type only made-up
+   questions into it, never real children's.
 2. Put it in `.env` as `GEMINI_API_KEY=...` and restart the server.
 
-The key is only ever used by the server (`POST /api/chat`, sent in the
-`x-goog-api-key` header). The system prompt and child-safety rules live in
+The key is only ever used by the server (`POST /api/chat` for the lesson chat
+and `POST /api/site/assistant` for the website, sent in the `x-goog-api-key`
+header). The system prompt and child-safety rules live in
 `server/app.js`; the browser only sends which lesson beat the student is on
 and the last few messages. Chat requires a signed-in student and is limited
 to 30 questions per student per hour. If the key is missing or Gemini fails,
@@ -151,8 +162,31 @@ accounts can't silently land on a temporary disk.
 ## Admin page
 
 Set `ADMIN_PASSKEY` in `.env`, start the app, and open
-`http://localhost:5173/#/admin`. Enter the passkey to see every student, their
-progress, and to delete accounts.
+`http://localhost:5173/#/admin` (admin accounts can also open it from the
+staff page, for an hour after signing in). Enter the passkey to see every student and
+their progress, fix accounts, and manage the tabs: **Staff & volunteers**
+(accounts for the staff page), **Website sign-ups** (the forms on the
+website) and **Activity** (who opened the student list, looked at or changed a
+student, or changed a staff account).
+
+## Staff page
+
+Centre staff and STEMulate volunteers sign in at `/#/staff` with an email and
+password. An admin adds each person (Admin page → Staff & volunteers) and
+gives them a one-time set-up link to choose their password. They see the
+students at the centres they follow: volunteers see progress, centre staff can
+also reset a forgotten PIN, and admins also get the admin page. Sessions end
+after an hour unused or 12 hours after signing in (centre tablets are shared);
+the staff and admin pages also clear themselves after an hour without use, and
+going back to the Academy signs out. The Activity tab keeps, for 12 months, who
+opened the student list, looked at a student's progress or changed an account.
+
+## School levels
+
+Quizzes and lesson and story games ask questions for the school level on the
+student's account (or the level a guest picks): Primary 1–2, 3–4 or 5–6. The
+P5–6 questions are the workshops' own (in `src/data/lessonContent.ts` and each
+game); the P1–2 and P3–4 sets are in `src/content/`. See `src/data/levels.ts`.
 
 ## Testing friends and live chat with two players
 

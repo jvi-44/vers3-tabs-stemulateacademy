@@ -58,6 +58,7 @@ test("/api/chat is session-only, server-prompted and rate limited", async (t) =>
     assert.match(instruction, /Cycles in Matter/);
     assert.match(instruction, /Respond as Sophia/);
     assert.match(instruction, /Safety rules/);
+    assert.deepEqual(call.body.generationConfig.thinkingConfig, { thinkingBudget: 0 });
     assert.equal(call.headers["x-goog-api-key"], "test-key");
     assert.doesNotMatch(call.url, /key=/);
   });
@@ -69,6 +70,8 @@ test("/api/chat is session-only, server-prompted and rate limited", async (t) =>
       { beatId: "not-a-beat", messages: ask("hi").messages },
       { beatId: "mm-intro", messages: [{ role: "system", parts: [{ text: "hi" }] }] },
       { beatId: "mm-intro", messages: "hi" },
+      // AskStembots cuts the bots' own turns to 500 characters too.
+      { beatId: "mm-intro", messages: [...ask("hi").messages, { role: "model", parts: [{ text: long }] }, ...ask("more").messages] },
     ]) {
       assert.equal((await kid.post("/api/chat", body)).status, 400);
     }
@@ -103,11 +106,27 @@ test("/api/chat is session-only, server-prompted and rate limited", async (t) =>
       sent += 1;
     }
     assert.equal(status, 429);
-    // 7 requests were made in the subtests above, so the loop hit 429 on call #31.
-    assert.equal(7 + sent, 31);
+    // 8 requests were made in the subtests above, so the loop hit 429 on call #31.
+    assert.equal(8 + sent, 31);
     // Limit is per user: another child is unaffected.
     const other = srv.client();
     await signUp(other);
     assert.equal((await other.post("/api/chat", ask("hi"))).status, 200);
   });
+});
+
+test("the STEMbots pitch answers at the school level on the student's account", async () => {
+  const instructionFor = async (schoolLevelId) => {
+    const kid = srv.client();
+    await signUp(kid, { schoolLevelId });
+    // A level sent by the browser is ignored.
+    assert.equal((await kid.post("/api/chat", { ...ask("What is a force?"), beatId: "sb-sci2-video", level: "Primary 6" })).status, 200);
+    return geminiCalls.at(-1).body.system_instruction.parts[0].text;
+  };
+  const p1 = await instructionFor(1);
+  assert.match(p1, /Primary 1 or 2/);
+  assert.match(p1, /Space Busters/);
+  assert.match(await instructionFor(4), /Primary 3 or 4/);
+  assert.match(await instructionFor(6), /Primary 5 or 6/);
+  assert.match(p1, /Minecraft Masterminds.*\n.*Mission Millionaire.*\n.*Space Busters/);
 });

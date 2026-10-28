@@ -156,7 +156,7 @@ export const SPACE_EPISODE: Episode = {
       scene: "space-sun",
       fx: ["heat"],
       intro: [
-        { speaker: "emily", text: "To escape, thrust must beat weight and drag! Hold to fire the engines and keep us in the green zone." },
+        { speaker: "emily", text: "To escape, our engines must push up harder than the Sun pulls us down! Set the engine power, then fire." },
       ],
       win: [{ speaker: "system", text: "The SKELD has escaped the Sun." }],
       lose: [{ speaker: "emily", text: "Phew! We scraped clear, just barely. Good flying!" }],

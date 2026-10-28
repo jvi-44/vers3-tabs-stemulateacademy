@@ -2,6 +2,7 @@
 // Server → client: Server-Sent Events. Client → server: POST actions.
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { LevelBand } from "../../data/levels";
 import { avatarToUrl } from "../../data/mock";
 
 export interface LivePlayer {
@@ -23,6 +24,8 @@ export interface LiveRoom {
   hostId: string;
   status: "lobby" | "playing" | "finished";
   seed: number;
+  /** The host's school-level band; every player in the room gets its questions. */
+  band: LevelBand;
   startedAt: number | null;
   players: LivePlayer[];
 }
@@ -57,8 +60,8 @@ export async function listRooms(gameId: string): Promise<LiveRoom[]> {
 
 // The server takes the player's id, name and avatar from their sign-in; the
 // `player` argument is kept so callers don't change.
-export function createRoom(gameId: string, _player?: PlayerIdentity) {
-  return post<{ room: LiveRoom }>("/game-rooms", { gameId }).then((r) => withAvatars(r.room));
+export function createRoom(gameId: string, _player?: PlayerIdentity, band: LevelBand = "p56") {
+  return post<{ room: LiveRoom }>("/game-rooms", { gameId, band }).then((r) => withAvatars(r.room));
 }
 
 export function joinRoom(code: string, _player?: PlayerIdentity) {

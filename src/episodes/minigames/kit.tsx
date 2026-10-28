@@ -3,11 +3,14 @@ import { AnimatePresence, motion } from "motion/react";
 import { sfx } from "../../games/kit/audio";
 import { STEMBOTS } from "../../data/mock";
 import type { BotId, GameResult } from "../types";
+import type { LevelBand } from "../../data/levels";
 
 export interface MiniGameProps {
   onDone: (result: GameResult) => void;
   /** The STEMbot helping in this game (gives hints). */
   helper: BotId;
+  /** The player's school-level band: which questions and numbers to use. */
+  band: LevelBand;
 }
 
 /** Calls `fn` every animation frame with the seconds since the last frame. */

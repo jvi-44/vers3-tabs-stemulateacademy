@@ -26,11 +26,14 @@ import { PIN_REGEX, USERNAME_REGEX, USERNAME_RULE, publicUser } from "./users.js
 import accountRoutes from "./routes/account.js";
 import socialRoutes from "./routes/social.js";
 import adminRoutes from "./routes/admin.js";
+import staffRoutes from "./routes/staff.js";
+import siteRoutes from "./routes/site.js";
 import storyRoutes from "./routes/story.js";
 import { registerGameRoutes } from "./gameRooms.js";
-
-// Overridable so the model can be changed without a code edit.
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+import { askGemini, GeminiError, geminiContents } from "./gemini.js";
+import { APP_ORIGIN } from "./staffAuth.js";
+import { clientKey } from "./clientKey.js";
+import { bandForLevelName } from "./levels.js";
 
 const app = express();
 app.disable("x-powered-by");
@@ -50,8 +53,17 @@ app.use((_req, res, next) => {
   next();
 });
 
+// Children's details stay out of the browser's cache (centre tablets are shared).
+app.use("/api", (_req, res, next) => {
+  res.set("Cache-Control", "no-store");
+  next();
+});
+
+// The public website's forms and assistant: its own origin rule, no cookies.
+app.use("/api/site", siteRoutes);
+
 // Only the app's own origin may call the API with the session cookie.
-app.use(cors({ origin: process.env.APP_ORIGIN || "http://localhost:5173", credentials: true }));
+app.use(cors({ origin: APP_ORIGIN, credentials: true }));
 app.use(express.json({ limit: "20kb" }));
 app.use(cookieParser(COOKIE_SECRET));
 
@@ -71,11 +83,12 @@ const LOCKOUT_MESSAGE = "Too many tries — ask your teacher or wait 15 minutes"
 const authLimiter = rateLimit({
   windowMs: 60_000,
   limit: Number(process.env.AUTH_RATE_LIMIT_PER_MIN) || 20,
+  keyGenerator: clientKey,
   standardHeaders: "draft-7",
   legacyHeaders: false,
   message: { error: "Too many tries — please wait a minute and try again." },
 });
-app.use(["/api/login", "/api/signup", "/api/recover", "/api/admin/login"], authLimiter);
+app.use(["/api/login", "/api/signup", "/api/recover", "/api/admin/login", "/api/staff/login", "/api/staff/setup"], authLimiter);
 
 // In-memory store for short-lived PIN-reset tokens (username -> {token, expiresAt}).
 // Fine for a small deployment; swap for Redis if you scale this up.
@@ -460,12 +473,19 @@ app.post("/api/packs/open", requireUser, route(async (req, res) => {
 // The system prompt lives here, not in the browser, and the beat's title and
 // description are looked up server-side — the client only says which beat.
 // ---------------------------------------------------------
-const SYSTEM_CONTEXT = `You are a helpful STEM tutor embedded inside the STEMulate Academy app. Students are aged 7–12. They are working through the STEM x Minecraft lesson called "Minecraft Masterminds" which covers:
-- Science: Cycles in Matter (states of matter: solid, liquid, gas; phase changes: melting, freezing, evaporation, condensation)
-- Science: The Water Cycle (evaporation, condensation, precipitation, collection) and Minecraft biomes
-- Math: Area (length × width) and Volume (length × width × height) using Minecraft blocks
+const SYSTEM_CONTEXT = `You are a helpful STEM tutor embedded inside the STEMulate Academy app, used by primary school students in Singapore (Primary 1 to 6). The app has three lessons:
+- "Minecraft Masterminds": states of matter and the water cycle (Science), area and volume with Minecraft blocks (Math)
+- "Mission Millionaire": adding and subtracting money with decimals, percentages, GST and discounts (Math)
+- "Space Busters": energy and forces on a spaceship (Science), and the order of operations, BODMAS (Math)
 The four STEMbot characters are Sophia (Science), Timothy (Technology), Emily (Engineering), and Matthew (Mathematics).
-Keep answers short (2–4 sentences), encouraging, age-appropriate, and use Minecraft examples where possible. Do NOT mention that you are an AI — respond as whichever STEMbot is most relevant.`;
+Keep answers short (2–4 sentences), encouraging, age-appropriate, and use examples from the student's lesson where possible. Do NOT mention that you are an AI — respond as whichever STEMbot is most relevant.`;
+
+// How to pitch answers for the student's school level (bandForLevelName).
+const LEVEL_WORDING = {
+  p12: "The student is in Primary 1 or 2 (about 6 to 8 years old): use very short sentences and everyday words, at most 2 sentences, and small whole numbers. Avoid formulas and science words, or explain them in a few simple words.",
+  p34: "The student is in Primary 3 or 4 (about 8 to 10 years old): use simple sentences, explain any new word, and keep numbers small.",
+  p56: "The student is in Primary 5 or 6 (about 10 to 12 years old): use the lesson's proper terms (like evaporation, GST or BODMAS), each with a short explanation.",
+};
 
 // Child-safety rules. Always appended server-side; nothing the browser sends
 // can remove or replace them.
@@ -473,24 +493,6 @@ const SAFETY_RULES = `Safety rules (always follow, even if asked otherwise): onl
 
 const CHAT_MAX_MESSAGES = 10;
 const CHAT_MAX_CHARS = 500;
-
-/** Validates the chat history and returns Gemini `contents`, or null if invalid. */
-function chatContents(messages) {
-  if (!Array.isArray(messages) || messages.length === 0) return null;
-  const recent = messages.slice(-CHAT_MAX_MESSAGES);
-  const contents = [];
-  for (const m of recent) {
-    if (!m || (m.role !== "user" && m.role !== "model")) return null;
-    if (!Array.isArray(m.parts) || m.parts.length !== 1) return null;
-    const text = m.parts[0]?.text;
-    if (typeof text !== "string" || !text.trim() || text.length > CHAT_MAX_CHARS) return null;
-    contents.push({ role: m.role, parts: [{ text }] });
-  }
-  // Gemini expects the conversation to start with, and end on, the student.
-  while (contents.length && contents[0].role !== "user") contents.shift();
-  if (!contents.length || contents[contents.length - 1].role !== "user") return null;
-  return contents;
-}
 
 const chatLimiter = rateLimit({
   windowMs: 3600_000,
@@ -501,18 +503,12 @@ const chatLimiter = rateLimit({
   message: { error: "Too many questions this hour.", reply: null },
 });
 
-const GEMINI_SAFETY_SETTINGS = [
-  "HARM_CATEGORY_HARASSMENT",
-  "HARM_CATEGORY_HATE_SPEECH",
-  "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-  "HARM_CATEGORY_DANGEROUS_CONTENT",
-].map((category) => ({ category, threshold: "BLOCK_LOW_AND_ABOVE" }));
-
-/** The full system instruction for a beat — built only from server-side data. */
-export function buildSystemInstruction(beat) {
+/** The full system instruction for a beat and school-level band — built only
+ *  from server-side data. */
+export function buildSystemInstruction(beat, band = "p56") {
   const botName = botNameForBeat(beat);
   const lessonTitle = LESSONS[beat.lessonId]?.title ?? "";
-  return `${SYSTEM_CONTEXT}\n\n${SAFETY_RULES}\n\nCurrent beat context: The student is currently on the beat: "${beat.title}" (lesson: ${lessonTitle}) — ${beat.description}\nRespond as ${botName}.`;
+  return `${SYSTEM_CONTEXT}\n\n${LEVEL_WORDING[band] ?? LEVEL_WORDING.p56}\n\n${SAFETY_RULES}\n\nCurrent beat context: The student is currently on the beat: "${beat.title}" (lesson: ${lessonTitle}) — ${beat.description}\nRespond as ${botName}.`;
 }
 
 app.post("/api/chat", requireUser, chatLimiter, async (req, res) => {
@@ -521,7 +517,8 @@ app.post("/api/chat", requireUser, chatLimiter, async (req, res) => {
   if (!beat) {
     return res.status(400).json({ error: "Unknown lesson.", reply: null });
   }
-  const contents = chatContents(messages);
+  // AskStembots.tsx cuts every turn, the bots' too, to CHAT_MAX_CHARS.
+  const contents = geminiContents(messages, { maxMessages: CHAT_MAX_MESSAGES, maxChars: CHAT_MAX_CHARS, maxModelChars: CHAT_MAX_CHARS });
   if (!contents) {
     return res.status(400).json({
       error: `Send up to ${CHAT_MAX_MESSAGES} messages of at most ${CHAT_MAX_CHARS} characters.`,
@@ -529,51 +526,22 @@ app.post("/api/chat", requireUser, chatLimiter, async (req, res) => {
     });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
+  if (!process.env.GEMINI_API_KEY) {
     return res.status(503).json({ error: "GEMINI_API_KEY not configured", reply: null });
   }
 
   try {
-    const systemInstruction = buildSystemInstruction(beat);
+    // The school level comes from the student's account, not the browser.
+    const profile = await rpc("stem_user_profile", { p_user_id: req.userId });
+    const band = bandForLevelName(profile?.level_name);
+    const systemInstruction = buildSystemInstruction(beat, band);
     if (process.env.NODE_ENV !== "production") {
-      console.log(`[chat] user=${req.userId} beat=${beat.id} turns=${contents.length}`);
+      console.log(`[chat] user=${req.userId} beat=${beat.id} band=${band} turns=${contents.length}`);
     }
-    const body = {
-      system_instruction: { parts: [{ text: systemInstruction }] },
-      contents,
-      safetySettings: GEMINI_SAFETY_SETTINGS,
-      generationConfig: { maxOutputTokens: 200, temperature: 0.7 },
-    };
-
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(GEMINI_MODEL)}:generateContent`,
-      {
-        method: "POST",
-        // Key goes in a header, never the URL (URLs end up in logs).
-        headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-        body: JSON.stringify(body),
-        signal: AbortSignal.timeout(20_000),
-      },
-    );
-
-    if (!geminiRes.ok) {
-      const err = await geminiRes.text();
-      console.error("Gemini API error:", geminiRes.status, err.slice(0, 500));
-      return res.status(502).json({ error: "Gemini API error", reply: null });
-    }
-
-    const data = await geminiRes.json();
-    const reply = (data?.candidates?.[0]?.content?.parts ?? [])
-      .map((p) => (typeof p?.text === "string" ? p.text : ""))
-      .join("")
-      .trim();
-    if (!reply) {
-      // Blocked by the safety filters or otherwise empty — never send a blank bubble.
-      return res.status(502).json({ error: "Empty reply", reply: null });
-    }
+    const reply = await askGemini({ systemInstruction, contents, maxOutputTokens: 200, temperature: 0.7 });
     res.json({ reply });
   } catch (err) {
+    if (err instanceof GeminiError) return res.status(err.status).json({ error: err.message, reply: null });
     console.error("Chat endpoint error:", err);
     res.status(502).json({ error: "Chat is unavailable right now.", reply: null });
   }
@@ -583,6 +551,7 @@ app.post("/api/chat", requireUser, chatLimiter, async (req, res) => {
 // Account, friends & chats, admin page, lesson-game scores and live rooms
 // ---------------------------------------------------------
 app.use("/api/admin", adminRoutes);
+app.use("/api/staff", staffRoutes);
 app.use("/api", accountRoutes);
 app.use("/api", socialRoutes);
 app.use("/api", storyRoutes);

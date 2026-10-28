@@ -3,13 +3,15 @@ import { motion } from "motion/react";
 import { sfx } from "../../games/kit/audio";
 import type { GameResult } from "../types";
 import { HelperTip, Hud, Meter, MiniGameFrame, Pill, useFrame, type MiniGameProps } from "./kit";
+import type { LevelBand } from "../../data/levels";
 
 // Area: the storm is coming. Mark out a shelter floor with exactly the area asked
 // for by tapping one corner block, then the opposite corner.
 
 const COLS = 7;
 const ROWS = 5;
-const TARGETS = [12, 15, 18];
+// Floor areas to build. P1–2 count small floors of squares; P3–6 use length × width.
+const TARGETS_BY_BAND: Record<LevelBand, number[]> = { p12: [4, 6, 8], p34: [12, 15, 18], p56: [12, 15, 18] };
 const TO_WIN = 2;
 const SECONDS = 75;
 
@@ -24,12 +26,16 @@ function rect(a: Cell, b: Cell) {
 }
 
 const TIPS: Record<number, string> = {
+  4: "4 squares could be 2 long and 2 wide. Count them: 1, 2, 3, 4!",
+  6: "Try 3 squares in a row, then another row of 3. That's 6!",
+  8: "Try 4 squares in a row, then another row of 4. That's 8!",
   12: "12 could be 4 long and 3 wide. 4 × 3 = 12!",
   15: "Which two numbers multiply to make 15? Try 5 and 3.",
   18: "18 = 6 × 3. Six blocks long, three blocks wide!",
 };
 
-export function ShelterBuilder({ onDone, helper }: MiniGameProps) {
+export function ShelterBuilder({ onDone, helper, band }: MiniGameProps) {
+  const TARGETS = TARGETS_BY_BAND[band];
   const [round, setRound] = useState(0);
   const [anchor, setAnchor] = useState<Cell | null>(null);
   const [hover, setHover] = useState<Cell | null>(null);
@@ -106,7 +112,8 @@ export function ShelterBuilder({ onDone, helper }: MiniGameProps) {
         <>
           <p>A storm is coming! Build shelter floors with exactly the right area.</p>
           <p>
-            Tap one corner block, then the opposite corner. <b>Area = length × width.</b> Build {TO_WIN} of {TARGETS.length} before the sun
+            Tap one corner block, then the opposite corner.{" "}
+            <b>{band === "p12" ? "Count the squares inside." : "Area = length × width."}</b> Build {TO_WIN} of {TARGETS.length} before the sun
             sets!
           </p>
         </>

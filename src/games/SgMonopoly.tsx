@@ -14,6 +14,7 @@ import { STEMBOTS } from "../data/mock";
 import { sfx } from "./kit/audio";
 import { seededRandom } from "./kit/scores";
 import type { GameProps } from "./kit/types";
+import type { LevelBand } from "../data/levels";
 
 // ── Board ────────────────────────────────────────────────
 
@@ -127,6 +128,9 @@ interface PState {
 interface GState {
   v: number;
   rng: number;
+  /** School-level band: P1–2 add and take away whole dollars, P3–4 work with
+   *  cents and "$ off" sales, P5–6 do 9% GST and percentages. */
+  band: LevelBand;
   players: PState[];
   owner: number[];
   level: number[];
@@ -168,11 +172,12 @@ function makeRng(state: number) {
 type Rng = ReturnType<typeof makeRng>;
 const pick = <T,>(r: Rng, arr: readonly T[]) => arr[Math.floor(r.next() * arr.length)];
 
-function initState(seed: number, players: { id: string; name: string; avatar: string; bot: boolean }[]): GState {
+function initState(seed: number, band: LevelBand, players: { id: string; name: string; avatar: string; bot: boolean }[]): GState {
   const r = seededRandom(seed);
   return {
     v: 1,
     rng: Math.floor(r() * 4_000_000_000) + 1,
+    band,
     players: players.map((p) => ({ ...p, pos: 0, cash: START_CASH, credit: 0, asked: 0, right: 0 })),
     owner: TILES.map(() => -1),
     level: TILES.map(() => 0),
@@ -206,11 +211,29 @@ function options(r: Rng, ans: number, wrongs: number[]) {
   return { options: opts, answer: opts.indexOf(ans) };
 }
 
-function buyQuestion(r: Rng, tile: number, round: number): Question {
+function buyQuestion(r: Rng, tile: number, round: number, band: LevelBand): Question {
   const t = TILES[tile];
   const P = (t.price ?? 100) * 100;
   const roll = r.next();
   const base = { kind: "buy" as const, tile, title: `Buy ${t.name}?`, ask: "How much do you pay?" };
+  if (band === "p12") {
+    // Add a few whole dollars.
+    const k = 1 + Math.floor(r.next() * 9);
+    const ans = P + k * 100;
+    return { ...base, prompt: `${fmt(P)} + ${fmt(k * 100)} for the keys`, topic: "adding", ...options(r, ans, [P, ans + 100, ans - 100]) };
+  }
+  if (band === "p34") {
+    if (roll < 0.5) {
+      // Dollars off.
+      const k = pick(r, [5, 10, 15, 20, 25]);
+      const ans = P - k * 100;
+      return { ...base, prompt: `Sale! ${fmt(k * 100)} off ${fmt(P)}`, topic: "dollars off", ...options(r, ans, [P + k * 100, k * 100, ans - 100]) };
+    }
+    // Dollars and cents.
+    const fee = pick(r, [150, 250, 375, 480, 620, 799]);
+    const ans = P + fee;
+    return { ...base, prompt: `${fmt(P)} + ${fmt(fee)} for the keys`, topic: "adding money", ...options(r, ans, [P + fee * 10, ans + 100, ans - 10]) };
+  }
   if (round >= 4 && roll < 0.3) {
     const d = pick(r, [10, 20, 25, 50]);
     const sale = Math.round((P * (100 - d)) / 100);
@@ -249,6 +272,15 @@ const KOPI_MENU: [string, number][] = [
   ["Milo", 220],
   ["roti prata", 150],
   ["curry puff", 140],
+];
+// Round-dollar prices for P1–2.
+const KOPI_MENU_WHOLE: [string, number][] = [
+  ["kopi", 200],
+  ["teh", 200],
+  ["kaya toast", 300],
+  ["Milo", 200],
+  ["roti prata", 100],
+  ["curry puff", 100],
 ];
 const SALE_ITEMS = ["sneakers", "headphones", "LEGO set", "scooter", "backpack", "board game"];
 const SALE_PRICES = [6000, 8000, 9000, 12000, 15000, 7500, 4500];
@@ -302,7 +334,7 @@ function land(n: GState, r: Rng) {
         setResult(n, { art: "oops", title: `Can't afford ${t.name}`, lines: [`It costs about ${fmt(P)}. You have ${fmt(p.cash)}.`], tone: "info", sound: "info", bubble: "Too pricey for me!" });
         return;
       }
-      n.q = buyQuestion(r, p.pos, n.round);
+      n.q = buyQuestion(r, p.pos, n.round, n.band);
       n.phase = "question";
       return;
     }
@@ -325,7 +357,7 @@ function land(n: GState, r: Rng) {
     p.cash -= rent;
     n.players[own].cash += rent;
     const line = `Rent to ${n.players[own].name}: ${fmt(before)} − ${fmt(rent)} = ${fmt(p.cash)}`;
-    if (rent > 0 && r.next() < 0.6) {
+    if (rent > 0 && n.band !== "p12" && r.next() < 0.6) {
       const note = rent < 5000 ? 5000 : 10000;
       const ans = note - rent;
       n.pre.push(line);
@@ -356,7 +388,7 @@ function land(n: GState, r: Rng) {
   if (t.kind === "chance") {
     const c = pick(r, CHANCE);
     const before = p.cash;
-    if (r.next() < 0.7 && before + c.amt > 0) {
+    if (n.band !== "p12" && r.next() < 0.7 && before + c.amt > 0) {
       const ans = before + c.amt;
       n.q = {
         kind: "chance",
@@ -387,8 +419,9 @@ function land(n: GState, r: Rng) {
   }
   if (t.kind === "kopi") {
     const items: [string, number][] = [];
-    while (items.length < 3) {
-      const it = pick(r, KOPI_MENU);
+    const menu = n.band === "p12" ? KOPI_MENU_WHOLE : KOPI_MENU;
+    while (items.length < (n.band === "p12" ? 2 : 3)) {
+      const it = pick(r, menu);
       if (!items.includes(it)) items.push(it);
     }
     const total = items.reduce((s, it) => s + it[1], 0);
@@ -402,6 +435,25 @@ function land(n: GState, r: Rng) {
       topic: "kopi change",
       reward: 2000,
       ...options(r, ans, [ans + 100, ans - 100, ans - 10, total]),
+    };
+    n.phase = "question";
+    return;
+  }
+  if (t.kind === "sale" && n.band !== "p56") {
+    // Dollars off, then the new price; the savings come back as cashback.
+    const item = pick(r, SALE_ITEMS);
+    const P = pick(r, n.band === "p12" ? [2000, 3000, 4000, 5000, 6000, 8000, 9000] : SALE_PRICES);
+    const k = pick(r, n.band === "p12" ? [2, 3, 5, 10] : [5, 10, 15, 20, 25]) * 100;
+    const ans = P - k;
+    n.q = {
+      kind: "sale",
+      tile: p.pos,
+      title: "Great Singapore Sale!",
+      prompt: `${fmt(P)} ${item}, now ${fmt(k)} off`,
+      ask: `How much do you pay now? (Get it right and the ${fmt(k)} you save is cashback!)`,
+      topic: "dollars off",
+      reward: k,
+      ...options(r, ans, [P + k, k, ans - 100]),
     };
     n.phase = "question";
     return;
@@ -425,6 +477,24 @@ function land(n: GState, r: Rng) {
     return;
   }
   // gst tile
+  if (n.band !== "p56") {
+    // Before GST (P5): add up a shopping bill and pay it.
+    const a = n.band === "p12" ? pick(r, [2, 3, 4, 5, 6, 7, 8]) * 100 : pick(r, [450, 680, 1250, 1590, 2075]);
+    const b = n.band === "p12" ? pick(r, [1, 2, 3, 4, 5]) * 100 : pick(r, [320, 795, 1180, 2460]);
+    const bill = a + b;
+    n.q = {
+      kind: "gst",
+      tile: p.pos,
+      title: "Shopping trip",
+      prompt: `Your shopping: ${fmt(a)} and ${fmt(b)}.`,
+      ask: "How much is your bill altogether?",
+      topic: "adding up the bill",
+      reward: bill,
+      ...options(r, bill, [bill + 100, Math.abs(a - b), bill - 10]),
+    };
+    n.phase = "question";
+    return;
+  }
   const B = pick(r, BILLS);
   const gst = Math.round((B * 9) / 100);
   n.q = {
@@ -489,10 +559,11 @@ function answerQuestion(n: GState, choice: number, secs: number) {
   if (q.kind === "gst") {
     const pay = right ? correct : correct + OOPS;
     p.cash = Math.max(0, p.cash - pay);
+    const gst = n.band === "p56";
     setResult(n, {
       art: right ? "yes" : "oops",
-      title: right ? "Correct GST paid" : "Wrong! GST + $5.00 oops fee",
-      lines: [`9% GST = ${fmt(correct)}`, `${fmt(before)} − ${fmt(pay)} = ${fmt(p.cash)}`],
+      title: right ? (gst ? "Correct GST paid" : "Bill paid!") : gst ? "Wrong! GST + $5.00 oops fee" : "Wrong! Bill + $5.00 oops fee",
+      lines: [`${gst ? "9% GST" : "Bill"} = ${fmt(correct)}`, `${fmt(before)} − ${fmt(pay)} = ${fmt(p.cash)}`],
       tone: right ? "good" : "bad",
       sound: right ? "good" : "bad",
       toast: `−${fmt(pay)}`,
@@ -515,7 +586,7 @@ function answerQuestion(n: GState, choice: number, secs: number) {
     return;
   }
   // bonus questions: change, kopi, sale
-  const reward = q.kind === "sale" ? correct : q.reward ?? 0;
+  const reward = q.kind === "sale" ? q.reward ?? correct : q.reward ?? 0;
   if (right) p.cash += reward;
   setResult(n, {
     art: right ? "coin" : "oops",
@@ -734,12 +805,12 @@ const CSS = `
 const BOT_NAMES = ["sophia", "emily", "matthew"] as const;
 const TILT = 40;
 
-export function SgMonopoly({ mode, seed, me, live, reportProgress, finish }: GameProps) {
+export function SgMonopoly({ mode, seed, band, me, live, reportProgress, finish }: GameProps) {
   const engineOwner = mode === "solo" || !!live?.isHost;
 
   const [g, setG] = useState<GState | null>(() => {
     if (mode === "solo" || !live) {
-      return initState(seed, [
+      return initState(seed, band, [
         { id: me.id, name: me.name || "You", avatar: me.avatar || STEMBOTS.timothy.avatar, bot: false },
         ...BOT_NAMES.map((b) => ({ id: `bot-${b}`, name: STEMBOTS[b].name, avatar: STEMBOTS[b].avatar, bot: true })),
       ]);
@@ -747,6 +818,7 @@ export function SgMonopoly({ mode, seed, me, live, reportProgress, finish }: Gam
     if (live.isHost) {
       return initState(
         seed,
+        band,
         live.room.players.slice(0, 4).map((p, i) => ({
           id: p.id,
           name: p.name || `Player ${i + 1}`,

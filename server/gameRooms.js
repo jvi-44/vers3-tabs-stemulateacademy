@@ -12,6 +12,7 @@
 // from their account on the server, never from the request, so nobody can
 // act as someone else or show a made-up name or picture to other children.
 
+import { BANDS } from "./levels.js";
 import { requireUser } from "./auth.js";
 import { rpc } from "./db.js";
 import { route } from "./route.js";
@@ -41,6 +42,8 @@ function publicRoom(room) {
     hostId: room.hostId,
     status: room.status,
     seed: room.seed,
+    // The host's school-level band: everyone in the room gets its questions.
+    band: room.band,
     startedAt: room.startedAt,
     players: room.players.map(({ id, name, avatar, ready, score, progress, done, connected }) => ({
       id,
@@ -124,7 +127,7 @@ export function registerGameRoutes(app) {
   });
 
   app.post("/api/game-rooms", route(async (req, res) => {
-    const { gameId } = req.body || {};
+    const { gameId, band } = req.body || {};
     const p = await playerFor(req.userId);
     if (typeof gameId !== "string" || !GAME_ID_REGEX.test(gameId) || !p) {
       return res.status(400).json({ error: "Missing game or player." });
@@ -146,6 +149,7 @@ export function registerGameRoutes(app) {
       hostId: p.id,
       status: "lobby",
       seed: Math.floor(Math.random() * 1e9),
+      band: BANDS.includes(band) ? band : "p56",
       startedAt: null,
       players: [{ ...p, ready: true, score: 0, progress: 0, done: false, connected: false }],
       clients: new Set(),
@@ -177,7 +181,7 @@ export function registerGameRoutes(app) {
     if (!room || !room.players.some((p) => p.id === playerId)) return res.status(404).end();
     res.writeHead(200, {
       "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache, no-transform",
+      "Cache-Control": "no-store, no-transform",
       Connection: "keep-alive",
       "X-Accel-Buffering": "no",
     });

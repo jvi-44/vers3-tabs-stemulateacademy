@@ -1,6 +1,7 @@
 import type { ComponentType } from "react";
 import type { MusicTheme } from "./audio";
 import type { LiveRoom, PlayerIdentity, RelayHandler } from "./live";
+import type { LevelBand } from "../../data/levels";
 
 export type BotId = "sophia" | "timothy" | "emily" | "matthew";
 
@@ -14,6 +15,9 @@ export interface GameProps {
   mode: "solo" | "live";
   /** Same seed for every player in a live match, so puzzles match. */
   seed: number;
+  /** Which questions to ask: the player's school-level band, or in a live
+   *  match the host's, so everyone in the room gets the same puzzles. */
+  band: LevelBand;
   me: PlayerIdentity;
   /** Only in live mode. */
   live?: {
@@ -55,6 +59,9 @@ export interface GameDef {
   /** What the host STEMbot says on the start screen. */
   intro: string;
   howTo: string[];
+  /** The same for a school-level band whose game differs (e.g. no volume before P5). */
+  introByBand?: Partial<Record<LevelBand, string>>;
+  howToByBand?: Partial<Record<LevelBand, string[]>>;
   music: MusicTheme;
   /** Tailwind gradient classes for the header band. */
   gradient: string;
