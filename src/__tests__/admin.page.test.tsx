@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
-// The admin page on a shared centre tablet: an admin account can sign out
-// from it and leaving signs it out; the passkey is locked on the way out; and
-// the gate says when an admin account's hour on the page is up.
+// The admin page on a shared centre tablet: the passkey is locked on the way
+// out, an old token gives way to the passkey gate, and the Centres & passkeys
+// tab shows a new passkey once.
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { AdminPage } from "../components/AdminPage";
@@ -29,27 +29,15 @@ afterEach(() => {
 const SLOW = { timeout: 5000 };
 const json = (status: number, body: unknown) => Promise.resolve(new Response(JSON.stringify(body), { status }));
 const stats = { users: 0, activeThisWeek: 0, activitiesCompleted: 0, messages: 0, groups: 0 };
-const admin = {
-  staffId: 9,
-  fullName: "Ms Tan",
-  email: "tan@example.org",
-  role: "admin",
-  allCentres: false,
-  disabled: false,
-  hasPassword: true,
-  centres: [],
-  createdAt: "2026-10-28 08:00:00",
-  lastLoginAt: "2026-10-28 08:00:00",
-};
 
 /** Answers the admin dashboard's first calls, plus `extra` (url -> response). */
-function serve(extra: Record<string, () => Promise<Response>>) {
+function serve(extra: Record<string, (init?: RequestInit) => Promise<Response>>) {
   const calls: string[] = [];
   vi.stubGlobal(
     "fetch",
-    vi.fn((url: string) => {
+    vi.fn((url: string, init?: RequestInit) => {
       calls.push(url);
-      if (extra[url]) return extra[url]();
+      if (extra[url]) return extra[url](init);
       if (url === "/api/admin/stats") return json(200, stats);
       if (url === "/api/admin/users") return json(200, { users: [] });
       return json(404, {});
@@ -59,20 +47,6 @@ function serve(extra: Record<string, () => Promise<Response>>) {
 }
 
 describe("AdminPage", () => {
-  it("an admin account can sign out here, and leaving signs it out", async () => {
-    const calls = serve({
-      "/api/admin/session": () => json(200, { via: "staff", fullName: "Ms Tan" }),
-      "/api/staff/logout": () => json(200, { success: true }),
-    });
-    const onExit = vi.fn();
-    render(<AdminPage onExit={onExit} />);
-    expect(await screen.findByText(/Signed in as Ms Tan \(Admin\)/, {}, SLOW)).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Sign out" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Back to Academy" }));
-    await waitFor(() => expect(onExit).toHaveBeenCalled(), SLOW);
-    expect(calls).toContain("/api/staff/logout");
-  }, 20_000);
-
   it("the passkey is locked on the way out", async () => {
     sessionStorage.setItem("stemulate_admin_token", "a-passkey-token");
     serve({ "/api/admin/session": () => json(200, { via: "passkey" }) });
@@ -84,20 +58,36 @@ describe("AdminPage", () => {
     expect(sessionStorage.getItem("stemulate_admin_token")).toBeNull();
   }, 20_000);
 
-  it("a passkey token from before the server restarted gives way to the admin account", async () => {
+  it("a passkey token from before the server restarted gives way to the gate", async () => {
     sessionStorage.setItem("stemulate_admin_token", "an-old-token");
-    serve({ "/api/admin/session": () => json(200, { via: "staff", fullName: "Ms Tan" }) });
+    serve({ "/api/admin/session": () => json(401, { error: "Admin session expired. Enter the passkey again." }) });
     render(<AdminPage onExit={() => {}} />);
-    expect(await screen.findByText(/Signed in as Ms Tan \(Admin\)/, {}, SLOW)).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Unlock Admin HQ" }, SLOW)).toBeTruthy();
     expect(sessionStorage.getItem("stemulate_admin_token")).toBeNull();
   }, 20_000);
 
-  it("the gate says when an admin account's hour on this page is up", async () => {
+  it("sets a centre's passkey and shows it once", async () => {
+    sessionStorage.setItem("stemulate_admin_token", "a-passkey-token");
+    const sent: unknown[] = [];
     serve({
-      "/api/admin/session": () => json(401, { error: "Admin session expired." }),
-      "/api/staff/me": () => json(200, { staff: admin }),
+      "/api/admin/session": () => json(200, { via: "passkey" }),
+      "/api/admin/centres": () =>
+        json(200, { centres: [{ id: 1, name: "Brighton Connection", hasPasskey: false, passkeySetAt: null, students: 3 }] }),
+      "/api/admin/centres/1/passkey": (init) => {
+        sent.push(JSON.parse(String(init?.body)));
+        return json(200, { passkey: "kq7m-x3vd-9pna" });
+      },
     });
     render(<AdminPage onExit={() => {}} />);
-    expect(await screen.findByText(/opens this page for an hour after you sign in/, {}, SLOW)).toBeTruthy();
+    fireEvent.click(await screen.findByRole("tab", { name: "Centres & passkeys" }, SLOW));
+    expect(await screen.findByText(/3 students · staff can't sign in yet/, {}, SLOW)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Set passkey/ }));
+    const box = await screen.findByLabelText(/Type one, or leave it empty/, {}, SLOW);
+    fireEvent.change(box, { target: { value: "short" } });
+    expect((screen.getByRole("button", { name: /Use this/ }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(box, { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: /Make one/ }));
+    expect(((await screen.findByLabelText("Passkey", {}, SLOW)) as HTMLInputElement).value).toBe("kq7m-x3vd-9pna");
+    expect(sent).toEqual([{}]);
   }, 20_000);
 });

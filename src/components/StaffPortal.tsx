@@ -1,35 +1,28 @@
-// The staff page at /#/staff: centre staff and STEMulate volunteers follow
-// the students at their centres. An admin adds each person (admin page →
-// Staff & volunteers) and gives them a one-time set-up link
-// (/#/staff/setup?t=…) to choose their own password. Staff see progress and
-// can reset a forgotten PIN; volunteers only see progress
-// (server/routes/staff.js). Centre tablets are shared with children, so the
-// page clears itself after an hour unused and leaving it signs out.
+// The staff page at /#/staff: centre staff sign in with their centre's
+// passkey (one per centre, shared by its staff, set on the admin page →
+// Centres & passkeys) and follow that centre's students: numbers, progress,
+// and a new PIN when one is forgotten (server/routes/staff.js). Centre tablets
+// are shared with children, so the page clears itself after an hour unused
+// and leaving it signs out.
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowLeft, Check, Download, Eye, EyeOff, KeyRound, LogOut, RefreshCw, Search, ShieldCheck, X } from "lucide-react";
+import { Activity, ArrowLeft, CheckCircle2, Download, Eye, EyeOff, Gauge, KeyRound, LogOut, RefreshCw, Search, ShieldCheck, Users, X } from "lucide-react";
 import { toast, Toaster } from "sonner";
 import { ApiError } from "../api/client";
-import type { AdminGameRow, AdminProgressRow, AdminUser, StaffAccount } from "../api/admin";
-import {
-  PASSWORD_MIN,
-  staffLogin,
-  staffMe,
-  staffResetPin,
-  staffSetup,
-  staffSetupCheck,
-  staffStudentProgress,
-  staffStudents,
-} from "../api/staff";
+import type { AdminGameRow, AdminProgressRow, AdminUser } from "../api/admin";
+import { fetchReferenceData } from "../api/auth";
+import { staffLogin, staffMe, staffResetPin, staffStudentProgress, staffStudents, type StaffCentre } from "../api/staff";
+import type { ReferenceOption } from "../types-auth";
 import { clearPendingSignOut, finishPendingSignOut, signOutStaff } from "../lib/staffArea";
 import { avatarFor } from "./FriendsTab";
 import { cn } from "./ui/utils";
 import {
   ConfirmPin,
   ProgressCard,
+  StatTile,
   TOTAL_BEATS,
-  centreLabel,
   exportCsv,
+  parseSql,
   pctDone,
   savedFileToast,
   shortDate,
@@ -37,41 +30,25 @@ import {
   useOnVisible,
 } from "./admin/shared";
 import stemulateLogo from "../assets/stemulate_logo.png";
-import stembotGreen from "../assets/stembot_green.png";
 import "../styles/admin.css";
 
-const ROLE_LABEL: Record<StaffAccount["role"], string> = { admin: "Admin", staff: "Centre staff", volunteer: "Volunteer" };
-const SIGNED_OUT = "You were signed out (after an hour without use, 12 hours after signing in, or by an admin). Please sign in again.";
+const SIGNED_OUT = "You were signed out (after an hour without use, 12 hours after signing in, or because the passkey changed). Please sign in again.";
 const IDLE = "You were signed out after an hour without use. Please sign in again.";
-
-/** The set-up token in "#/staff/setup?t=<token>", or null. */
-function setupTokenFromHash() {
-  const m = /^#\/staff\/setup\?t=([0-9a-f]{64})$/.exec(window.location.hash);
-  return m ? m[1] : null;
-}
+const WEEK_MS = 7 * 864e5;
 
 type View =
   | { kind: "loading"; label?: string }
   | { kind: "signin"; notice?: string }
-  | { kind: "setup"; token: string }
-  | { kind: "dashboard"; staff: StaffAccount };
+  | { kind: "dashboard"; centre: StaffCentre };
 
 export function StaffPortal({ onExit }: { onExit: () => void }) {
-  const [view, setView] = useState<View>(() => {
-    const token = setupTokenFromHash();
-    return token ? { kind: "setup", token } : { kind: "loading" };
-  });
+  const [view, setView] = useState<View>({ kind: "loading" });
 
   useEffect(() => {
-    if (view.kind === "setup") {
-      // Keep the one-time token out of the address bar and history.
-      window.history.replaceState(null, "", "#/staff/setup");
-      return;
-    }
     // A sign-out that couldn't reach the server before is finished first.
     finishPendingSignOut()
       .then((clear) => (clear ? staffMe() : Promise.reject(new Error("Signed out."))))
-      .then(({ staff }) => setView({ kind: "dashboard", staff }))
+      .then(({ centre }) => setView({ kind: "dashboard", centre }))
       .catch(() => setView({ kind: "signin" }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -81,7 +58,7 @@ export function StaffPortal({ onExit }: { onExit: () => void }) {
   // once signed out; if the server can't be reached, back to the list.
   const signOut = async () => {
     if (view.kind !== "dashboard") return true;
-    const { staff } = view;
+    const { centre } = view;
     toast.dismiss();
     setView({ kind: "loading", label: "Signing out…" });
     // The admin page's passkey token in this tab goes too (staffArea.ts).
@@ -89,13 +66,13 @@ export function StaffPortal({ onExit }: { onExit: () => void }) {
       setView({ kind: "signin", notice: "Signed out. See you next time!" });
       return true;
     }
-    setView({ kind: "dashboard", staff });
+    setView({ kind: "dashboard", centre });
     toast.error("Couldn't sign out. Check the internet connection and try again.");
     return false;
   };
-  const signedInAs = (staff: StaffAccount) => {
+  const signedInAs = (centre: StaffCentre) => {
     clearPendingSignOut();
-    setView({ kind: "dashboard", staff });
+    setView({ kind: "dashboard", centre });
   };
   // Back to the Academy signs out first, so the next person can't come back in.
   const leave = async () => {
@@ -128,23 +105,15 @@ export function StaffPortal({ onExit }: { onExit: () => void }) {
             <img src={stemulateLogo} alt="" className="w-10 h-10 object-contain shrink-0" />
             <div className="min-w-0 leading-tight">
               <p className="font-display font-bold text-lg truncate">STEMulate Academy</p>
-              <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-muted-foreground">Staff &amp; volunteers</p>
+              <p className="text-[11px] font-extrabold uppercase tracking-[0.14em] text-muted-foreground">Centre staff</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             {view.kind === "dashboard" && (
-              <>
-                {view.staff.role === "admin" && (
-                  <a href="#/admin" className="btn-pop btn-pop-sm">
-                    <ShieldCheck size={15} strokeWidth={2.6} />
-                    <span className="hidden sm:inline">Admin page</span>
-                  </a>
-                )}
-                <button onClick={signOut} className="btn-pop btn-pop-sm" aria-label="Sign out">
-                  <LogOut size={15} strokeWidth={2.6} />
-                  <span className="hidden sm:inline">Sign out</span>
-                </button>
-              </>
+              <button onClick={signOut} className="btn-pop btn-pop-sm" aria-label="Sign out">
+                <LogOut size={15} strokeWidth={2.6} />
+                <span className="hidden sm:inline">Sign out</span>
+              </button>
             )}
             <button onClick={leave} className="btn-pop btn-pop-sm btn-primary" aria-label="Back to Academy">
               <ArrowLeft size={15} strokeWidth={2.6} />
@@ -155,7 +124,7 @@ export function StaffPortal({ onExit }: { onExit: () => void }) {
         {view.kind === "dashboard" && (
           // Always on screen, because centre tablets are shared with children.
           <p className="bg-soft-1 border-t-2 border-ink/15 px-4 md:px-8 py-1.5 text-center text-xs font-bold">
-            Signed in as {view.staff.fullName} ({ROLE_LABEL[view.staff.role]}). Sign out before you hand this device to a student.
+            Signed in for {view.centre.name}. Sign out before you hand this device to a student.
           </p>
         )}
       </header>
@@ -163,8 +132,7 @@ export function StaffPortal({ onExit }: { onExit: () => void }) {
         <div className="max-w-6xl mx-auto">
           {view.kind === "loading" && <p className="p-10 text-center font-bold text-muted-foreground">{view.label ?? "Loading…"}</p>}
           {view.kind === "signin" && <SignIn notice={view.notice} onSignedIn={signedInAs} />}
-          {view.kind === "setup" && <SetUp token={view.token} onDone={signedInAs} onBadLink={() => setView({ kind: "signin" })} />}
-          {view.kind === "dashboard" && <Dashboard staff={view.staff} onExpired={expired} />}
+          {view.kind === "dashboard" && <Dashboard centre={view.centre} onExpired={expired} />}
         </div>
       </main>
     </div>
@@ -174,25 +142,32 @@ export function StaffPortal({ onExit }: { onExit: () => void }) {
 // ---------------------------------------------------------------------------
 // Sign in
 // ---------------------------------------------------------------------------
-function SignIn({ notice, onSignedIn }: { notice?: string; onSignedIn: (s: StaffAccount) => void }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+function SignIn({ notice, onSignedIn }: { notice?: string; onSignedIn: (c: StaffCentre) => void }) {
+  const [centres, setCentres] = useState<ReferenceOption[] | null>(null);
+  const [centreId, setCentreId] = useState("");
+  const [passkey, setPasskey] = useState("");
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    fetchReferenceData()
+      .then((r) => setCentres(r.organisations))
+      .catch(() => setError("Couldn't load the centres. Check the internet connection and refresh."));
+  }, []);
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (busy) return;
+    if (busy || !centreId || !passkey) return;
     setBusy(true);
     setError(null);
     try {
-      const { staff } = await staffLogin(email.trim(), password);
-      toast.success(`Welcome, ${staff.fullName}!`);
-      onSignedIn(staff);
+      const { centre } = await staffLogin(Number(centreId), passkey);
+      toast.success(`Welcome, ${centre.name}!`);
+      onSignedIn(centre);
     } catch (err) {
       setError((err as Error).message);
-      setPassword("");
+      setPasskey("");
     } finally {
       setBusy(false);
     }
@@ -203,37 +178,49 @@ function SignIn({ notice, onSignedIn }: { notice?: string; onSignedIn: (s: Staff
       <form onSubmit={submit} className="admin-card px-6 pt-8 pb-7 sm:px-8" noValidate>
         <div className="text-center mb-6">
           <span className="kicker kicker-3">
-            <ShieldCheck size={13} strokeWidth={3} /> Staff &amp; volunteers
+            <ShieldCheck size={13} strokeWidth={3} /> Centre staff
           </span>
           <h1 className="font-display mt-3 mb-1.5">Sign in</h1>
           <p className="text-sm font-semibold text-muted-foreground">Follow your centre's students and their progress.</p>
         </div>
         {notice && <p className="mb-4 rounded-2xl bg-soft-1 border-2 border-ink/20 p-3 text-sm font-semibold">{notice}</p>}
-        <label htmlFor="staff-email" className="block text-sm font-bold mb-1.5">
-          Email
+        <label htmlFor="staff-centre" className="block text-sm font-bold mb-1.5">
+          Your centre
         </label>
-        <input
-          id="staff-email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          autoComplete="username"
-          autoFocus
+        <select
+          id="staff-centre"
+          value={centreId}
+          onChange={(e) => {
+            setCentreId(e.target.value);
+            setError(null);
+          }}
+          disabled={!centres}
           required
-          aria-invalid={!!error}
-          aria-describedby={error ? "staff-signin-error" : undefined}
           className="ink-input mb-4"
-        />
-        <label htmlFor="staff-password" className="block text-sm font-bold mb-1.5">
-          Password
+        >
+          <option value="" disabled>
+            {centres ? "Pick your centre" : "Loading centres…"}
+          </option>
+          {centres?.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+        <label htmlFor="staff-passkey" className="block text-sm font-bold mb-1.5">
+          Centre passkey
         </label>
         <div className="relative mb-2">
           <input
-            id="staff-password"
+            id="staff-passkey"
             type={show ? "text" : "password"}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            value={passkey}
+            onChange={(e) => {
+              setPasskey(e.target.value);
+              setError(null);
+            }}
             autoComplete="current-password"
+            spellCheck={false}
             required
             aria-invalid={!!error}
             aria-describedby={error ? "staff-signin-error" : undefined}
@@ -243,7 +230,7 @@ function SignIn({ notice, onSignedIn }: { notice?: string; onSignedIn: (s: Staff
             type="button"
             onClick={() => setShow((s) => !s)}
             className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted"
-            aria-label={show ? "Hide password" : "Show password"}
+            aria-label={show ? "Hide passkey" : "Show passkey"}
           >
             {show ? <EyeOff size={17} strokeWidth={2.5} /> : <Eye size={17} strokeWidth={2.5} />}
           </button>
@@ -251,11 +238,11 @@ function SignIn({ notice, onSignedIn }: { notice?: string; onSignedIn: (s: Staff
         <p id="staff-signin-error" role="alert" className="min-h-5 px-1 mb-3 text-sm font-bold text-destructive">
           {error}
         </p>
-        <button type="submit" disabled={!email.trim() || !password || busy} className="btn-pop btn-primary w-full text-base">
+        <button type="submit" disabled={!centreId || !passkey || busy} className="btn-pop btn-primary w-full text-base">
           {busy ? "Signing in…" : "Sign in"}
         </button>
         <p className="mt-5 text-center text-xs font-semibold text-muted-foreground">
-          New here, or forgot your password? Ask a STEMulate admin for a set-up link.
+          Don't have your centre's passkey? Ask a STEMulate admin.
         </p>
         <p className="mt-2 text-center text-xs font-semibold text-muted-foreground">
           Have the admin passkey?{" "}
@@ -270,139 +257,13 @@ function SignIn({ notice, onSignedIn }: { notice?: string; onSignedIn: (s: Staff
 }
 
 // ---------------------------------------------------------------------------
-// Set-up link: choose a password
-// ---------------------------------------------------------------------------
-function SetUp({ token, onDone, onBadLink }: { token: string; onDone: (s: StaffAccount) => void; onBadLink: () => void }) {
-  const [who, setWho] = useState<{ fullName: string; email: string } | null>(null);
-  const [linkError, setLinkError] = useState<string | null>(null);
-  const [password, setPassword] = useState("");
-  const [again, setAgain] = useState("");
-  const [show, setShow] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    staffSetupCheck(token)
-      .then(setWho)
-      .catch((e) => setLinkError((e as Error).message));
-  }, [token]);
-
-  const rules = [
-    { ok: password.length >= PASSWORD_MIN, text: `At least ${PASSWORD_MIN} characters` },
-    { ok: !!password && !!who && password.toLowerCase() !== who.email.toLowerCase(), text: "Not your email address" },
-    { ok: !!password && password === again, text: "Both passwords match" },
-  ];
-  const ready = rules.every((r) => r.ok);
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!ready || busy) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const { staff } = await staffSetup(token, password);
-      toast.success("Password set. You're signed in!");
-      window.history.replaceState(null, "", "#/staff");
-      onDone(staff);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  if (linkError) {
-    return (
-      <div className="max-w-md mx-auto pt-8 admin-card p-7 text-center">
-        <h1 className="font-display mb-2">This link doesn't work</h1>
-        <p className="text-sm font-semibold text-muted-foreground mb-5">{linkError}</p>
-        <button onClick={onBadLink} className="btn-pop btn-primary">
-          Go to sign in
-        </button>
-      </div>
-    );
-  }
-  if (!who) return <p className="p-10 text-center font-bold text-muted-foreground">Checking your link…</p>;
-
-  return (
-    <div className="max-w-md mx-auto pt-2 sm:pt-8">
-      <form onSubmit={submit} className="admin-card px-6 pt-8 pb-7 sm:px-8">
-        <div className="text-center mb-6">
-          <img src={stembotGreen} alt="" className="h-20 mx-auto die-cut mb-2" />
-          <h1 className="font-display mb-1.5">Hi, {who.fullName}!</h1>
-          <p className="text-sm font-semibold text-muted-foreground">Choose a password for your STEMulate Academy staff account.</p>
-        </div>
-        {/* For password managers: the account this password belongs to. */}
-        <label htmlFor="setup-email" className="block text-sm font-bold mb-1.5">
-          Email
-        </label>
-        <input id="setup-email" type="email" value={who.email} readOnly autoComplete="username" className="ink-input mb-4 opacity-80" />
-        <label htmlFor="setup-password" className="block text-sm font-bold mb-1.5">
-          New password
-        </label>
-        <div className="relative mb-4">
-          <input
-            id="setup-password"
-            type={show ? "text" : "password"}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="new-password"
-            autoFocus
-            aria-describedby="setup-rules"
-            className="ink-input pr-12"
-          />
-          <button
-            type="button"
-            onClick={() => setShow((s) => !s)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted"
-            aria-label={show ? "Hide passwords" : "Show passwords"}
-          >
-            {show ? <EyeOff size={17} strokeWidth={2.5} /> : <Eye size={17} strokeWidth={2.5} />}
-          </button>
-        </div>
-        <label htmlFor="setup-again" className="block text-sm font-bold mb-1.5">
-          Type it again
-        </label>
-        <input
-          id="setup-again"
-          type={show ? "text" : "password"}
-          value={again}
-          onChange={(e) => setAgain(e.target.value)}
-          autoComplete="new-password"
-          aria-describedby="setup-rules"
-          className="ink-input mb-3"
-        />
-        <ul id="setup-rules" className="mb-3 space-y-1 text-sm font-semibold" aria-live="polite">
-          {rules.map((r) => (
-            <li key={r.text} className={cn("flex items-center gap-2", r.ok ? "text-[var(--soft-3-ink)]" : "text-muted-foreground")}>
-              {r.ok ? <Check size={15} strokeWidth={3} aria-hidden /> : <X size={15} strokeWidth={3} aria-hidden />}
-              <span>
-                {r.text}
-                <span className="sr-only">{r.ok ? " (done)" : " (not yet)"}</span>
-              </span>
-            </li>
-          ))}
-        </ul>
-        <p role="alert" className="min-h-5 px-1 mb-3 text-sm font-bold text-destructive">
-          {error}
-        </p>
-        <button type="submit" disabled={!ready || busy} className="btn-pop btn-primary w-full text-base">
-          {busy ? "Saving…" : "Set password and sign in"}
-        </button>
-      </form>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Students at their centres
+// The centre's students
 // ---------------------------------------------------------------------------
 type Sort = "lastActive" | "name" | "progress";
 
-function Dashboard({ staff, onExpired }: { staff: StaffAccount; onExpired: () => void }) {
+function Dashboard({ centre, onExpired }: { centre: StaffCentre; onExpired: () => void }) {
   const [students, setStudents] = useState<AdminUser[] | null>(null);
   const [query, setQuery] = useState("");
-  const [centre, setCentre] = useState("all");
   const [sort, setSort] = useState<Sort>("lastActive");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -428,11 +289,10 @@ function Dashboard({ staff, onExpired }: { staff: StaffAccount; onExpired: () =>
   }, []);
 
   const all = students ?? [];
-  const centres = useMemo(() => [...new Set(all.map(centreLabel))].sort(), [all]);
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
     return all
-      .filter((u) => (!q || u.fullName.toLowerCase().includes(q) || u.username.toLowerCase().includes(q)) && (centre === "all" || centreLabel(u) === centre))
+      .filter((u) => !q || u.fullName.toLowerCase().includes(q) || u.username.toLowerCase().includes(q))
       .sort((a, b) =>
         sort === "name"
           ? a.fullName.localeCompare(b.fullName)
@@ -440,38 +300,47 @@ function Dashboard({ staff, onExpired }: { staff: StaffAccount; onExpired: () =>
             ? b.completed - a.completed
             : (b.lastActive ?? "").localeCompare(a.lastActive ?? ""),
       );
-  }, [all, query, centre, sort]);
-  const following = staff.role === "admin" || staff.allCentres ? "every centre" : staff.centres.map((c) => c.name).join(", ");
+  }, [all, query, sort]);
+  const stats = useMemo(() => {
+    if (!students) return null;
+    const weekAgo = Date.now() - WEEK_MS;
+    return {
+      students: students.length,
+      activeThisWeek: students.filter((u) => (parseSql(u.lastActive)?.getTime() ?? 0) >= weekAgo).length,
+      completed: students.reduce((n, u) => n + u.completed, 0),
+      averagePct: students.length ? Math.round(students.reduce((n, u) => n + pctDone(u), 0) / students.length) : 0,
+    };
+  }, [students]);
   const selected = all.find((u) => u.userId === selectedId) ?? null;
 
   return (
     <div className="space-y-6">
       <section className="panel-pop px-6 py-6 sm:px-8">
-        <h1 className="font-display !text-[clamp(1.6rem,1.2rem+1.6vw,2.4rem)] mb-2">Hello, {staff.fullName.split(" ")[0]}!</h1>
-        <p className="font-semibold opacity-90 mb-4">
-          {following ? `You follow ${following}.` : "You don't follow any centres yet. Ask a STEMulate admin to add yours."}{" "}
-          {students && `${all.length} student${all.length === 1 ? "" : "s"}.`}
-        </p>
+        <h1 className="font-display !text-[clamp(1.6rem,1.2rem+1.6vw,2.4rem)] mb-2">{centre.name}</h1>
+        <p className="font-semibold opacity-90 mb-4">Your centre's students on STEMulate Academy, and how they're getting on.</p>
         <div className="flex flex-wrap gap-3">
-          {/* A file of children's names stays on the device, so the page
-              offers one to centre staff and admins, not volunteers. */}
-          {staff.role !== "volunteer" && (
-            <button
-              onClick={() => {
-                exportCsv(shown);
-                savedFileToast(`${shown.length} student${shown.length === 1 ? "" : "s"}`);
-              }}
-              disabled={!students || shown.length === 0}
-              className="btn-pop"
-              title="Saves a file with these students' names. Don't keep it on a shared device."
-            >
-              <Download size={17} strokeWidth={2.6} /> Export CSV
-            </button>
-          )}
+          <button
+            onClick={() => {
+              exportCsv(shown);
+              savedFileToast(`${shown.length} student${shown.length === 1 ? "" : "s"}`);
+            }}
+            disabled={!students || shown.length === 0}
+            className="btn-pop"
+            title="Saves a file with these students' names. Don't keep it on a shared device."
+          >
+            <Download size={17} strokeWidth={2.6} /> Export CSV
+          </button>
           <button onClick={load} disabled={refreshing} className="btn-pop btn-pop2">
             <RefreshCw size={17} strokeWidth={2.6} className={cn(refreshing && "animate-spin")} /> Refresh
           </button>
         </div>
+      </section>
+
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4" aria-label="Centre numbers">
+        <StatTile tone={1} icon={<Users size={20} strokeWidth={2.6} />} label="Students" value={stats?.students} />
+        <StatTile tone={2} icon={<Activity size={20} strokeWidth={2.6} />} label="Active this week" value={stats?.activeThisWeek} />
+        <StatTile tone={3} icon={<CheckCircle2 size={20} strokeWidth={2.6} />} label="Activities done" value={stats?.completed} />
+        <StatTile tone={1} icon={<Gauge size={20} strokeWidth={2.6} />} label="Average progress %" value={stats?.averagePct} />
       </section>
 
       <section className="admin-card overflow-hidden" aria-label="Students">
@@ -481,16 +350,6 @@ function Dashboard({ staff, onExpired }: { staff: StaffAccount; onExpired: () =>
             <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search name or username" aria-label="Search students" className="ink-input pl-11" />
           </div>
           <div className="flex gap-3">
-            {centres.length > 1 && (
-              <select value={centre} onChange={(e) => setCentre(e.target.value)} aria-label="Filter by centre" className="ink-input sm:w-56 min-w-0">
-                <option value="all">All my centres</option>
-                {centres.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            )}
             <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="Sort students" className="ink-input min-w-0">
               <option value="lastActive">Last active</option>
               <option value="name">Name</option>
@@ -505,7 +364,7 @@ function Dashboard({ staff, onExpired }: { staff: StaffAccount; onExpired: () =>
           <div className="p-10 text-center">
             <p className="font-display text-lg font-semibold">{all.length === 0 ? "No students yet" : "No one matches that"}</p>
             <p className="text-sm font-semibold text-muted-foreground">
-              {all.length === 0 ? "Students who sign up at your centres show up here." : "Try a different name."}
+              {all.length === 0 ? "Students who pick your centre when they sign up show up here." : "Try a different name."}
             </p>
           </div>
         ) : (
@@ -521,7 +380,7 @@ function Dashboard({ staff, onExpired }: { staff: StaffAccount; onExpired: () =>
                     <div className="min-w-0">
                       <p className="font-display font-semibold text-[15px] truncate">{u.fullName}</p>
                       <p className="text-xs font-semibold text-muted-foreground truncate">
-                        @{u.username} · {u.schoolLevelName} · {centreLabel(u)}
+                        @{u.username} · {u.schoolLevelName}
                       </p>
                     </div>
                   </div>
@@ -541,19 +400,17 @@ function Dashboard({ staff, onExpired }: { staff: StaffAccount; onExpired: () =>
         )}
       </section>
 
-      <StudentPanel key={selected?.userId ?? "none"} student={selected} canResetPin={staff.role !== "volunteer"} onClose={() => setSelectedId(null)} onError={handle} />
+      <StudentPanel key={selected?.userId ?? "none"} student={selected} onClose={() => setSelectedId(null)} onError={handle} />
     </div>
   );
 }
 
 function StudentPanel({
   student,
-  canResetPin,
   onClose,
   onError,
 }: {
   student: AdminUser | null;
-  canResetPin: boolean;
   onClose: () => void;
   onError: (e: unknown) => void;
 }) {
@@ -619,23 +476,17 @@ function StudentPanel({
                 </div>
               </div>
               <p className="mt-3 text-xs font-bold opacity-85">
-                {centreLabel(student)} · joined {shortDate(student.createdAt)} · last active {shortDate(student.lastActive)}
+                Joined {shortDate(student.createdAt)} · last active {shortDate(student.lastActive)}
               </p>
             </div>
             <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
               <ProgressCard user={student} progress={progress} games={games} />
               <section className="admin-card p-5">
                 <h3 className="font-display !text-lg mb-1">Forgot their PIN?</h3>
-                {canResetPin ? (
-                  <>
-                    <p className="text-xs font-semibold text-muted-foreground mb-4">Set a new 4-digit PIN and tell the student. They're signed out everywhere.</p>
-                    <button onClick={() => setPinOpen(true)} className="btn-pop">
-                      <KeyRound size={16} strokeWidth={2.6} /> Reset PIN
-                    </button>
-                  </>
-                ) : (
-                  <p className="text-xs font-semibold text-muted-foreground">Ask centre staff or a STEMulate admin to reset it.</p>
-                )}
+                <p className="text-xs font-semibold text-muted-foreground mb-4">Set a new 4-digit PIN and tell the student. They're signed out everywhere.</p>
+                <button onClick={() => setPinOpen(true)} className="btn-pop">
+                  <KeyRound size={16} strokeWidth={2.6} /> Reset PIN
+                </button>
               </section>
             </div>
             <ConfirmPin

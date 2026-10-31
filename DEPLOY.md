@@ -147,7 +147,32 @@ Changing name servers can take a few hours to spread.
   `GEMINI_API_KEY` is added to the Academy's Environment tab. Decide first: see
   "AI chat: decide first" below. Everything else works without it.
 
+## Centre passkeys going live (schema version 6)
+
+Staff and volunteer accounts are replaced by one passkey per centre (the
+31 Oct 2026 meeting).
+
+1. **Database first**, outside class time: in Supabase's SQL Editor, run the
+   whole of `supabase/schema.sql` again (it is now version 6). It deletes the
+   staff and volunteer accounts and their sign-in records; students, the
+   Activity log and website sign-ups stay. Then push straight away: the old
+   server won't start on a version 6 database.
+2. **Set each centre's passkey.** Open `https://academy.projstemulate.com/#/admin`
+   with the admin passkey → **Centres & passkeys** → **Set passkey** for each
+   centre. Leave the box empty for a random one, or type your own (at least 10
+   characters). Copy it when it's shown: it isn't shown again (only a hash is
+   kept), so to share it later, set a new one. Send each centre its own.
+3. **Check it:** at `/#/staff`, pick a centre, type its passkey, and the centre's
+   students show with their numbers. A centre missing from the list? Add it
+   there with **Add a centre**; students can then pick it at sign-up.
+4. **To roll back**, revert the code and run the version 5 file
+   (`server/test/fixtures/schema-v5.sql`); staff accounts would have to be
+   added again.
+
 ## Round 8 going live (staff accounts, sign-up forms, school levels)
+
+Since schema version 6, staff accounts (steps 3 and 4 below) are replaced by
+centre passkeys: see "Centre passkeys going live" above.
 
 1. **Database first.** In Supabase's SQL Editor, run the whole of
    `supabase/schema.sql` again (it is now version 4; nothing is deleted). Do it

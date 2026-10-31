@@ -7,9 +7,13 @@ import { rateLimit } from "express-rate-limit";
 import { rpc } from "../db.js";
 import { route } from "../route.js";
 import { askGemini, GeminiError, geminiApiKey, geminiContents } from "../gemini.js";
-import { EMAIL_REGEX } from "./staff.js";
 import { clientKey } from "../clientKey.js";
 import { notifySignup } from "../notify.js";
+
+// Plain addresses only (an apostrophe is fine, as in o'brien@): nothing, like
+// ?bcc=, that could ride along in a mailto: link on the admin page. The
+// website's forms (website/forms.js) use the same rule.
+export const EMAIL_REGEX = /^[A-Za-z0-9._+'-]{1,64}@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/;
 
 // The public website's sign-up forms (website/get-involved.html) and its
 // assistant (website/assistant.js). The website is a separate static site, so

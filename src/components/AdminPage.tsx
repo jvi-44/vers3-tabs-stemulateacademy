@@ -16,7 +16,6 @@ import {
   Hash,
   KeyRound,
   Lock,
-  LogOut,
   MessageSquare,
   RefreshCw,
   RotateCcw,
@@ -51,8 +50,7 @@ import {
   type AdminGameRow,
 } from "../api/admin";
 import { fetchReferenceData } from "../api/auth";
-import { staffMe } from "../api/staff";
-import { clearPendingSignOut, finishPendingSignOut, signOutStaff } from "../lib/staffArea";
+import { clearPendingSignOut, finishPendingSignOut } from "../lib/staffArea";
 import type { ReferenceOption } from "../types-auth";
 import { avatarFor } from "./FriendsTab";
 import { cn } from "./ui/utils";
@@ -73,11 +71,12 @@ import {
   pctDone,
   savedFileToast,
   shortDate,
+  StatTile,
   useBusy,
   useIdle,
   useOnVisible,
 } from "./admin/shared";
-import { StaffAccounts } from "./admin/StaffAccounts";
+import { CentrePasskeys } from "./admin/CentrePasskeys";
 import { SignupsList } from "./admin/SignupsList";
 import { ActivityLog } from "./admin/ActivityLog";
 
@@ -90,15 +89,10 @@ const levelForXp = (xp: number) => Math.floor(Math.max(0, xp) / XP_PER_LEVEL) + 
 // ---------------------------------------------------------------------------
 export function AdminPage({ onExit }: { onExit: () => void }) {
   const [token, setToken] = useState<string | null>(readAdminToken);
-  // Signed in on the staff page with an admin account: its cookie works here
-  // too (for an hour after signing in), with no passkey.
-  const [accountAdmin, setAccountAdmin] = useState<string | null>(null);
-  // Signed in with an admin account whose hour here is up.
-  const [accountExpired, setAccountExpired] = useState(false);
   const [checking, setChecking] = useState(true);
 
-  // Ask the server how this tab is signed in: a passkey token from before
-  // (past its hour, or from before the server restarted) no longer counts.
+  // Ask the server whether this tab's passkey token still works: one from
+  // before (past its hour, or from before the server restarted) doesn't.
   useEffect(() => {
     const dropToken = () => {
       saveAdminToken(null);
@@ -109,18 +103,8 @@ export function AdminPage({ onExit }: { onExit: () => void }) {
       // (it also drops the passkey token).
       if (!(await finishPendingSignOut())) return dropToken();
       const stored = readAdminToken();
-      if (!stored) setToken(null);
-      try {
-        const s = await adminSession(stored ?? "");
-        if (s.via === "passkey") return;
-        if (stored) dropToken();
-        setAccountAdmin(s.fullName);
-      } catch {
-        if (stored) dropToken();
-        await staffMe()
-          .then(({ staff }) => setAccountExpired(staff.role === "admin"))
-          .catch(() => {});
-      }
+      if (!stored) return setToken(null);
+      await adminSession(stored).catch(dropToken);
     })().finally(() => setChecking(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -129,39 +113,18 @@ export function AdminPage({ onExit }: { onExit: () => void }) {
     toast.dismiss();
     saveAdminToken(null);
     setToken(null);
-    setAccountAdmin(null);
   };
-  const expired = () => {
-    if (accountAdmin) setAccountExpired(true);
-    lock();
-  };
-  // An admin account signs out of the staff page too (the same cookie opens
-  // both). The page goes blank while it waits; if the server can't be
-  // reached it comes back, with Sign out to try again. True once signed out.
-  const signOutAccount = async () => {
-    const name = accountAdmin;
-    lock();
-    if (await signOutStaff()) {
-      toast.success("Signed out.");
-      return true;
-    }
-    setAccountAdmin(name);
-    toast.error("Couldn't sign out. Check the internet connection and try again.");
-    return false;
-  };
-  // Leaving locks the page (and signs an admin account out), so the next
-  // person on a shared tablet can't come back in.
-  const leave = async () => {
-    if (accountAdmin && !(await signOutAccount())) return;
+  // Leaving locks the page, so the next person on a shared tablet can't come back in.
+  const leave = () => {
     lock();
     onExit();
   };
-  const signedIn = token !== null || accountAdmin !== null;
-  useIdle(signedIn, () => (accountAdmin ? signOutAccount() : lock()));
+  const signedIn = token !== null;
+  useIdle(signedIn, lock);
   // A tablet woken up later: check the admin access is still there.
   useOnVisible(signedIn, () => {
     adminSession(token ?? "").catch((e) => {
-      if (e instanceof ApiError && e.status === 401) expired();
+      if (e instanceof ApiError && e.status === 401) lock();
     });
   });
 
@@ -184,18 +147,6 @@ export function AdminPage({ onExit }: { onExit: () => void }) {
                 <span className="hidden sm:inline">Lock</span>
               </button>
             )}
-            {accountAdmin && (
-              <>
-                <a href="#/staff" className="btn-pop btn-pop-sm" aria-label="Staff page">
-                  <Users size={15} strokeWidth={2.6} />
-                  <span className="hidden sm:inline">Staff page</span>
-                </a>
-                <button onClick={signOutAccount} className="btn-pop btn-pop-sm" aria-label="Sign out">
-                  <LogOut size={15} strokeWidth={2.6} />
-                  <span className="hidden sm:inline">Sign out</span>
-                </button>
-              </>
-            )}
             <button onClick={leave} className="btn-pop btn-pop-sm btn-primary" aria-label="Back to Academy">
               <ArrowLeft size={15} strokeWidth={2.6} />
               <span className="hidden sm:inline">Back to Academy</span>
@@ -205,9 +156,7 @@ export function AdminPage({ onExit }: { onExit: () => void }) {
         {signedIn && (
           // Always on screen, because centre tablets are shared with children.
           <p className="bg-soft-1 border-t-2 border-ink/15 px-4 md:px-8 py-1.5 text-center text-xs font-bold">
-            {accountAdmin
-              ? `Signed in as ${accountAdmin} (Admin). Sign out before you hand this device to a student.`
-              : "Opened with the admin passkey. Lock it before you hand this device to a student."}
+            Opened with the admin passkey. Lock it before you hand this device to a student.
           </p>
         )}
       </header>
@@ -215,11 +164,10 @@ export function AdminPage({ onExit }: { onExit: () => void }) {
         <div className="max-w-6xl mx-auto">
           {checking ? (
             <p className="p-10 text-center font-bold text-muted-foreground">Loading…</p>
-          ) : signedIn ? (
-            <AdminTabs token={token ?? ""} onExpired={expired} />
+          ) : token ? (
+            <AdminTabs token={token} onExpired={lock} />
           ) : (
             <PasskeyGate
-              accountExpired={accountExpired}
               onSuccess={(t) => {
                 clearPendingSignOut();
                 saveAdminToken(t);
@@ -238,13 +186,12 @@ export function AdminPage({ onExit }: { onExit: () => void }) {
 // ---------------------------------------------------------------------------
 const TABS = [
   { id: "students", label: "Students" },
-  { id: "staff", label: "Staff & volunteers" },
+  { id: "centres", label: "Centres & passkeys" },
   { id: "signups", label: "Website sign-ups" },
   { id: "activity", label: "Activity" },
 ] as const;
 type Tab = (typeof TABS)[number]["id"];
 
-/** `token` is the passkey's, or "" when an admin account's cookie signs the calls. */
 function AdminTabs({ token, onExpired }: { token: string; onExpired: () => void }) {
   const [tab, setTab] = useState<Tab>("students");
   const handle = (e: unknown) => {
@@ -270,7 +217,7 @@ function AdminTabs({ token, onExpired }: { token: string; onExpired: () => void 
       </div>
       <div role="tabpanel" id="admin-panel" aria-labelledby={`admin-tab-${tab}`}>
         {tab === "students" && <AdminDashboard token={token} onExpired={onExpired} />}
-        {tab === "staff" && <StaffAccounts token={token} onError={handle} />}
+        {tab === "centres" && <CentrePasskeys token={token} onError={handle} />}
         {tab === "signups" && <SignupsList token={token} onError={handle} />}
         {tab === "activity" && <ActivityLog token={token} onError={handle} />}
       </div>
@@ -281,7 +228,7 @@ function AdminTabs({ token, onExpired }: { token: string; onExpired: () => void 
 // ---------------------------------------------------------------------------
 // Passkey gate
 // ---------------------------------------------------------------------------
-function PasskeyGate({ accountExpired, onSuccess }: { accountExpired: boolean; onSuccess: (token: string) => void }) {
+function PasskeyGate({ onSuccess }: { onSuccess: (token: string) => void }) {
   const [passkey, setPasskey] = useState("");
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -370,24 +317,12 @@ function PasskeyGate({ accountExpired, onSuccess }: { accountExpired: boolean; o
           {busy ? "Checking…" : "Unlock Admin HQ"}
         </button>
         <p className="mt-5 text-center text-xs font-semibold text-muted-foreground">
-          {accountExpired ? (
-            <>
-              Your admin account opens this page for an hour after you sign in. To come back in,{" "}
-              <a href="#/staff" className="underline font-bold">
-                sign out on the staff page
-              </a>{" "}
-              and sign in again.
-            </>
-          ) : (
-            <>
-              The passkey lives in the server's <code className="font-bold">.env</code> file as{" "}
-              <code className="font-bold">ADMIN_PASSKEY</code>. Have an admin account?{" "}
-              <a href="#/staff" className="underline font-bold">
-                Sign in on the staff page
-              </a>
-              .
-            </>
-          )}
+          The passkey lives in the server's <code className="font-bold">.env</code> file as{" "}
+          <code className="font-bold">ADMIN_PASSKEY</code>. Centre staff sign in on the{" "}
+          <a href="#/staff" className="underline font-bold">
+            staff page
+          </a>{" "}
+          with their centre's passkey.
         </p>
       </form>
     </div>
@@ -713,38 +648,6 @@ function SortHeader({
     >
       {label} <Icon size={13} strokeWidth={3} className={cn(!active && "opacity-40")} />
     </button>
-  );
-}
-
-const TONES = {
-  1: "bg-soft-1 text-foreground",
-  2: "bg-soft-2 text-[var(--soft-2-ink)]",
-  3: "bg-soft-3 text-[var(--soft-3-ink)]",
-} as const;
-
-function StatTile({
-  icon,
-  label,
-  value,
-  tone,
-  className,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: number | undefined;
-  tone: keyof typeof TONES;
-  className?: string;
-}) {
-  return (
-    <div className={cn("admin-card !rounded-[1.4rem] p-3.5 sm:p-5 flex items-center sm:items-start sm:flex-col gap-3", className)}>
-      <div className={cn("w-10 h-10 sm:w-11 sm:h-11 rounded-2xl border-2 border-ink flex items-center justify-center shrink-0", TONES[tone])}>{icon}</div>
-      <div className="min-w-0">
-        <p className="font-display font-bold text-[1.6rem] sm:text-[1.9rem] leading-none tabular-nums">
-          {value === undefined ? "–" : value.toLocaleString()}
-        </p>
-        <p className="mt-1 sm:mt-1.5 text-[10px] sm:text-[11px] font-extrabold uppercase tracking-[0.1em] sm:tracking-[0.12em] leading-tight text-muted-foreground sm:truncate">{label}</p>
-      </div>
-    </div>
   );
 }
 

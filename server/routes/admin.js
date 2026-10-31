@@ -4,20 +4,16 @@ import bcrypt from "bcryptjs";
 import { rpc } from "../db.js";
 import { route } from "../route.js";
 import { deleteUserCompletely, PIN_REGEX, studentListItem } from "../users.js";
-import { actorOf, APP_ORIGIN, fromAppOrigin, hashToken, logAction, publicStaff, staffSessionFromRequest } from "../staffAuth.js";
+import { logAction } from "../staffAuth.js";
 import { clientKey } from "../clientKey.js";
-import { EMAIL_REGEX } from "./staff.js";
+import { generatePasskey, passkeyProblem } from "./staff.js";
 
-// Admin access is either the passkey kept in the ADMIN_PASSKEY environment
-// variable (see .env.example) or a signed-in staff account with the "admin"
-// role (routes/staff.js). A correct passkey returns a short-lived admin token
-// that the admin page sends with every request; an admin account's own
-// session cookie works the same way for an hour after signing in.
+// Admin access is the passkey kept in the ADMIN_PASSKEY environment variable
+// (see .env.example). A correct passkey returns a short-lived admin token that
+// the admin page sends with every request.
 const router = express.Router();
 
 const ADMIN_TOKEN_MINUTES = 60;
-// An admin account's cookie opens the admin page this long after sign-in.
-const ADMIN_COOKIE_MINUTES = 60;
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 15;
 
@@ -56,33 +52,23 @@ router.post("/login", (req, res) => {
   res.json({ token, expiresInMinutes: ADMIN_TOKEN_MINUTES });
 });
 
-async function requireAdmin(req, res, next) {
+function requireAdmin(req, res, next) {
   const header = req.headers.authorization || "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : "";
   const expiresAt = adminTokens.get(token);
   if (expiresAt && expiresAt >= Date.now()) return next();
   adminTokens.delete(token);
-  try {
-    if (!fromAppOrigin(req)) return res.status(403).json({ error: "Not allowed." });
-    const session = await staffSessionFromRequest(req);
-    if (session?.staff.role === "admin" && Date.now() - session.signedInAt < ADMIN_COOKIE_MINUTES * 60_000) {
-      req.staff = session.staff;
-      return next();
-    }
-  } catch (err) {
-    return next(err);
-  }
-  res.status(401).json({ error: "Admin session expired. Enter the passkey, or sign in to your admin account again." });
+  res.status(401).json({ error: "Admin session expired. Enter the passkey again." });
 }
 
-/** Who to name in the activity log: the admin account, or null for the passkey. */
-const actor = (req) => actorOf(req.staff);
+/** Who to name in the activity log: null, the admin passkey (stem_staff_log_action). */
+const actor = () => null;
 
 router.use(requireAdmin);
 
-// How this admin is signed in: with the passkey, or as an admin account.
+// Whether this tab's admin token still works.
 router.get("/session", (req, res) => {
-  res.json(req.staff ? { via: "staff", fullName: req.staff.full_name } : { via: "passkey" });
+  res.json({ via: "passkey" });
 });
 
 router.get("/stats", route(async (req, res) => {
@@ -229,164 +215,64 @@ router.get("/activity", route(async (req, res) => {
   });
 }));
 
-// ---- Staff and volunteer accounts ----
+// ---- Centres and their passkeys ----
 
-const ROLES = ["admin", "staff", "volunteer"];
-const SETUP_LINK_DAYS = 7;
+const CENTRE_NAME_MAX = 80;
 
-/** A new one-time set-up link for an account, or null if it doesn't exist.
- *  With `by` (actorOf, null for the passkey) it goes in the activity log. */
-async function setupLink(staffId, by) {
-  const token = crypto.randomBytes(32).toString("hex");
-  const now = Date.now();
-  const expiresAt = now + SETUP_LINK_DAYS * 864e5;
-  const staff = await rpc("stem_staff_setup_create", {
-    p_staff_id: staffId,
-    p_token: hashToken(token),
-    p_expires_at: expiresAt,
-    p_now: now,
-    p_actor: by ?? null,
-    p_log: by !== undefined,
+router.get("/centres", route(async (req, res) => {
+  const rows = await rpc("stem_centres");
+  res.json({
+    centres: rows.map((r) => ({
+      id: r.org_id,
+      name: r.org_name,
+      hasPasskey: r.has_passkey,
+      passkeySetAt: r.passkey_set_at,
+      students: r.students,
+    })),
   });
-  if (!staff) return null;
-  // The token goes after "#", which browsers never send to a server.
-  return { url: `${APP_ORIGIN}/#/staff/setup?t=${token}`, expiresAt: new Date(expiresAt).toISOString() };
-}
-
-/** Checks the account fields sent; `partial` allows leaving any of them out. */
-function staffFields(body, partial) {
-  const out = {};
-  const has = (k) => body?.[k] !== undefined;
-  if (!partial || has("fullName")) {
-    const name = typeof body?.fullName === "string" ? body.fullName.trim() : "";
-    if (!name || name.length > NAME_MAX) return { error: `Give a name of 1 to ${NAME_MAX} characters.` };
-    // The activity log names the passkey this way.
-    if (name.toLowerCase() === "admin passkey") return { error: "Use the person's own name." };
-    out.fullName = name;
-  }
-  if (!partial || has("email")) {
-    const email = typeof body?.email === "string" ? body.email.trim() : "";
-    if (email.length > 254 || !EMAIL_REGEX.test(email)) return { error: "Give a valid email address." };
-    out.email = email;
-  }
-  if (!partial || has("role")) {
-    if (!ROLES.includes(body?.role)) return { error: "Role must be admin, staff or volunteer." };
-    out.role = body.role;
-  }
-  if (!partial || has("allCentres")) {
-    if (typeof (body?.allCentres ?? false) !== "boolean") return { error: "allCentres must be true or false." };
-    out.allCentres = body?.allCentres ?? false;
-  }
-  if (!partial || has("centreIds")) {
-    const ids = body?.centreIds ?? [];
-    if (!Array.isArray(ids) || ids.length > 50 || !ids.every((id) => Number.isSafeInteger(id) && id > 0)) {
-      return { error: "centreIds must be a list of centre ids." };
-    }
-    out.centreIds = ids;
-  }
-  if (partial && has("disabled")) {
-    if (typeof body.disabled !== "boolean") return { error: "disabled must be true or false." };
-    out.disabled = body.disabled;
-  }
-  return { fields: out };
-}
-
-// Volunteers follow the centres they help at, never every centre (also a
-// rule on the staff table, so two changes at once can't get round it).
-const VOLUNTEER_ALL_CENTRES = "Volunteers follow the centres they help at. Pick those centres instead of all of them.";
-const STAFF_ERRORS = {
-  taken: "Someone already has an account with that email.",
-  centre: "Pick centres from the list.",
-  volunteer: VOLUNTEER_ALL_CENTRES,
-};
-
-router.get("/staff", route(async (req, res) => {
-  const rows = await rpc("stem_staff_list");
-  res.json({ staff: rows.map(publicStaff) });
 }));
 
-// Adds an account and returns its first set-up link.
-router.post("/staff", route(async (req, res) => {
-  const { fields, error } = staffFields(req.body, false);
-  if (error) return res.status(400).json({ error });
-  if (fields.role === "volunteer" && fields.allCentres) return res.status(400).json({ error: VOLUNTEER_ALL_CENTRES });
-  const result = await rpc("stem_staff_create", {
-    p_full_name: fields.fullName,
-    p_email: fields.email,
-    p_role: fields.role,
-    p_all_centres: fields.allCentres,
-    p_org_ids: fields.centreIds,
-    p_actor: actor(req),
-  });
-  if (result.error) return res.status(400).json({ error: STAFF_ERRORS[result.error] ?? "Couldn't add that account." });
-  const link = await setupLink(result.staff.staff_id);
-  // Deleted again straight away (another admin, at the same moment).
-  if (!link) return res.status(404).json({ error: "Account not found." });
-  res.json({ staff: publicStaff(result.staff), setupLink: link });
+// Adds a centre to the list students pick from at sign-up.
+router.post("/centres", route(async (req, res) => {
+  const name = typeof req.body?.name === "string" ? req.body.name.trim().replace(/\s+/g, " ") : "";
+  if (!name || name.length > CENTRE_NAME_MAX) return res.status(400).json({ error: `Give a name of 1 to ${CENTRE_NAME_MAX} characters.` });
+  const result = await rpc("stem_centre_add", { p_name: name, p_actor: actor(req) });
+  if (result.error) return res.status(400).json({ error: "That centre is already on the list." });
+  res.json({ centre: { id: result.org_id, name, hasPasskey: false, passkeySetAt: null, students: 0 } });
 }));
 
-/** The account in the URL, or answers 404. */
-async function staffRow(req, res) {
+/** The centre id in the URL, or null after answering 404. */
+function centreId(req, res) {
   const id = Number(req.params.id);
-  const row = Number.isSafeInteger(id) && id > 0 ? (await rpc("stem_staff_list")).find((s) => s.staff_id === id) : null;
-  if (!row) res.status(404).json({ error: "Account not found." });
-  return row ?? null;
+  if (Number.isSafeInteger(id) && id > 0) return id;
+  res.status(404).json({ error: "Centre not found." });
+  return null;
 }
 
-/** True (after answering 400) when an admin account tries to lock itself out. */
-function lockingSelfOut(req, res, id, fields) {
-  const self = req.staff?.staff_id === id;
-  if (self && (fields === null || fields.disabled === true || (fields.role && fields.role !== "admin"))) {
-    res.status(400).json({ error: "You can't remove your own admin access. Ask another admin, or use the passkey." });
-    return true;
+// Sets a centre's passkey: the one typed, or a new random one. It's only ever
+// shown in this answer (the database keeps a hash), and everyone signed in
+// with the old one is signed out.
+router.post("/centres/:id/passkey", route(async (req, res) => {
+  const id = centreId(req, res);
+  if (!id) return;
+  const typed = req.body?.passkey;
+  if (typed !== undefined && typed !== null && typed !== "") {
+    const problem = passkeyProblem(typed);
+    if (problem) return res.status(400).json({ error: problem });
   }
-  return false;
-}
-
-router.patch("/staff/:id", route(async (req, res) => {
-  const row = await staffRow(req, res);
-  if (!row) return;
-  const id = row.staff_id;
-  const { fields, error } = staffFields(req.body, true);
-  if (error) return res.status(400).json({ error });
-  if (Object.keys(fields).length === 0) return res.status(400).json({ error: "Nothing to change." });
-  if (lockingSelfOut(req, res, id, fields)) return;
-  if ((fields.role ?? row.role) === "volunteer" && (fields.allCentres ?? row.all_centres)) {
-    return res.status(400).json({ error: VOLUNTEER_ALL_CENTRES });
-  }
-  const result = await rpc("stem_staff_update", {
-    p_staff_id: id,
-    p_full_name: fields.fullName,
-    p_email: fields.email,
-    p_role: fields.role,
-    p_all_centres: fields.allCentres,
-    p_disabled: fields.disabled,
-    p_org_ids: fields.centreIds,
-    // Each thing that changes gets its line in the activity log, in the same step.
-    p_actor: actor(req),
-  });
-  if (!result) return res.status(404).json({ error: "Account not found." });
-  if (result.error) return res.status(400).json({ error: STAFF_ERRORS[result.error] ?? "Couldn't change that account." });
-  // A new email voids the account's set-up link (stem_staff_update).
-  res.json({ staff: publicStaff(result.staff), linkVoided: result.link_voided === true });
+  const passkey = typed ? typed : generatePasskey();
+  const hash = await bcrypt.hash(passkey, 10);
+  const ok = await rpc("stem_centre_set_passkey", { p_org_id: id, p_passkey_hash: hash, p_actor: actor(req) });
+  if (!ok) return res.status(404).json({ error: "Centre not found." });
+  res.json({ passkey });
 }));
 
-// A fresh one-time link (the old one stops working), e.g. for a forgotten password.
-router.post("/staff/:id/setup-link", route(async (req, res) => {
-  const row = await staffRow(req, res);
-  if (!row) return;
-  // Whoever uses a set-up link chooses the account's password, so each one is recorded.
-  const link = await setupLink(row.staff_id, actor(req));
-  if (!link) return res.status(404).json({ error: "Account not found." });
-  res.json({ setupLink: link });
-}));
-
-router.delete("/staff/:id", route(async (req, res) => {
-  const row = await staffRow(req, res);
-  if (!row) return;
-  const id = row.staff_id;
-  if (lockingSelfOut(req, res, id, null)) return;
-  await rpc("stem_staff_delete", { p_staff_id: id, p_actor: actor(req) });
+// Turns a centre's sign-in off (and signs everyone out) until a new passkey is set.
+router.delete("/centres/:id/passkey", route(async (req, res) => {
+  const id = centreId(req, res);
+  if (!id) return;
+  const ok = await rpc("stem_centre_set_passkey", { p_org_id: id, p_passkey_hash: null, p_actor: actor(req) });
+  if (!ok) return res.status(404).json({ error: "Centre not found." });
   res.json({ success: true });
 }));
 

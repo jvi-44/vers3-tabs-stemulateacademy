@@ -29,7 +29,7 @@ test("today's schema upgrades a version 3 database and keeps its students", asyn
     await db.exec(schema);
     await db.exec(schema);
 
-    assert.equal((await one("SELECT stem_schema_version() AS v")).v, 5);
+    assert.equal((await one("SELECT stem_schema_version() AS v")).v, 6);
     const kid = await one("SELECT full_name, pin_hash, school_level_id, org_id, xp, atoms FROM users WHERE user_id = $1", [id]);
     assert.deepEqual(kid, { full_name: "Old Kid", pin_hash: "pin-hash", school_level_id: 2, org_id: 1, xp: 1234, atoms: 56 });
     assert.equal((await one("SELECT score FROM lesson_progress WHERE user_id = $1", [id])).score, 80);
@@ -45,7 +45,7 @@ test("today's schema upgrades a version 3 database and keeps its students", asyn
     // The fixed lists keep their ids.
     assert.equal((await one("SELECT count(*)::int AS n FROM organisations")).n, orgsBefore);
     // The new tables start empty, and the student shows up in the new list.
-    for (const t of ["staff", "staff_centres", "staff_sessions", "staff_setup_tokens", "staff_login_attempts", "staff_actions", "site_signups", "site_counters"]) {
+    for (const t of ["centre_sessions", "centre_login_attempts", "staff_actions", "site_signups", "site_counters"]) {
       assert.equal((await one(`SELECT count(*)::int AS n FROM ${t}`)).n, 0, t);
     }
     const listed = (await one("SELECT stem_students_for(NULL) AS j")).j;
@@ -55,30 +55,40 @@ test("today's schema upgrades a version 3 database and keeps its students", asyn
   }
 });
 
-test("a draft round-8 database: old function versions go, and a volunteer following every centre is put right", async () => {
+test("a schema 5 database: staff accounts go, the activity log and centres stay", async () => {
   const db = await PGlite.create();
   try {
+    // As live on 31 Oct 2026 (fixtures/schema-v5.sql), with an account that did things.
+    await db.exec(fs.readFileSync(new URL("./fixtures/schema-v5.sql", import.meta.url), "utf8"));
+    const one = async (sql, params) => (await db.query(sql, params)).rows[0];
+    const { staff_id: staffId } = await one(
+      "INSERT INTO staff (full_name, email, role, password_hash) VALUES ('Ms Tan', 'tan@example.org', 'staff', 'hash') RETURNING staff_id",
+    );
+    await db.query("INSERT INTO staff_centres (staff_id, org_id) VALUES ($1, 1)", [staffId]);
+    await db.query("INSERT INTO staff_sessions (token, staff_id, expires_at, created_at, last_seen) VALUES ('t', $1, 1, 1, 1)", [staffId]);
+    await db.query("SELECT stem_staff_log_action($1, 'Ms Tan', 'tan@example.org', NULL, 'viewed the student list')", [staffId]);
+
     const schema = fs.readFileSync(SCHEMA_FILE, "utf8");
     await db.exec(schema);
-    const one = async (sql, params) => (await db.query(sql, params)).rows[0];
-    // As an earlier draft left it: no volunteer rule, the old functions, and a
-    // volunteer following every centre.
-    await db.exec(`
-      ALTER TABLE staff DROP CONSTRAINT staff_volunteer_not_all_centres;
-      CREATE FUNCTION stem_staff_log_action(p_staff_id bigint, p_user_id bigint, p_action text) RETURNS json
-        LANGUAGE sql AS $$ SELECT NULL::json $$;
-      CREATE FUNCTION stem_staff_actions(p_limit integer) RETURNS json LANGUAGE sql AS $$ SELECT '[]'::json $$;
-      INSERT INTO staff (full_name, email, role, all_centres) VALUES ('Draft Volunteer', 'draft@example.org', 'volunteer', true);
-    `);
     await db.exec(schema);
 
-    assert.deepEqual(await one("SELECT role, all_centres FROM staff WHERE email = 'draft@example.org'"), { role: "volunteer", all_centres: false });
-    assert.equal((await one("SELECT count(*)::int AS n FROM pg_constraint WHERE conname = 'staff_volunteer_not_all_centres'")).n, 1);
-    // One version of each function, the new one.
-    for (const [name, args] of [["stem_staff_log_action", 5], ["stem_staff_actions", 3]]) {
-      const rows = (await db.query("SELECT pronargs FROM pg_proc WHERE proname = $1", [name])).rows;
-      assert.deepEqual(rows.map((r) => r.pronargs), [args], name);
-    }
+    assert.equal((await one("SELECT stem_schema_version() AS v")).v, 6);
+    const tables = (await db.query("SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename LIKE 'staff%' ORDER BY 1")).rows;
+    assert.deepEqual(tables.map((r) => r.tablename), ["staff_actions"]);
+    // The log keeps who did what, as they were.
+    assert.deepEqual(await one("SELECT staff_id, staff_name, staff_email, action FROM staff_actions"), {
+      staff_id: staffId,
+      staff_name: "Ms Tan",
+      staff_email: "tan@example.org",
+      action: "viewed the student list",
+    });
+    // No old staff functions are left, and one version of each that stays.
+    const old = (await db.query("SELECT proname FROM pg_proc WHERE proname ~ '^stem_staff_' ORDER BY 1")).rows;
+    assert.deepEqual(old.map((r) => r.proname), ["stem_staff_actions", "stem_staff_log_action"]);
+    const listing = (await db.query("SELECT pronargs FROM pg_proc WHERE proname = 'stem_students_for'")).rows;
+    assert.deepEqual(listing.map((r) => r.pronargs), [1]);
+    // Centres keep their ids and start with no passkey.
+    assert.deepEqual(await one("SELECT org_name, passkey_hash FROM organisations WHERE org_id = 1"), { org_name: "Brighton Connection", passkey_hash: null });
   } finally {
     await db.close();
   }

@@ -1,6 +1,7 @@
 // Pieces shared by the admin page (AdminPage.tsx) and the staff page
 // (StaffPortal.tsx): dates, labels, the students CSV, a student's progress
-// card, the confirm box, the new-PIN box and the shared-tablet safeguards.
+// card, the stat tiles, the confirm box, the new-PIN box and the shared-tablet
+// safeguards.
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
@@ -329,5 +330,38 @@ export function ConfirmPin({
         </div>
       </form>
     </Modal>
+  );
+}
+
+const TONES = {
+  1: "bg-soft-1 text-foreground",
+  2: "bg-soft-2 text-[var(--soft-2-ink)]",
+  3: "bg-soft-3 text-[var(--soft-3-ink)]",
+} as const;
+
+/** A number on the admin and staff dashboards; `undefined` shows a dash while loading. */
+export function StatTile({
+  icon,
+  label,
+  value,
+  tone,
+  className,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: number | undefined;
+  tone: keyof typeof TONES;
+  className?: string;
+}) {
+  return (
+    <div className={cn("admin-card !rounded-[1.4rem] p-3.5 sm:p-5 flex items-center sm:items-start sm:flex-col gap-3", className)}>
+      <div className={cn("w-10 h-10 sm:w-11 sm:h-11 rounded-2xl border-2 border-ink flex items-center justify-center shrink-0", TONES[tone])}>{icon}</div>
+      <div className="min-w-0">
+        <p className="font-display font-bold text-[1.6rem] sm:text-[1.9rem] leading-none tabular-nums">
+          {value === undefined ? "–" : value.toLocaleString()}
+        </p>
+        <p className="mt-1 sm:mt-1.5 text-[10px] sm:text-[11px] font-extrabold uppercase tracking-[0.1em] sm:tracking-[0.12em] leading-tight text-muted-foreground sm:truncate">{label}</p>
+      </div>
+    </div>
   );
 }

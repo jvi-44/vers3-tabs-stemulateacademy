@@ -36,13 +36,13 @@ the frontend.
 | `SIGNUP_FROM_EMAIL` | The sender; `onboarding@resend.dev` only delivers to the Resend account's own address until projstemulate.com is verified in Resend | `Project STEMulate <onboarding@resend.dev>` |
 | `SIGNUP_NOTIFY_KINDS` | Which forms send that email | `volunteer,partner,chapter` |
 | `SESSION_SECRET` | Signing the login cookie (32+ random bytes) | random per start (everyone is signed out on restart) |
-| `APP_ORIGIN` | The Academy's own address: the only origin allowed to call the API with the login cookie (CORS), staff sign-in and set-up included, and the start of every staff set-up link | `http://localhost:5173` |
+| `APP_ORIGIN` | The Academy's own address: the only origin allowed to call the API with the login cookie (CORS), staff sign-in included, and the start of every staff set-up link | `http://localhost:5173` |
 | `SUPABASE_URL` | The Supabase project to save students' data in (on the host) | none (the local database is used) |
 | `SUPABASE_SECRET_KEY` | That project's secret key (`sb_secret_...`), server-only. Never the publishable key | none |
 | `DB_PATH` | Folder for the local database when Supabase isn't set (`memory://` keeps it in memory) | `server/.pglite` |
 | `PORT` | API port | `4000` |
-| `ADMIN_PASSKEY` | The admin page at `/#/admin` (use something long) | none (only admin accounts can open it) |
-| `AUTH_RATE_LIMIT_PER_MIN` | Per address: sign-in, sign-up, Forgot PIN, admin passkey, staff sign-in and set-up link requests per minute | `20` |
+| `ADMIN_PASSKEY` | The admin page at `/#/admin` (use something long) | none (the admin page stays locked) |
+| `AUTH_RATE_LIMIT_PER_MIN` | Per address: sign-in, sign-up, Forgot PIN, admin passkey and staff sign-in requests per minute | `20` |
 | `WEBSITE_URL` | On the host: where old `/site` links redirect, and the only site whose pages may send the website's forms and assistant | none (`/site` serves `website/`) |
 | `SITE_ORIGINS` | Instead of `WEBSITE_URL`'s two addresses (with and without `www`): the website addresses allowed, comma-separated | from `WEBSITE_URL` |
 | `SIGNUPS_PER_15_MIN` | Website sign-ups per address per 15 minutes (a class after a school talk shares one) | `30` |
@@ -173,24 +173,28 @@ accounts can't silently land on a temporary disk.
 ## Admin page
 
 Set `ADMIN_PASSKEY` in `.env`, start the app, and open
-`http://localhost:5173/#/admin` (admin accounts can also open it from the
-staff page, for an hour after signing in). Enter the passkey to see every student and
-their progress, fix accounts, and manage the tabs: **Staff & volunteers**
-(accounts for the staff page), **Website sign-ups** (the forms on the
-website) and **Activity** (who opened the student list, looked at or changed a
-student, or changed a staff account).
+`http://localhost:5173/#/admin`. Enter the passkey to see every student and
+their progress, fix accounts, and manage the tabs: **Centres & passkeys**
+(add a centre, and set, change or turn off each centre's passkey for the staff
+page), **Website sign-ups** (the forms on the website) and **Activity** (who
+opened the student list, looked at or changed a student, or changed a
+centre's passkey).
 
 ## Staff page
 
-Centre staff and STEMulate volunteers sign in at `/#/staff` with an email and
-password. An admin adds each person (Admin page → Staff & volunteers) and
-gives them a one-time set-up link to choose their password. They see the
-students at the centres they follow: volunteers see progress, centre staff can
-also reset a forgotten PIN, and admins also get the admin page. Sessions end
-after an hour unused or 12 hours after signing in (centre tablets are shared);
-the staff and admin pages also clear themselves after an hour without use, and
-going back to the Academy signs out. The Activity tab keeps, for 12 months, who
-opened the student list, looked at a student's progress or changed an account.
+Centre staff sign in at `/#/staff` by picking their centre and typing its
+passkey. Each centre has one passkey, shared by its staff: an admin sets it on
+the admin page (Centres & passkeys), typed or made at random, and sees it once
+(only a hash is kept). Setting a new one, or turning it off, signs everyone out.
+Signed in, staff see their centre's numbers (students, active this week,
+activities done, average progress) and its students' progress, and can reset a
+forgotten PIN. Five wrong passkeys in 15 minutes from one address (or 30 for a
+centre from anywhere) make sign-in wait. Sessions end after an hour unused or 12
+hours after signing in (centre tablets are shared); the staff and admin pages
+also clear themselves after an hour without use, and going back to the Academy
+signs out. The Activity tab keeps, for 12 months, who opened the student list,
+looked at a student's progress or changed something: "CDAC passkey", for
+example, or "Admin passkey".
 
 ## School levels
 

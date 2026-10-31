@@ -88,21 +88,20 @@
         <ul>
           <li><b>The child.</b> On the Me page they can see their details and download all of them.</li>
           <li><b>Other children</b> see only a username, avatar and level, never a name or centre.</li>
-          <li><b>Staff and volunteers</b>, with their own accounts, see the children at the centres they look after: name, username, school level, progress, scores and when they were last active. The staff page never shows messages or reflections.</li>
-          <li><b>Centre staff</b> (not volunteers) can also set a new PIN for a child who forgot theirs. Whoever sets it could sign in as that child, so every PIN reset is recorded. The staff page also lets them save their list of children as a spreadsheet file, and reminds them not to keep it on a shared device.</li>
-          <li><b>Accounts that follow every centre.</b> The admin team can let a centre-staff account (one of our own coordinators, for example) follow every centre. It then sees every child, including those whose centre isn't on our list, and can reset their PINs.</li>
-          <li><b>The Project STEMulate admin team</b> can see and fix any account. Each time staff or the admin team open the list of children, look at a child's progress, or change or delete an account, we record which account did it (or that the shared admin passkey was used) and when. Looking again within the hour is recorded once. We keep that record for 12 months.</li>
+          <li><b>Centre staff</b>, with their centre's passkey, see the children at their own centre: name, username, school level, progress, scores and when they were last active. The staff page never shows messages or reflections.</li>
+          <li><b>Centre staff</b> can also set a new PIN for a child at their centre who forgot theirs. Whoever sets it could sign in as that child, so every PIN reset is recorded. The staff page also lets them save their list of children as a spreadsheet file, and reminds them not to keep it on a shared device.</li>
+          <li><b>The Project STEMulate admin team</b> can see and fix any account. Each time staff or the admin team open the list of children, look at a child's progress, or change or delete an account, we record which centre's passkey did it (or that the admin passkey was used) and when. Looking again within the hour is recorded once. We keep that record for 12 months.</li>
         </ul>
         <h3>The "Ask STEMbots" lesson helper</h3>
         <p>The STEMbots lesson helper is switched off for now, so children's questions aren't sent anywhere. Before we switch it on, we'll name here the AI service it uses and what that service keeps. When it's on, only the question, the lesson's topic and the child's school level go to that service to write a reply, never their name or account.</p>
         <h3>How long, and deleting it</h3>
         <p>An account stays until it is deleted. A child can delete their own account from the Me page, and a parent, guardian or centre can ask us to delete it. Deleting an account removes everything tied to it.</p>
-        <h3>Staff and volunteer accounts</h3>
-        <p>For each staff or volunteer account we keep a name, email, role, the centres it follows, a scrambled password and when it last signed in. Sign-in tries (the email typed and whether it worked) are kept for 30 days. An admin can switch off or delete an account at any time.</p>
+        <h3>Centre passkeys</h3>
+        <p>Each centre has one passkey for its staff, kept only in scrambled form. Staff don't have their own accounts, so we keep no names or emails for them. Sign-in tries (the centre, a scrambled form of the internet address and whether it worked) are kept for 30 days. The admin team can change or turn off a centre's passkey at any time, which signs everyone out.</p>
 
         <h2 id="hosting">Where it's kept</h2>
         <ul>
-          <li>This website and STEMulate Academy are hosted by Render. Children's accounts, staff accounts and website sign-ups are kept in a Supabase database in Singapore that only our server can reach.</li>
+          <li>This website and STEMulate Academy are hosted by Render. Children's accounts and website sign-ups are kept in a Supabase database in Singapore that only our server can reach.</li>
           <li>When you sign up on this website to volunteer, partner with us or start a chapter, what you typed is also emailed to our team through Resend, an email service in the United States. When you ask us to remove your sign-up, we delete that email too.</li>
           <li>This website and STEMulate Academy load their fonts from Google Fonts, which sees your device's IP address. Neither uses advertising or tracking cookies.</li>
           <li>Lesson videos in STEMulate Academy play from YouTube in its privacy-enhanced mode (youtube-nocookie.com). YouTube sees the device's IP address, and once a video plays it may store data on the device.</li>

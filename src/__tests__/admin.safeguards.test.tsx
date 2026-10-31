@@ -7,10 +7,11 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { useIdle } from "../components/admin/shared";
 import { ActivityLog, STUDENT_ACTIONS } from "../components/admin/ActivityLog";
 import { mailtoHref } from "../components/admin/SignupsList";
-import { EMAIL_REGEX } from "../api/staff";
+import { EMAIL_REGEX } from "../api/admin";
 // The server's and the website's own files, as text.
 import adminRoutes from "../../server/routes/admin.js?raw";
 import staffRoutes from "../../server/routes/staff.js?raw";
+import siteRoutes from "../../server/routes/site.js?raw";
 import websiteForms from "../../website/forms.js?raw";
 
 afterEach(() => {
@@ -96,7 +97,7 @@ describe("email addresses", () => {
   });
 
   it("the admin page, the website's forms and the server check addresses the same way", () => {
-    const server = /export const EMAIL_REGEX = (\/.+\/);/.exec(staffRoutes)?.[1];
+    const server = /export const EMAIL_REGEX = (\/.+\/);/.exec(siteRoutes)?.[1];
     const website = /const EMAIL = (\/.+\/);/.exec(websiteForms)?.[1];
     expect(server).toBe(String(EMAIL_REGEX));
     expect(website).toBe(String(EMAIL_REGEX));

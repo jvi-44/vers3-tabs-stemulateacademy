@@ -1,4 +1,21 @@
-# What changed in this update (Forgot PIN safety)
+# What changed in this update (centre passkeys)
+
+- **Centre staff sign in with their centre's passkey.** As agreed in the
+  31 Oct 2026 meeting, each centre has one passkey, shared by its staff,
+  instead of a staff or volunteer account per person. On the staff page
+  (`/#/staff`) they pick their centre, type the passkey, and see only that
+  centre's students: numbers at the top (students, active this week,
+  activities done, average progress), each student's progress, and Reset PIN.
+- **Admin page → Centres & passkeys** replaces Staff & volunteers: add a
+  centre, and set (typed or random), change or turn off its passkey. A
+  passkey is shown once; a new one signs everyone out. The Activity tab names
+  who did what as "<centre> passkey" or "Admin passkey".
+- The admin page opens with the admin passkey only (admin accounts are gone).
+- Database: `supabase/schema.sql` is now version 6. It removes the staff
+  account tables (students, the Activity log and sign-ups stay). Run it right
+  before this code goes live (DEPLOY.md "Centre passkeys going live").
+
+# Earlier update (Forgot PIN safety)
 
 - **Forgot PIN closes after 3 wrong answers.** There are only 49 possible
   answers (7 colours × 7 subjects), and the 5-tries-per-15-minutes lockout

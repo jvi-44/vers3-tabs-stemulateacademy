@@ -99,17 +99,10 @@ test("a new PIN reopens Forgot PIN", async (t) => {
   await t.test("reset by centre staff", async () => {
     const { username, userId } = await student();
     await miss(username, 3);
-    const added = await admin("POST", "/staff", {
-      fullName: "Ms Lim",
-      email: "lim@example.org",
-      role: "staff",
-      allCentres: false,
-      centreIds: [1],
-    });
-    assert.equal(added.status, 200, JSON.stringify(added.json));
-    const token = new URL(added.json.setupLink.url.replace("#/", "")).searchParams.get("t");
+    // Centre 1's staff, signed in with its passkey.
+    const { passkey } = (await admin("POST", "/centres/1/passkey")).json;
     const staff = srv.client();
-    assert.equal((await staff.post("/api/staff/setup", { token, password: "correct horse battery" })).status, 200);
+    assert.equal((await staff.post("/api/staff/login", { centreId: 1, passkey })).status, 200);
     assert.equal((await staff.post(`/api/staff/students/${userId}/reset-pin`, { pin: "2222" })).status, 200);
     await assertOpen(username);
   });

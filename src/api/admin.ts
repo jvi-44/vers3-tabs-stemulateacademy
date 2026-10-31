@@ -109,57 +109,43 @@ export const adminSetCentre = (token: string, userId: number, centre: { orgId: n
     token,
   );
 
-// An empty token means "signed in as an admin account": the staff session
-// cookie is sent instead (routes/admin.js).
-export const adminSession = (token: string) =>
-  request<{ via: "passkey" } | { via: "staff"; fullName: string }>("/admin/session", {}, token);
+/** Whether this tab's admin token still works. */
+export const adminSession = (token: string) => request<{ via: "passkey" }>("/admin/session", {}, token);
 
-// ---- Staff and volunteer accounts ----
+// ---- Centres and their passkeys ----
 
-export type StaffRole = "admin" | "staff" | "volunteer";
-
-export interface StaffAccount {
-  staffId: number;
-  fullName: string;
-  email: string;
-  role: StaffRole;
-  allCentres: boolean;
-  disabled: boolean;
-  /** False until the set-up link has been used. */
-  hasPassword: boolean;
-  centres: { id: number; name: string }[];
-  createdAt: string;
-  lastLoginAt: string | null;
+export interface AdminCentre {
+  id: number;
+  name: string;
+  hasPasskey: boolean;
+  /** When its passkey was last set, or null without one. */
+  passkeySetAt: string | null;
+  students: number;
 }
 
-export interface SetupLink {
-  url: string;
-  /** ISO time the one-time link stops working. */
-  expiresAt: string;
-}
+export const adminCentres = (token: string) => request<{ centres: AdminCentre[] }>("/admin/centres", {}, token);
 
-export interface StaffFields {
-  fullName: string;
-  email: string;
-  role: StaffRole;
-  allCentres: boolean;
-  centreIds: number[];
-}
+export const adminAddCentre = (token: string, name: string) =>
+  request<{ centre: AdminCentre }>("/admin/centres", { method: "POST", body: JSON.stringify({ name }) }, token);
 
-export const adminStaffList = (token: string) => request<{ staff: StaffAccount[] }>("/admin/staff", {}, token);
+/** Sets a centre's passkey: `passkey` as typed, or a new random one when it's
+ *  left out. The answer is the only time the passkey can be seen. */
+export const adminSetCentrePasskey = (token: string, centreId: number, passkey?: string) =>
+  request<{ passkey: string }>(
+    `/admin/centres/${centreId}/passkey`,
+    { method: "POST", body: JSON.stringify(passkey ? { passkey } : {}) },
+    token,
+  );
 
-export const adminCreateStaff = (token: string, fields: StaffFields) =>
-  request<{ staff: StaffAccount; setupLink: SetupLink }>("/admin/staff", { method: "POST", body: JSON.stringify(fields) }, token);
+/** Turns a centre's sign-in off until a new passkey is set. */
+export const adminTurnOffCentrePasskey = (token: string, centreId: number) =>
+  request(`/admin/centres/${centreId}/passkey`, { method: "DELETE" }, token);
 
-/** `linkVoided`: a new email stopped the account's set-up link working. */
-export const adminUpdateStaff = (token: string, staffId: number, patch: Partial<StaffFields> & { disabled?: boolean }) =>
-  request<{ staff: StaffAccount; linkVoided: boolean }>(`/admin/staff/${staffId}`, { method: "PATCH", body: JSON.stringify(patch) }, token);
+/** The passkey rule the server checks (routes/staff.js passkeyProblem). */
+export const PASSKEY_MIN = 10;
 
-export const adminNewSetupLink = (token: string, staffId: number) =>
-  request<{ setupLink: SetupLink }>(`/admin/staff/${staffId}/setup-link`, { method: "POST" }, token);
-
-export const adminDeleteStaff = (token: string, staffId: number) =>
-  request(`/admin/staff/${staffId}`, { method: "DELETE" }, token);
+/** The email rule the server checks (routes/site.js EMAIL_REGEX). */
+export const EMAIL_REGEX = /^[A-Za-z0-9._+'-]{1,64}@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/;
 
 // ---- Website sign-ups and the activity log ----
 
@@ -183,9 +169,9 @@ export const adminDeleteSignup = (token: string, signupId: number) =>
 
 export interface ActivityRow {
   actionId: number;
-  /** Null for the admin passkey, or an account deleted since. */
+  /** Only on rows from before centre passkeys, when staff had accounts. */
   staffId: number | null;
-  /** The account's name and email when it did this ("Admin passkey": no email). */
+  /** Who did this: "Admin passkey", "<centre> passkey", or an old account's name. */
   staffName: string;
   staffEmail: string | null;
   userId: number | null;

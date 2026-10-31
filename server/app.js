@@ -92,7 +92,7 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: "Too many tries — please wait a minute and try again." },
 });
-app.use(["/api/login", "/api/signup", "/api/recover", "/api/admin/login", "/api/staff/login", "/api/staff/setup"], authLimiter);
+app.use(["/api/login", "/api/signup", "/api/recover", "/api/admin/login", "/api/staff/login"], authLimiter);
 
 // In-memory store for short-lived PIN-reset tokens (username -> {token, expiresAt}).
 // Fine for a small deployment; swap for Redis if you scale this up.
