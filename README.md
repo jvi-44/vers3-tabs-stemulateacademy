@@ -31,6 +31,10 @@ the frontend.
 | `ASSISTANT_DAILY_LIMIT` | Website assistant questions a day for everyone together (a UTC day; `0` keeps it off) | `300` |
 | `GEMINI_MODEL` | Chat model | `gemini-2.5-flash` |
 | `GEMINI_FALLBACK_MODEL` | Model tried when the main one is out of quota or overloaded (`off` to skip) | `gemini-2.5-flash-lite` |
+| `RESEND_API_KEY` | Emailing the team about each website sign-up (volunteer, partner, chapter) through Resend | none (no email; sign-ups still on the admin page) |
+| `SIGNUP_NOTIFY_EMAIL` | Who gets that email (several, comma-separated) | none |
+| `SIGNUP_FROM_EMAIL` | The sender; `onboarding@resend.dev` only delivers to the Resend account's own address until projstemulate.com is verified in Resend | `Project STEMulate <onboarding@resend.dev>` |
+| `SIGNUP_NOTIFY_KINDS` | Which forms send that email | `volunteer,partner,chapter` |
 | `SESSION_SECRET` | Signing the login cookie (32+ random bytes) | random per start (everyone is signed out on restart) |
 | `APP_ORIGIN` | The Academy's own address: the only origin allowed to call the API with the login cookie (CORS), staff sign-in and set-up included, and the start of every staff set-up link | `http://localhost:5173` |
 | `SUPABASE_URL` | The Supabase project to save students' data in (on the host) | none (the local database is used) |

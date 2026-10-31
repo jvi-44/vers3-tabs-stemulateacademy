@@ -69,6 +69,11 @@ services:
         sync: false
       - key: GEMINI_MODEL
         value: gemini-2.5-flash
+      # Emails the team about website sign-ups through Resend (server/notify.js).
+      - key: RESEND_API_KEY
+        sync: false
+      - key: SIGNUP_NOTIFY_EMAIL
+        sync: false
       # A whole class signs in from one centre's Wi-Fi, i.e. one IP address.
       # Each username still locks after 5 wrong PINs.
       - key: AUTH_RATE_LIMIT_PER_MIN

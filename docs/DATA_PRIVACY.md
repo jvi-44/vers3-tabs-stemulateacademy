@@ -74,6 +74,16 @@ or centre (see `otherUser()` in `server/users.js`).
 - Students see this in child-friendly words at sign-up and on the Me page,
   with a link to `website/privacy.html`.
 
+## Sign-up emails
+
+Each volunteer, partner and chapter sign-up on the website is emailed to
+`SIGNUP_NOTIFY_EMAIL` through Resend (a US email service) once
+`RESEND_API_KEY` is set, with everything typed in the form (`server/notify.js`).
+Newsletter sign-ups aren't emailed. Resend keeps sent emails for a limited time
+under its own policy; the copy in the team's inbox stays until someone deletes
+it, so delete it along with the sign-up when someone asks to be removed.
+`website/privacy.html` says this under "Where it's kept".
+
 ## AI chat providers
 
 Both chats are switched off for now. The lesson helper sends the question to
