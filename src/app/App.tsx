@@ -227,6 +227,8 @@ export default function App() {
       xp: u.xp,
       level: u.level,
       atoms: u.atoms,
+      // Badges aren't stored on the server yet; never keep MOCK_USER's demo ones.
+      badges: [],
       avatar: u.avatar ? avatarToUrl(u.avatar) : MOCK_USER.avatar,
     }));
     setIsLoggedIn(true);
@@ -492,7 +494,13 @@ export default function App() {
   if (isStaffRoute) return <StaffPortal onExit={() => (window.location.hash = "")} />;
 
   if (!isLoggedIn)
-    return <LoginScreen key={loginView} onLogin={handleLogin} onGuest={handleGuest} initialView={loginView} />;
+    return (
+      <>
+        {/* Wrong PIN, username taken, lockouts and "account deleted" are toasts. */}
+        <Toaster position="top-center" />
+        <LoginScreen key={loginView} onLogin={handleLogin} onGuest={handleGuest} initialView={loginView} />
+      </>
+    );
 
   const activeLesson = GAME_LESSONS.find((l) => l.id === selectedLessonId);
 
@@ -915,6 +923,7 @@ function Dashboard({
             onClick={() => setFiltersOpen((v) => !v)}
             className={cn("btn-pop btn-pop-sm shrink-0", (filtersOpen || hasAnySelection(tagSelection)) && "btn-primary")}
             aria-expanded={filtersOpen}
+            aria-label="Filters"
           >
             <SlidersHorizontal size={15} /> <span className="hidden sm:inline">Filters</span>
           </button>

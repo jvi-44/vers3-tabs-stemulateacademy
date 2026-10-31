@@ -280,6 +280,7 @@ export function GamesTab({
                       sfx.click();
                       setSession({ def, liveCode: null });
                     }}
+                    aria-label={`Play ${def.title} solo`}
                     className="btn-pop btn-pop-sm btn-primary justify-center"
                   >
                     <Play size={14} fill="currentColor" /> Solo
@@ -288,6 +289,7 @@ export function GamesTab({
                     disabled={!isUnlocked || busy || isGuest}
                     title={isGuest ? "Live play is for members" : undefined}
                     onClick={() => startLive(def)}
+                    aria-label={`Play ${def.title} live with friends`}
                     className="btn-pop btn-pop-sm justify-center"
                   >
                     <Users size={14} /> Live
@@ -302,7 +304,11 @@ export function GamesTab({
                   </div>
                   <p className="text-sm font-black text-[color:var(--card-foreground)]">{def.title}</p>
                   <p className="text-xs font-bold text-muted-foreground">Play it first in the "{def.lessonTitle}" lesson to unlock it here.</p>
-                  <button onClick={() => onOpenBeat(lessonIdFor(def), def.id)} className="btn-pop btn-pop-sm btn-primary mt-1">
+                  <button
+                    onClick={() => onOpenBeat(lessonIdFor(def), def.id)}
+                    aria-label={`Go to lesson: ${def.lessonTitle}`}
+                    className="btn-pop btn-pop-sm btn-primary mt-1"
+                  >
                     Go to lesson
                   </button>
                 </div>

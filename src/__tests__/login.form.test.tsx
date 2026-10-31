@@ -62,6 +62,9 @@ describe("LoginScreen", () => {
     expect(screen.getByText(/We save your first name, school level and centre/)).toBeTruthy();
     const consent = screen.getByRole("checkbox", { name: "My parent or teacher said I can join" });
     expect(consent.getAttribute("aria-checked")).toBe("false");
-    expect((screen.getByRole("button", { name: "Create Account" }) as HTMLButtonElement).disabled).toBe(true);
+    // The button stays clickable so it can say what's missing, but sends nothing.
+    const before = calls;
+    fireEvent.click(screen.getByRole("button", { name: "Create Account" }));
+    expect(calls).toBe(before);
   });
 });

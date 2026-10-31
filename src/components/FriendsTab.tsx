@@ -375,7 +375,7 @@ export function FriendsTab({ myUserId }: { myUserId: number }) {
                   {icon}
                   {label}
                   {id === "friends" && incoming.length > 0 && (
-                    <span className="absolute -top-2.5 -right-1.5 min-w-5 h-5 px-1 rounded-full bg-destructive text-white border-2 border-ink text-[10px] font-black leading-4 rotate-12 shadow-[0_2px_0_var(--ink-line)]">
+                    <span className="absolute -top-2.5 -right-1.5 min-w-5 h-5 px-1 rounded-full bg-destructive text-destructive-foreground border-2 border-ink text-[10px] font-black leading-4 rotate-12 shadow-[0_2px_0_var(--ink-line)]">
                       {incoming.length}
                     </span>
                   )}
@@ -690,7 +690,7 @@ export function FriendsTab({ myUserId }: { myUserId: number }) {
       <AlertDialog open={!!confirm} onOpenChange={(o) => !o && setConfirm(null)}>
         <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
-            <span className="w-14 h-14 mx-auto sm:mx-0 rounded-2xl bg-destructive text-white border-[2.5px] border-ink shadow-[0_3px_0_var(--ink-line)] flex items-center justify-center -rotate-6">
+            <span className="w-14 h-14 mx-auto sm:mx-0 rounded-2xl bg-destructive text-destructive-foreground border-[2.5px] border-ink shadow-[0_3px_0_var(--ink-line)] flex items-center justify-center -rotate-6">
               {confirm?.kind === "leave" ? <LogOut size={24} strokeWidth={2.5} /> : <UserMinus size={24} strokeWidth={2.5} />}
             </span>
             <AlertDialogTitle>
@@ -704,7 +704,7 @@ export function FriendsTab({ myUserId }: { myUserId: number }) {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={doConfirm} className="bg-destructive text-white">
+            <AlertDialogAction onClick={doConfirm} className="bg-destructive text-destructive-foreground">
               {confirm?.kind === "leave" ? "Leave group" : "Remove friend"}
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -965,7 +965,7 @@ function FriendsPanel({
 
       {incoming.length > 0 && (
         <div className="space-y-2">
-          <span className="tag-pop !bg-destructive !text-white">Friend requests ({incoming.length})</span>
+          <span className="tag-pop !bg-destructive !text-destructive-foreground">Friend requests ({incoming.length})</span>
           {incoming.map((r) => (
             <div
               key={r.requestId}

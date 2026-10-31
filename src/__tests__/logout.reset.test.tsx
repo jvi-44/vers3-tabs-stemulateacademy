@@ -133,7 +133,7 @@ describe("logout", () => {
     expect(sidebarAvatar().src).toContain("avatar_boy_teal");
     expect(sidebarAvatar().src).not.toContain("pink_ponytail");
     expect(screen.queryByText(/Alice/)).toBeNull();
-  });
+  }, 15000); // renders the whole App; slow when the full suite runs in parallel
 
   it("rehydrates from the session cookie, not localStorage", async () => {
     localStorage.setItem("stemulate_user_id", "1"); // the old, forgeable key

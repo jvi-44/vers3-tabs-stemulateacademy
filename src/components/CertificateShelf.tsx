@@ -60,7 +60,7 @@ function Trophy({ item, onOpen }: { item: CertificateShelfItem; onOpen: (id: str
         )}
       </div>
       <div className="min-w-0 px-0.5">
-        <p className="font-display font-semibold text-foreground leading-tight truncate">
+        <p className="font-display font-semibold text-foreground leading-tight break-words">
           {module.emoji && <span aria-hidden>{module.emoji} </span>}
           {module.name}
         </p>

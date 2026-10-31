@@ -14,7 +14,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default: `${INKED} bg-primary text-primary-foreground`,
-        destructive: `${INKED} bg-destructive text-white focus-visible:ring-destructive/30`,
+        destructive: `${INKED} bg-destructive text-destructive-foreground focus-visible:ring-destructive/30`,
         outline: `${INKED} bg-card text-foreground hover:bg-soft-1`,
         secondary: `${INKED} bg-pop-2 text-[#1b1b12]`,
         ghost: "text-foreground hover:bg-soft-1",

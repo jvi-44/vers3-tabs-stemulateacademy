@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { AnimatePresence, motion, type TargetAndTransition } from "motion/react";
 import confetti from "canvas-confetti";
 import { Check, ChevronRight, Play, X } from "lucide-react";
@@ -205,6 +205,26 @@ export function EpisodePlayer({ episode, carried, playerName, onFinish, onClose,
     return () => window.removeEventListener("keydown", onKey);
   });
 
+  // It covers the whole screen, so Tab cycles inside it instead of reaching the dashboard behind.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const trapTab = (e: ReactKeyboardEvent) => {
+    if (e.key !== "Tab" || !rootRef.current) return;
+    const items = [...rootRef.current.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])',
+    )].filter((el) => el.getClientRects().length > 0);
+    if (!items.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    const inside = rootRef.current.contains(document.activeElement);
+    if (e.shiftKey && (document.activeElement === first || !inside)) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && (document.activeElement === last || !inside)) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
+
   const speaker = line?.speaker;
   const helper: BotId = useMemo(() => {
     for (const k of ["lifeline", "lead", "buddy"]) if (isBot(flags[k])) return flags[k] as BotId;
@@ -218,7 +238,10 @@ export function EpisodePlayer({ episode, carried, playerName, onFinish, onClose,
     <div
       className="ep-root fixed inset-0 z-[200] overflow-hidden bg-[#0b0a14] text-[#1f1a17]"
       role="dialog"
+      aria-modal="true"
       aria-label={`Episode ${episode.number}: ${episode.title}`}
+      ref={rootRef}
+      onKeyDown={trapTab}
     >
       {/* The world, seen through your eyes */}
       <motion.div key={nodeId} className="absolute inset-0 origin-center" initial={false} animate={CAMERA[node.camera ?? "still"]}>
@@ -249,6 +272,7 @@ export function EpisodePlayer({ episode, carried, playerName, onFinish, onClose,
             voice.stop();
             onClose();
           }}
+          aria-label={view.kind === "title" ? "Not now" : "Exit episode"}
           className="h-9 rounded-xl border-2 border-white/70 bg-black/40 hover:bg-black/60 px-2.5 text-white text-sm font-bold flex items-center gap-1"
         >
           <X size={16} /> <span className="hidden sm:inline">{view.kind === "title" ? "Not now" : "Exit"}</span>

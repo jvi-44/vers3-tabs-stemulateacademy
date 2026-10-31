@@ -776,3 +776,14 @@
   background-size: contain;
   background-repeat: no-repeat;
 }
+
+/* iOS Safari zooms the page in when a field under 16px gets focus, and the
+   phone-sized root font makes 1rem about 14px. Outside any layer so it beats
+   Tailwind's text-sm/text-base; fields meant to be bigger use !text-xl etc. */
+@media (max-width: 767px) {
+  input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"]),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}

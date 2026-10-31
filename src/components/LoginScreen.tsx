@@ -318,7 +318,7 @@ function SignInForm({
           onChange={(e) => PIN_PATTERN.test(e.target.value) && setPin(e.target.value)}
           placeholder="••••"
           maxLength={4}
-          className={`${FIELD} w-full px-4 py-4 h-auto font-bold text-center text-2xl tracking-[1em]`}
+          className={`${FIELD} w-full px-4 py-4 h-auto font-bold text-center !text-2xl tracking-[1em]`}
           onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
         />
       </div>
@@ -332,7 +332,7 @@ function SignInForm({
       </button>
 
       <Button
-        disabled={!username.trim() || pin.length !== 4 || loading}
+        disabled={loading}
         onClick={handleSubmit}
         className={BIG_BUTTON}
       >
@@ -383,25 +383,32 @@ function SignUpForm({
 
   const isOtherOrg = orgId === "OTHER";
 
-  const canSubmit =
-    fullName.trim() &&
-    schoolLevelId &&
-    orgId &&
-    (!isOtherOrg || customOrgName.trim()) &&
-    username.trim() &&
-    pin.length === 4 &&
-    pin === confirmPin &&
-    recoveryColourId &&
-    recoverySubjectId &&
-    consent;
+  // The first thing still missing, in form order, so the button can say what to fix.
+  const missing = !fullName.trim()
+    ? "Please enter your first name."
+    : !schoolLevelId
+      ? "Please pick your Primary school level."
+      : !orgId
+        ? "Please pick your organisation or centre."
+        : isOtherOrg && !customOrgName.trim()
+          ? "Please type your centre's name."
+          : !username.trim()
+            ? "Please choose a username."
+            : pin.length !== 4
+              ? "Please choose a 4-digit PIN."
+              : pin !== confirmPin
+                ? "PINs don't match."
+                : !recoveryColourId
+                  ? "Please pick a favourite colour."
+                  : !recoverySubjectId
+                    ? "Please pick a favourite subject."
+                    : !consent
+                      ? "Please tick the box to say your parent or teacher said you can join."
+                      : null;
 
   const handleSubmit = async () => {
-    if (!canSubmit) {
-      if (pin.length === 4 && pin !== confirmPin) {
-        toast.error("PINs don't match.");
-      } else {
-        toast.error("Please complete every field.");
-      }
+    if (missing) {
+      toast.error(missing);
       return;
     }
     setLoading(true);
@@ -572,7 +579,7 @@ function SignUpForm({
       </div>
 
       <Button
-        disabled={!canSubmit || loading}
+        disabled={loading}
         onClick={handleSubmit}
         className={BIG_BUTTON}
       >

@@ -995,7 +995,7 @@ function ToolButton({
       <span
         className={cn(
           "w-10 h-10 rounded-xl border-2 border-ink flex items-center justify-center shrink-0",
-          danger ? "bg-destructive text-white" : "bg-soft-1",
+          danger ? "bg-destructive text-destructive-foreground" : "bg-soft-1",
         )}
       >
         {icon}

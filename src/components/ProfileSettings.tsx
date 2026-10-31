@@ -259,7 +259,7 @@ function PinInput({ label, value, onChange }: { label: string; value: string; on
         maxLength={4}
         onChange={(e) => /^\d{0,4}$/.test(e.target.value) && onChange(e.target.value)}
         placeholder="••••"
-        className="pop-field w-full h-12 px-3 text-center text-xl font-bold tracking-[0.5em]"
+        className="pop-field w-full h-12 px-3 text-center !text-xl font-bold tracking-[0.5em]"
       />
     </label>
   );
@@ -373,7 +373,7 @@ export function PrivacyAndAccount({ authUser, onDeleted }: { authUser: AuthUser;
         <button onClick={download} className="btn-pop btn-pop-sm btn-pop3">
           <Download size={16} strokeWidth={2.5} /> Download my data
         </button>
-        <button onClick={() => setStep("confirm")} className="btn-pop btn-pop-sm !bg-destructive !text-white">
+        <button onClick={() => setStep("confirm")} className="btn-pop btn-pop-sm !bg-destructive !text-destructive-foreground">
           <Trash2 size={16} strokeWidth={2.5} /> Delete my account
         </button>
       </div>
@@ -407,20 +407,20 @@ export function PrivacyAndAccount({ authUser, onDeleted }: { authUser: AuthUser;
               onChange={(e) => /^\d{0,4}$/.test(e.target.value) && setPin(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && pin.length === 4 && doDelete()}
               placeholder="••••"
-              className="pop-field w-full h-14 px-3 text-center text-2xl font-bold tracking-[0.6em] focus-visible:!shadow-[0_0_0_4px_color-mix(in_srgb,var(--destructive)_30%,transparent),0_3px_0_var(--ink-line)]"
+              className="pop-field w-full h-14 px-3 text-center !text-2xl font-bold tracking-[0.6em] focus-visible:!shadow-[0_0_0_4px_color-mix(in_srgb,var(--destructive)_30%,transparent),0_3px_0_var(--ink-line)]"
             />
           )}
           <AlertDialogFooter>
             <AlertDialogCancel>Keep my account</AlertDialogCancel>
             {step === "confirm" ? (
-              <button onClick={() => setStep("pin")} className="btn-pop btn-pop-sm !bg-destructive !text-white">
+              <button onClick={() => setStep("pin")} className="btn-pop btn-pop-sm !bg-destructive !text-destructive-foreground">
                 Yes, delete it
               </button>
             ) : (
               <button
                 onClick={doDelete}
                 disabled={pin.length !== 4 || busy}
-                className="btn-pop btn-pop-sm !bg-destructive !text-white"
+                className="btn-pop btn-pop-sm !bg-destructive !text-destructive-foreground"
               >
                 {busy ? "Deleting…" : "Delete forever"}
               </button>
