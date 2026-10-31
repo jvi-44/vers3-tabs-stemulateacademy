@@ -9,8 +9,9 @@ type ChatMsg = { from: "me" | "bot"; botKey?: string; text: string };
 const BOT_FOR_BEAT = (beat: LessonBeat) =>
   beat.subject === "science" ? "sophia" : beat.subject === "math" ? "matthew" : "timothy";
 
-// Shown whenever the chat can't get a real answer (no API key, rate limit,
-// network error, blocked reply...). Never fake an answer.
+// Shown when the chat gets no reply at all (no API key, network error...).
+// When Gemini is out of quota or the student hits the hourly limit, the server
+// sends its own fallback reply (a hint from the lesson) instead. Never fake an answer.
 const RESTING_MESSAGE = "STEMbots are resting right now — try again soon!";
 
 // Must match the server's limits in server/app.js (/api/chat).
@@ -42,9 +43,8 @@ async function callGemini(messages: ChatMsg[], beat: LessonBeat): Promise<{ botK
       credentials: "include",
       body: JSON.stringify({ beatId: beat.id, messages: geminiMessages }),
     });
-    if (!res.ok) throw new Error("API error");
-    const data = await res.json();
-    return { botKey, text: data.reply || RESTING_MESSAGE };
+    const data = await res.json().catch(() => null);
+    return { botKey, text: (typeof data?.reply === "string" && data.reply) || RESTING_MESSAGE };
   } catch {
     return { botKey, text: RESTING_MESSAGE };
   }

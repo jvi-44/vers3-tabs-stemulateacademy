@@ -6,7 +6,7 @@ import { fileURLToPath } from "url";
 import { rateLimit } from "express-rate-limit";
 import { rpc } from "../db.js";
 import { route } from "../route.js";
-import { askGemini, GeminiError, geminiContents } from "../gemini.js";
+import { askGemini, GeminiError, geminiApiKey, geminiContents } from "../gemini.js";
 import { EMAIL_REGEX } from "./staff.js";
 import { clientKey } from "../clientKey.js";
 
@@ -223,7 +223,7 @@ router.post("/assistant", assistantBody, assistantLimiters, async (req, res) => 
   }
   // GEMINI_SITE_API_KEY (optional) gives the website its own key and quota,
   // apart from the children's chat.
-  const apiKey = process.env.GEMINI_SITE_API_KEY || process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_SITE_API_KEY || geminiApiKey();
   if (!apiKey || ASSISTANT_DAILY_LIMIT === 0) return res.status(503).json({ error: "The assistant isn't switched on yet.", reply: null });
   try {
     // A daily cap for everyone together, kept in the database: it keeps the

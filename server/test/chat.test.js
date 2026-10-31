@@ -94,6 +94,7 @@ test("/api/chat is session-only, server-prompted and rate limited", async (t) =>
     nextReply = "";
     const res = await kid.post("/api/chat", ask("hello"));
     assert.equal(res.status, 502);
+    assert.match(res.json.reply, /quick break.*hint/);
     nextReply = "ok";
   });
 

@@ -26,10 +26,11 @@ the frontend.
 
 | Variable | Needed for | Default |
 |---|---|---|
-| `GEMINI_API_KEY` | The in-lesson "Ask STEMbots" chat and the website's "Ask us" assistant (read DEPLOY.md "AI chat: decide first") | none (both say they're switched off) |
+| `GEMINI_API_KEY` (or `GEMINI_API`) | The in-lesson "Ask STEMbots" chat and the website's "Ask us" assistant (read DEPLOY.md "AI chat: decide first") | none (both say they're switched off) |
 | `GEMINI_SITE_API_KEY` | Optional own key for the website's assistant (its button also needs `ASSISTANT_ON` in `website/script.js`) | `GEMINI_API_KEY` |
 | `ASSISTANT_DAILY_LIMIT` | Website assistant questions a day for everyone together (a UTC day; `0` keeps it off) | `300` |
 | `GEMINI_MODEL` | Chat model | `gemini-2.5-flash` |
+| `GEMINI_FALLBACK_MODEL` | Model tried when the main one is out of quota or overloaded (`off` to skip) | `gemini-2.5-flash-lite` |
 | `SESSION_SECRET` | Signing the login cookie (32+ random bytes) | random per start (everyone is signed out on restart) |
 | `APP_ORIGIN` | The Academy's own address: the only origin allowed to call the API with the login cookie (CORS), staff sign-in and set-up included, and the start of every staff set-up link | `http://localhost:5173` |
 | `SUPABASE_URL` | The Supabase project to save students' data in (on the host) | none (the local database is used) |
@@ -59,8 +60,12 @@ and `POST /api/site/assistant` for the website, sent in the `x-goog-api-key`
 header). The system prompt and child-safety rules live in
 `server/app.js`; the browser only sends which lesson beat the student is on
 and the last few messages. Chat requires a signed-in student and is limited
-to 30 questions per student per hour. If the key is missing or Gemini fails,
-the student sees "STEMbots are resting right now — try again soon!".
+to 30 questions per student per hour. When the main model is out of quota or
+overloaded, `GEMINI_FALLBACK_MODEL` answers instead (a used-up model is
+skipped for a minute). When both are out, or a student passes 30 an hour, the
+STEMbot replies with a hint from the lesson and asks them to try again later.
+If the key is missing or the network fails, the student sees "STEMbots are
+resting right now — try again soon!".
 
 ## Running it
 

@@ -61,6 +61,7 @@ services:
       # The two AI chats (Ask STEMbots, the website's "Ask us"). Leave both
       # empty until the AI provider decision in DEPLOY.md; without them the
       # chats say they're switched off and everything else works.
+      # GEMINI_API (the name set on Render) is read too.
       - key: GEMINI_API_KEY
         sync: false
       # Optional: its own key (and quota) for the website's assistant.

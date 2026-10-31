@@ -30,7 +30,7 @@ import staffRoutes from "./routes/staff.js";
 import siteRoutes from "./routes/site.js";
 import storyRoutes from "./routes/story.js";
 import { registerGameRoutes } from "./gameRooms.js";
-import { askGemini, GeminiError, geminiContents } from "./gemini.js";
+import { askGemini, GeminiError, geminiApiKey, geminiContents } from "./gemini.js";
 import { APP_ORIGIN } from "./staffAuth.js";
 import { clientKey } from "./clientKey.js";
 import { bandForLevelName } from "./levels.js";
@@ -507,8 +507,18 @@ const chatLimiter = rateLimit({
   keyGenerator: (req) => String(req.userId),
   standardHeaders: "draft-7",
   legacyHeaders: false,
-  message: { error: "Too many questions this hour.", reply: null },
+  message: {
+    error: "Too many questions this hour.",
+    reply: "You've asked lots of great questions this hour! Keep going with the lesson and ask me again a bit later.",
+    fallback: true,
+  },
 });
+
+/** What the STEMbot says when Gemini can't answer (quota used up, overloaded,
+ *  blocked): a hint from the beat itself, never a made-up answer. */
+export function fallbackReply(beat) {
+  return `I'm taking a quick break, so here's a hint from this part of the lesson: ${beat.description} Ask me again in a minute!`;
+}
 
 /** The full system instruction for a beat and school-level band — built only
  *  from server-side data. */
@@ -533,7 +543,7 @@ app.post("/api/chat", requireUser, chatLimiter, async (req, res) => {
     });
   }
 
-  if (!process.env.GEMINI_API_KEY) {
+  if (!geminiApiKey()) {
     return res.status(503).json({ error: "GEMINI_API_KEY not configured", reply: null });
   }
 
@@ -548,9 +558,11 @@ app.post("/api/chat", requireUser, chatLimiter, async (req, res) => {
     const reply = await askGemini({ systemInstruction, contents, maxOutputTokens: 200, temperature: 0.7 });
     res.json({ reply });
   } catch (err) {
-    if (err instanceof GeminiError) return res.status(err.status).json({ error: err.message, reply: null });
+    // Out of quota, overloaded or blocked: the status says why, the reply
+    // keeps the student going.
+    if (err instanceof GeminiError) return res.status(err.status).json({ error: err.message, reply: fallbackReply(beat), fallback: true });
     console.error("Chat endpoint error:", err);
-    res.status(502).json({ error: "Chat is unavailable right now.", reply: null });
+    res.status(502).json({ error: "Chat is unavailable right now.", reply: fallbackReply(beat), fallback: true });
   }
 });
 
