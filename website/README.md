@@ -43,6 +43,11 @@ https://academy.projstemulate.com (`LIVE_ACADEMY_URL` at the top of `script.js`)
   resized for the web with phone location data removed. To swap one, keep the
   file name (or update the `src`), and keep photos around 1,100 px wide (hero:
   1,800 px). Only use photos of children whose families agreed to it.
+  The hero photo (`session-floor.jpg`) also has smaller WebP copies for phones,
+  `session-floor-800.webp`, `-1200.webp` and `-1800.webp` (the `<picture>` on
+  `index.html` and `impact.html`). To swap the hero photo, replace those three
+  as well (same names, 800, 1,200 and 1,800 px wide) or delete the `<source>`
+  line; otherwise most browsers keep showing the old photo.
 - **Workshop cards**: each STEM x workshop is a `<article class="wcard x-...">`
   on `index.html` and `curriculum.html`. Most cards show only a photo and the name;
   to add a description, put a `<p>` after the `<h3>`.
@@ -55,6 +60,8 @@ https://academy.projstemulate.com (`LIVE_ACADEMY_URL` at the top of `script.js`)
 - **Workshop slides** live in `assets/slides/<workshop>/`, named by slide number
   in the original deck. Each deck on `curriculum.html` has `data-deck="..."`;
   links like `curriculum.html#open-minecraft` open that deck full screen.
+  `01-thumb.jpg` in the minecraft, monopoly and amongus folders is a small copy
+  (336 px wide) of slide 1 for the list on `academy.html`; remake it if slide 1 changes.
 - **Forms**: the volunteer, partner, chapter and newsletter forms on
   `get-involved.html` send to STEMulate Academy (`forms.js`, `forms.css`); the
   team reads them on the Academy's admin page under **Website sign-ups**.
