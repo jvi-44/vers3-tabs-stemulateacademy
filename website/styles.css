@@ -114,6 +114,8 @@ ul, ol { margin: 0; padding: 0; }
 .text-link:hover { text-decoration: underline; text-underline-offset: 4px; }
 .on-dark .text-link { color: var(--lime); }
 .band-lime .text-link { color: var(--forest); text-decoration: underline; text-underline-offset: 3px; }
+/* Leaf-deep is only 4.2:1 on lilac; forest is 8.5:1 */
+.band-lilac .text-link { color: var(--forest); }
 
 /* ───────── Header ───────── */
 .site-header {
@@ -213,6 +215,8 @@ ul, ol { margin: 0; padding: 0; }
 .page-hero-photo .bot { position: absolute; left: -26px; bottom: -30px; width: 108px; filter: var(--die-cut); transform: rotate(-8deg); }
 .page-hero-photo figcaption { font-size: 0.88rem; color: var(--on-forest-muted); margin-top: 12px; }
 .crumb { font: 600 1rem var(--head); color: var(--lime); margin-bottom: 12px; display: block; }
+/* The privacy page has no forest band, so its label sits on cream */
+.policy .crumb { color: var(--forest); }
 
 /* ───────── Numbers band ───────── */
 .numbers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }

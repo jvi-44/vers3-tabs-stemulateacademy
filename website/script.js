@@ -44,6 +44,16 @@ links.addEventListener("click", (e) => {
     toggle.setAttribute("aria-expanded", "false");
   }
 });
+// Escape closes the open menu. If focus was on one of its links, it goes back
+// to the menu button rather than staying on a hidden link.
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape" || !links.classList.contains("open")) return;
+  const focusInMenu = links.contains(document.activeElement);
+  links.classList.remove("open");
+  toggle.setAttribute("aria-expanded", "false");
+  toggle.setAttribute("aria-label", "Open menu");
+  if (focusInMenu) toggle.focus();
+});
 
 // Tabs (each tablist works on its own; arrow keys move between tabs, per the
 // WAI-ARIA tabs pattern)
