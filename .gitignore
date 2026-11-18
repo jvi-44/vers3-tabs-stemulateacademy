@@ -16,3 +16,6 @@ server/stemulate.db*
 # Local editor/tooling config
 .claude/
 __pycache__/
+
+# Internal working notes (handoffs, patches): on this computer only, never in the repo
+_internal/
